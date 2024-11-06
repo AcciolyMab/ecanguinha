@@ -10,7 +10,6 @@ passlib[bcrypt]
 python-dotenv
 Jinja2
 requests
-docplex
 numpy
 pandas
 geopy
