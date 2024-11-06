@@ -1,0 +1,201 @@
+/* Estilos globais */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    background-color: rgba(0, 0, 0, 0.05); /* Cinza 15% */
+    /*background-image: url('ecanguinha/static/ecanguinha/img/img.png');  Caminho direto da imagem */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    color: #004d40;
+    font-size: 16px;
+    line-height: 1.6;
+    overflow-x: hidden;
+    position: relative;
+}
+/* Estilos da Navbar */
+.navbar {
+    background-color: #3B5998; /* Azul escuro pastel */
+    padding: 1rem;
+    border-bottom: 3px solid #004d40;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+    color: #FFFFFF; /* Letras brancas */
+    font-size: 1.8rem;
+    font-weight: bold; /* Texto em bold */
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transition: color 0.3s ease;
+}
+
+.navbar-nav .nav-link {
+    color: #FFFFFF; /* Letras brancas */
+    font-weight: bold; /* Texto em bold */
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.navbar-nav .nav-link:hover {
+    color: #e0e0e0; /* Hover com um tom de branco mais claro */
+    transform: scale(1.1);
+}
+
+/* Formulário */
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+    background: rgba(255, 255, 255, 0.9); /* Fundo translúcido branco claro */
+    border-radius: 15px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    color: #004d40;
+}
+
+h1 {
+    color: #004d40; /* Texto verde escuro */
+    font-size: 2.5rem;
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+label {
+    color: #004d40;
+    font-weight: bold;
+}
+
+input[type="text"], input[type="email"], input[type="submit"], textarea {
+    width: 100%;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid #004d40;
+    border-radius: 5px;
+    background-color: rgba(255, 255, 255, 0.1); /* Fundo translúcido */
+    color: #004d40;
+    font-size: 1rem;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+input[type="text"]:focus, input[type="email"]:focus, textarea:focus {
+    background-color: rgba(255, 255, 255, 0.2); /* Alteração de fundo ao focar */
+    transform: scale(1.05); /* Pequeno efeito de zoom */
+}
+
+input[type="submit"] {
+    background-color: #3B5998; /* Azul escuro */
+    color: #ffffff;
+    border: none;
+    padding: 0.8rem 1.5rem;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+input[type="submit"]:hover {
+    background-color: #2e4c82;
+    transform: translateY(-3px);
+}
+
+input.form-control.small-input {
+    max-width: 150px; !important;/* Ajuste para o tamanho desejado */
+}
+
+input.form-control.large-input {
+    max-width: 450px; !important;/* Ajuste para o tamanho desejado */
+}
+
+/* Botões */
+.btn {
+    padding: 0.8rem 1.5rem;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-weight: bold;
+    text-transform: uppercase;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+    margin-right: 10px; /* Adiciona espaçamento entre os botões */
+}
+
+.btn:last-child {
+    margin-right: 0; /* Remove margem direita no último botão */
+}
+
+.form-buttons {
+    display: flex; /* Flexbox para alinhamento */
+    justify-content: center; /* Centraliza os botões */
+    gap: 1rem; /* Espaçamento entre os botões */
+    margin-top: 1.5rem;
+}
+
+.btn-primary {
+    background-color: #3B5998; /* Azul escuro */
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background-color: #2e4c82;
+    transform: translateY(-3px);
+}
+
+.btn-success {
+    background-color: #28a745;
+    color: #fff;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    transform: translateY(-3px);
+}
+
+/* Footer */
+footer {
+    background-color: #3B5998; /* Azul escuro */
+    color: #FFFFFF;
+    padding: 2rem 0;
+    text-align: center;
+    margin-top: 4rem;
+    border-top: 3px solid #004d40;
+}
+
+footer p {
+    margin: 0;
+}
+
+footer a {
+    color: #FFFFFF;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+footer a:hover {
+    color: #e0e0e0;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+
+    h1 {
+        font-size: 1.75rem;
+    }
+
+    .btn {
+        padding: 0.6rem 1rem;
+    }
+
+    .form-buttons {
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+}
