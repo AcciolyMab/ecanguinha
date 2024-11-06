@@ -10,7 +10,6 @@ passlib[bcrypt]
 python-dotenv
 Jinja2
 requests
-cplex==22.1.1
 docplex
 numpy
 pandas
