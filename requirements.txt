@@ -19,4 +19,4 @@ googlemaps
 folium==0.12.1
 networkx==2.6.2
 python-multipart
-
+django==5.1.2
