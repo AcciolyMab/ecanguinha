@@ -20,6 +20,7 @@ from ecanguinha import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', views.home, name='home'),
     path('home/', views.home, name='home'),
     path('localizacao/', views.localizacao, name='localizacao'),
     path('sobre/', views.about, name='about'),  # Nova URL
