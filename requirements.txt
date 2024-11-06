@@ -2,6 +2,7 @@ gurobipy
 fastapi
 mangum
 uvicorn
+whitenoise==6.0.0
 matplotlib>=3.5.0
 gunicorn==20.1.0
 async-exit-stack
