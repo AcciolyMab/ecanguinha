@@ -1,1 +1,1 @@
-web: gunicorn canguinhaProject.wsgi
+web: gunicorn canguinaProject.wsgi
