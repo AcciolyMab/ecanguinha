@@ -10,9 +10,9 @@ async-generator
 passlib[bcrypt]
 python-dotenv
 Jinja2
-requests
+requests==2.31.0
 numpy
-pandas
+pandas==2.1.1
 geopy
 googlemaps
 folium==0.12.1

@@ -15,7 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from ecanguinha import views
 
 urlpatterns = [
@@ -25,4 +25,6 @@ urlpatterns = [
     path('localizacao/', views.localizacao, name='localizacao'),
     path('sobre/', views.about, name='about'),  # Nova URL
     path('contato/', views.contact, name='contact'),  # Nova URL
+    path('api/get_lat_long/', views.get_lat_long, name='get_lat_long'),  # API para obter latitude e longitude
+    path('listar_produtos/', views.listar_produtos, name='listar_produtos'),  # Adicione esta linha
 ]

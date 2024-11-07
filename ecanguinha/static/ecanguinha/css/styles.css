@@ -112,12 +112,142 @@ input.form-control.small-input {
 input.form-control.large-input {
     max-width: 450px; !important;/* Ajuste para o tamanho desejado */
 }
+/* Estilo para destacar a moldura dos checkboxes */
+.border {
+    border: 2px solid #007bff; /* Cor de borda azul para combinar com o Bootstrap */
+    border-radius: 8px; /* Arredondamento das bordas */
+}
+
+/* Estilo para destacar a moldura dos checkboxes */
+.border {
+    border: 2px solid rgba(3, 29, 53, 0.8); /* Cor de borda azul para combinar com o Bootstrap */
+    border-radius: 8px; /* Arredondamento das bordas */
+    padding: 15px;
+    margin-top: 20px;
+}
+
+/* Estilo para os checkboxes */
+.form-check-input:checked {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+/* Estilo para o rótulo dos checkboxes */
+.form-check-label {
+    font-weight: bold;
+    color: rgba(3, 29, 53, 0.8);
+    margin-left: 5px;
+}
+
+/* Destacar o item ao passar o mouse */
+.form-check:hover {
+    background-color: #f0f8ff; /* Fundo claro ao passar o mouse */
+    border-radius: 4px;
+}
+
+/* Título da seção de checkboxes */
+.text-primary {
+    font-weight: 600;
+    color: #007bff; /* Azul para combinar com o tema Bootstrap */
+}
+/* Estilos para a tabela na página lista.html */
+.table-container {
+    margin-top: 20px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Arial', sans-serif;
+}
+
+.table thead {
+    background-color: #0056b3; /* Azul escuro */
+    color: #fff;
+    text-align: center;
+}
+
+.table th,
+.table td {
+    padding: 12px 15px;
+    text-align: center;
+}
+
+.table tbody tr:nth-child(even) {
+    background-color: #f8f9fa; /* Cinza claro */
+}
+
+.table tbody tr:nth-child(odd) {
+    background-color: #ffffff; /* Branco */
+}
+
+.table tbody tr:hover {
+    background-color: #e3f2fd; /* Azul claro no hover */
+    cursor: pointer;
+}
+
+.table th {
+    font-weight: 600;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.table td {
+    font-size: 0.95rem;
+    color: #333; /* Cinza escuro */
+}
+
+.pagination {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    list-style: none;
+    padding: 0;
+}
+
+.pagination .page-item {
+    margin: 0 5px;
+}
+
+.pagination .page-link {
+    color: #0056b3;
+    padding: 8px 12px;
+    text-decoration: none;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.pagination .page-link:hover {
+    background-color: #0056b3;
+    color: #fff;
+}
+
+.pagination .active .page-link {
+    background-color: #0056b3;
+    color: #fff;
+    border-color: #0056b3;
+}
+
+.alert {
+    font-size: 1rem;
+    color: #333;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    padding: 15px;
+    border-radius: 5px;
+    text-align: center;
+}
 
 /* Botões */
 .btn {
     padding: 0.8rem 1.5rem;
     border: none;
-    border-radius: 25px;
+    border-radius: 50px;
     cursor: pointer;
     font-weight: bold;
     text-transform: uppercase;

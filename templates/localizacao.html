@@ -4,15 +4,24 @@
 <head>
     <meta charset="UTF-8">
     <title>Localização do Comprador</title>
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Seu CSS personalizado -->
     <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}">
-    <!-- Axios para chamadas de API -->
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .category-title {
+            font-weight: bold;
+            color: #0056b3;
+            margin-top: 10px;
+        }
+        .checkbox-group {
+            columns: 3;  /* Organiza os checkboxes em três colunas */
+        }
+        .form-check {
+            margin-bottom: 5px;
+        }
+    </style>
 </head>
 <body>
-    <!-- Navbar Bootstrap -->
     <nav class="navbar navbar-expand-lg">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">Canguinha Alagoas</a>
@@ -21,18 +30,10 @@
             </button>
             <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
                 <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'home' %}">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="{% url 'localizacao' %}">Localização</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'about' %}">Sobre</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'contact' %}">Contato</a>
-                    </li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'home' %}">Home</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="{% url 'localizacao' %}">Localização</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'about' %}">Sobre</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'contact' %}">Contato</a></li>
                 </ul>
             </div>
         </div>
@@ -40,7 +41,8 @@
 
     <div class="container mt-5">
         <h1>Localização do Comprador</h1>
-        <form id="locationForm">
+        <form id="locationForm" action="{% url 'listar_produtos' %}" method="post">
+            {% csrf_token %}
             <div class="mb-3">
                 <label for="nome" class="form-label">Nome do Comprador</label>
                 <input type="text" class="form-control large-input" id="nome" name="nome" placeholder="Insira o nome do comprador" required>
@@ -50,7 +52,6 @@
                 <input type="text" class="form-control large-input" id="endereco" name="endereco" placeholder="Insira o endereço do comprador" required>
             </div>
             <div class="row">
-                <!-- Latitude e Raio -->
                 <div class="col-md-6 mb-3">
                     <label for="latitude" class="form-label">Latitude</label>
                     <input type="text" class="form-control small-input" id="latitude" name="latitude" readonly>
@@ -61,7 +62,6 @@
                 </div>
             </div>
             <div class="row">
-                <!-- Longitude e Dias -->
                 <div class="col-md-6 mb-3">
                     <label for="longitude" class="form-label">Longitude</label>
                     <input type="text" class="form-control small-input" id="longitude" name="longitude" readonly>
@@ -71,15 +71,70 @@
                     <input type="number" class="form-control small-input" id="dias" name="dias" min="1" max="10" placeholder="Até 10 dias" required>
                 </div>
             </div>
+
+            <!-- Seção de Checkboxes para Seleção de Produtos -->
+            <div class="mb-3 p-3 border rounded shadow-sm">
+                <h3 class="mb-3 text-primary">Selecione os Produtos</h3>
+                <div id="categoryCheckboxes" class="checkbox-group">
+                    <!-- Checkboxes de categorias gerados dinamicamente via JavaScript -->
+                </div>
+            </div>
+
+            <input type="hidden" id="item_list" name="item_list">
+
             <div class="form-buttons">
                 <button type="button" class="btn btn-primary" id="getLatLongButton" onclick="getLatLong()">Obter Latitude e Longitude</button>
                 <button type="submit" class="btn btn-success">Enviar</button>
             </div>
         </form>
     </div>
-    
+
     <script>
-        // Função para obter a latitude e longitude usando a API Nominatim
+        // Dados de categorias e códigos de barras
+        const category = {
+            'FEIJAO': ["7896006744115", "7893500007715", "7898383101000", "7898907040969", "7898902735167"],
+            'ARROZ': ["7896006716112", "7893500024996", "7896012300213", "7898018160082", "7896084700027"],
+            'MACARRAO': ["7896213005184", "7896532701576", "7896022200879", "7896005030530", "7896016411021"],
+            'FARINHA MANDIOCA': ["7898994092216", "7898902735099", "7898272919211", "7898272919068", "7898277160021"],
+            'CAFE 250G': ["7896005800027", "7896224808101", "7896224803069", "7898286200060", "7896005213018"],
+            'BOLACHA': ["7896213006266", "7896005030356", "7898657832173", "7896003738636", "7891962014982"],
+            'FLOCAO MILHO': ["7896481130106", "7891091010718", "7898366932973", "7898932426042", "7898366930023"],
+            'MARGARINA': ["7894904271733", "7893000979932", "7894904929108", "7891152506815", "7891515901066"],
+            'MANTEIGA': ["7898912485496", "7896596000059", "7896010400885", "7898939253399", "7898043230798"],
+            'LEITE PO': ["7898215152330", "7896051130079", "7898949565017", "7896259410133", "7898403780918"],
+            'LEITE UHT': ["7896259412861", "7898118390860", "7898403782394", "7898387120380", "7896085393488"],
+            'OLEO DE SOJA': ["7891107101621", "7892300001428", "7898247780075", "7896036090244", "7892300030060"],
+            'ACUCAR CRISTAL': ["7896065200072", "7896215300591", "7896065200065", "7897261800011", "7897154430103"],
+            'OVOS': ["7897146402019", "7897146405010", "7897146402033", "7898903159085", "7896414410121"],
+            'SARDINHA 125G': ["7891167021013", "7891167023017", "7891167023024", "7896009301063", "7891167021075"]
+        };
+
+        // Função para criar checkboxes de produtos dinamicamente (uma vez por categoria)
+        function createCheckboxes() {
+            const checkboxContainer = document.getElementById('categoryCheckboxes');
+            for (const [categoryName, barcodes] of Object.entries(category)) {
+                // Cria um checkbox para cada categoria, exibindo apenas o nome
+                const checkboxWrapper = document.createElement('div');
+                checkboxWrapper.classList.add('form-check');
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'form-check-input';
+                checkbox.name = 'category';
+                checkbox.value = JSON.stringify(barcodes);  // Armazena os códigos de barras como JSON
+
+                const label = document.createElement('label');
+                label.className = 'form-check-label';
+                label.innerText = categoryName;
+
+                checkboxWrapper.appendChild(checkbox);
+                checkboxWrapper.appendChild(label);
+                checkboxContainer.appendChild(checkboxWrapper);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', createCheckboxes);
+
         async function getLatLong() {
             const endereco = document.getElementById("endereco").value;
             const button = document.getElementById("getLatLongButton");
@@ -93,31 +148,34 @@
             button.disabled = true;
 
             try {
-                const response = await axios.get('https://nominatim.openstreetmap.org/search', {
-                    params: {
-                        q: endereco,
-                        format: 'json',
-                        limit: 1
-                    }
-                });
-
-                if (response.data && response.data.length > 0) {
-                    const location = response.data[0];
-                    document.getElementById("latitude").value = location.lat;
-                    document.getElementById("longitude").value = location.lon;
+                const response = await axios.get('/api/get_lat_long/', { params: { endereco } });
+                if (response.data && response.data.lat && response.data.lon) {
+                    document.getElementById("latitude").value = response.data.lat;
+                    document.getElementById("longitude").value = response.data.lon;
                 } else {
                     alert("Endereço não encontrado. Tente novamente.");
                 }
             } catch (error) {
+                console.error("Erro na requisição:", error);
                 alert("Erro ao tentar obter a localização. Tente novamente.");
             } finally {
                 button.innerText = "Obter Latitude e Longitude";
                 button.disabled = false;
             }
         }
+
+        // Captura os produtos selecionados ao enviar o formulário
+        document.getElementById('locationForm').addEventListener('submit', function(event) {
+            const selectedItems = [];
+            document.querySelectorAll('input[name="category"]:checked').forEach((checkbox) => {
+                const barcodes = JSON.parse(checkbox.value);  // Decodifica os códigos de barras
+                selectedItems.push(...barcodes);  // Adiciona todos os códigos de barras
+            });
+
+            document.getElementById('item_list').value = JSON.stringify(selectedItems);
+        });
     </script>
 
-    <!-- Bootstrap JS e dependências Popper -->
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
 </body>
