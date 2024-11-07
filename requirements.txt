@@ -11,7 +11,7 @@ passlib[bcrypt]
 python-dotenv
 Jinja2
 requests==2.31.0
-numpy
+numpy==1.24.3
 pandas==2.1.1
 geopy
 googlemaps
