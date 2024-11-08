@@ -86,6 +86,10 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
+# Middleware para redirecionar para HTTPS
+SECURE_SSL_REDIRECT = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # Arquivos Estáticos
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / "ecanguinha/static"]
