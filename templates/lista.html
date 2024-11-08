@@ -22,6 +22,7 @@
                         <th>Produto</th>
                         <th>Valor (R$)</th>
                         <th>Mercado</th>
+                        <th>Endereço</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -30,6 +31,7 @@
                             <td>{{ item.PRODUTO }}</td>
                             <td>{{ item.VALOR|floatformat:2 }}</td>
                             <td>{{ item.MERCADO }}</td>
+                            <td>{{ item.ENDERECO }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
