@@ -68,6 +68,24 @@ label {
     font-weight: bold;
 }
 
+/* Alinhamento dos campos de Latitude, Longitude, Raio e Dias */
+.location-fields {
+    display: flex;
+    gap: 20px;
+    align-items: flex-end; /* Alinhamento pela parte inferior */
+    justify-content: space-between;
+}
+
+.location-group {
+    flex: 1;
+}
+
+input.small-input {
+    width: 100px;
+    margin-bottom: 0; /* Remover margem inferior para melhor alinhamento */
+}
+
+/* Ajustes para Inputs */
 input[type="text"], input[type="email"], input[type="submit"], textarea {
     width: 100%;
     padding: 1rem;
@@ -78,6 +96,26 @@ input[type="text"], input[type="email"], input[type="submit"], textarea {
     color: #004d40;
 }
 
+/* Ajustes para campos menores */
+input.half-width {
+    width: 48%;
+    display: inline-block;
+}
+
+input.small-input {
+    width: 80px;
+    display: inline-block;
+    margin-right: 10px;
+}
+
+/* Alinhamento dos campos */
+.form-group-inline {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Botão de envio */
 input[type="submit"] {
     background-color: #3B5998;
     color: #fff;
@@ -87,15 +125,6 @@ input[type="submit"] {
 
 input[type="submit"]:hover {
     background-color: #2e4c82;
-}
-
-/* Ajustes para Inputs */
-input.form-control.small-input {
-    max-width: 100%;
-}
-
-input.form-control.large-input {
-    max-width: 100%;
 }
 
 /* Checkboxes */
@@ -183,6 +212,10 @@ footer {
         font-size: 0.9rem;
     }
 
+    input.half-width {
+        width: 100%;
+    }
+
     .form-buttons {
         flex-direction: column;
         gap: 0.5rem;
@@ -199,36 +232,5 @@ footer {
 
     .navbar-nav .nav-link {
         padding: 0.5rem;
-    }
-}
-
-/* Responsividade para Tablets */
-@media (max-width: 768px) {
-    .container {
-        padding: 1.5rem;
-    }
-
-    h1 {
-        font-size: 2rem;
-    }
-
-    .btn {
-        padding: 0.7rem 1.2rem;
-    }
-}
-
-/* Responsividade para Desktops Grandes */
-@media (min-width: 992px) {
-    .container {
-        max-width: 900px;
-    }
-
-    h1 {
-        font-size: 2.5rem;
-    }
-
-    .form-buttons {
-        flex-direction: row;
-        gap: 1rem;
     }
 }

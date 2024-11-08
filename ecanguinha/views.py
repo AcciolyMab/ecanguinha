@@ -10,8 +10,7 @@ import json
 # Configuração de log para facilitar o debug
 logger = logging.getLogger(__name__)
 
-
-# Create your views here.
+# View para a página inicial
 def home(request):
     if request.method == "GET":
         return render(request, 'home.html')
@@ -19,7 +18,7 @@ def home(request):
         nome = request.POST['nome']
         return HttpResponse(nome)
 
-
+# Função para obter latitude e longitude
 @require_GET
 def get_lat_long(request):
     endereco = request.GET.get('endereco')
@@ -29,24 +28,21 @@ def get_lat_long(request):
     try:
         response = requests.get(
             'https://nominatim.openstreetmap.org/search',
-            params={
-                'q': endereco,
-                'format': 'json',
-                'limit': 1
-            },
-            headers={'User-Agent': 'canguinhaApp/1.0 (your-email@example.com)'}  # Inclua um e-mail válido
+            params={'q': endereco, 'format': 'json', 'limit': 1},
+            headers={'User-Agent': 'canguinhaApp/1.0 (your-email@example.com)'}
         )
-        response.raise_for_status()  # Verifica se a requisição foi bem-sucedida
+        response.raise_for_status()
         data = response.json()
 
         if data:
-            return JsonResponse(data[0])  # Retorna latitude e longitude do primeiro resultado
+            return JsonResponse(data[0])
         else:
             return JsonResponse({'error': 'Endereço não encontrado'}, status=404)
 
     except requests.RequestException as e:
-        logger.error("Erro na requisição para a API Nominatim: %s", e)  # Log de erro
+        logger.error("Erro na requisição para a API Nominatim: %s", e)
         return JsonResponse({'error': 'Erro ao obter localização', 'details': str(e)}, status=500)
+
 
 
 def localizacao(request):
@@ -93,49 +89,30 @@ def consultarProduto(gtin, raio, my_lat, my_lon, dias):
         return None
 
 # Funções auxiliares
-def consultarProduto(gtin, raio, my_lat, my_lon, dias):
-    url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/produto/pesquisa'
-    data = {
-        "produto": {"gtin": gtin},
-        "estabelecimento": {
-            "geolocalizacao": {
-                "latitude": float(my_lat),
-                "longitude": float(my_lon),
-                "raio": int(raio)
-            }
-        },
-        "dias": int(dias),
-        "pagina": 1,
-        "registrosPorPagina": 50
-    }
 
-    headers = {
-        "Content-Type": "application/json",
-        "AppToken": "ad909a7a6f0d6a130941ae2a9706eec58c0bb65d"
-    }
-
-    response = requests.post(url, headers=headers, json=data)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        logger.error(f"Erro na API para GTIN {gtin}: {response.status_code} - {response.text}")
-        return None
-
+# View para listar produtos
 # View para listar produtos
 def listar_produtos(request):
     if request.method == 'POST' or 'page' in request.GET:
-        # Obter parâmetros do request
         latitude = request.POST.get('latitude') or request.GET.get('latitude')
         longitude = request.POST.get('longitude') or request.GET.get('longitude')
         dias = request.POST.get('dias') or request.GET.get('dias')
         raio = request.POST.get('raio') or request.GET.get('raio')
         item_list = request.POST.get('item_list') or request.GET.get('item_list')
 
-        # Verifica se `item_list` precisa ser decodificado (se veio como JSON string)
-        if isinstance(item_list, str):
-            item_list = json.loads(item_list)
+        # Verificação de item_list
+        if not item_list:
+            logger.error("item_list está vazio ou não foi enviado.")
+            return render(request, 'lista.html', {'error': "Nenhum produto selecionado."})
 
-        # Consultar a API para cada produto
+        try:
+            # Decodificar item_list se for uma string JSON
+            if isinstance(item_list, str):
+                item_list = json.loads(item_list)
+        except json.JSONDecodeError as e:
+            logger.error("Erro ao decodificar item_list: %s", e)
+            return render(request, 'lista.html', {'error': "Erro ao processar a lista de produtos."})
+
         response_list = []
         for item in item_list:
             try:
@@ -145,7 +122,6 @@ def listar_produtos(request):
             except Exception as e:
                 logger.error(f"Erro ao consultar o produto {item}: {e}")
 
-        # Processar a resposta
         if response_list:
             data_list = [
                 {
@@ -155,9 +131,7 @@ def listar_produtos(request):
                     'VALOR': produto['venda']['valorVenda'],
                     'CNPJ': str(estabelecimento['cnpj']),
                     'MERCADO': estabelecimento['razaoSocial'],
-                    'ENDERECO': endereco['nomeLogradouro'],
-                    'NUMERO': endereco['numeroImovel'],
-                    'BAIRRO': endereco['bairro'],
+                    'ENDERECO': f"{endereco['nomeLogradouro']}, {endereco['numeroImovel']} - {endereco['bairro']}",
                     'LAT': endereco['latitude'],
                     'LONG': endereco['longitude']
                 }
@@ -168,9 +142,10 @@ def listar_produtos(request):
 
             df = pd.DataFrame(data_list)
 
-            # Função para categorizar o produto com base no código de barras
+            # Função para categorizar o produto
             def categorizar_produto(codigo_barras):
-                category = {
+                # Definindo o dicionário de categorias dentro da função
+                categorias = {
                     'FEIJAO': ['7896006744115', '7893500007715', '7898383101000', '7898907040969', '7898902735167'],
                     'ARROZ': ['7896006716112', '7893500024996', '7896012300213', '7898018160082', '7896084700027'],
                     'MACARRAO': ['7896213005184', '7896532701576', '7896022200879', '7896005030530', '7896016411021'],
@@ -192,19 +167,15 @@ def listar_produtos(request):
                     'SARDINHA 125G': ['7891167021013', '7891167023017', '7891167023024', '7896009301063',
                                       '7891167021075']
                 }
-                for categoria, codigos in category.items():
+
+                # Verificar a categoria do código de barras
+                for categoria, codigos in categorias.items():
                     if codigo_barras in codigos:
                         return categoria
                 return 'Desconhecido'
 
             df['CATEGORIA'] = df['CODIGO_BARRAS'].apply(categorizar_produto)
-
-            # Adicionando a coluna de endereço
-            df['ENDERECO'] = df['ENDERECO'] + ', ' + df['NUMERO'] + ' - ' + df['BAIRRO']
-
-            # Selecionando as colunas necessárias
-            df = df[['CATEGORIA', 'VALOR', 'MERCADO', 'ENDERECO', 'LAT', 'LONG']].rename(
-                columns={'CATEGORIA': 'PRODUTO'})
+            df = df[['CATEGORIA', 'VALOR', 'MERCADO', 'ENDERECO', 'LAT', 'LONG']].rename(columns={'CATEGORIA': 'PRODUTO'})
             data = df.to_dict(orient='records')
 
             paginator = Paginator(data, 10)
@@ -217,10 +188,10 @@ def listar_produtos(request):
                 'longitude': longitude,
                 'dias': dias,
                 'raio': raio,
-                'item_list': json.dumps(item_list)  # Passando item_list para paginação
+                'item_list': json.dumps(item_list)
             })
         else:
-            logger.warning("DataFrame está vazio após a consulta.")
-            return render(request, 'lista.html', {'page_obj': None, 'error': "Nenhum dado foi retornado pela API."})
-    else:
-        return render(request, 'localizacao.html')
+            logger.warning("Nenhum dado foi retornado pela API.")
+            return render(request, 'lista.html', {'error': "Nenhum dado foi retornado pela API."})
+
+    return render(request, 'localizacao.html')
