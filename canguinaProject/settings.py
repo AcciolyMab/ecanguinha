@@ -87,8 +87,12 @@ USE_I18N = True
 USE_TZ = True
 
 # Middleware para redirecionar para HTTPS
-SECURE_SSL_REDIRECT = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# Forçar HTTPS apenas se estiver no ambiente de produção (Heroku)
+if 'DYNO' not in os.environ:  # Ambiente local
+    SECURE_SSL_REDIRECT = False
+else:  # Ambiente de produção (Heroku)
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Arquivos Estáticos
 STATIC_URL = '/static/'

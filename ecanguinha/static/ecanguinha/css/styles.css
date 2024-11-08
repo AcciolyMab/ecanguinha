@@ -196,6 +196,20 @@ footer {
     text-align: center;
 }
 
+.logo-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 300px; /* Ajuste a altura conforme necessário */
+}
+
+.logo-img {
+    max-width: 100%;
+    max-height: 200px;
+    opacity: 0.8;
+    object-fit: contain;
+}
+
 /* Responsividade para Dispositivos Móveis */
 @media (max-width: 576px) {
     .container {
