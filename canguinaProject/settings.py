@@ -10,6 +10,7 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 from pathlib import Path
 import dj_database_url
 import os
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -17,7 +18,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 SECRET_KEY = 'django-insecure-o!f&%cc+m5r#4atn@28$b%dve1477nvc((4k^%3uxyde)w1+_5'
 
-DEBUG = True
+DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = ['*']
 
