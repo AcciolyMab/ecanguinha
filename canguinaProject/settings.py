@@ -19,7 +19,7 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-o!f&%cc+m5r#4atn@28$b
 DEBUG = config('DEBUG', default=False, cast=bool)
 
 # Allowed Hosts
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.herokuapp.com']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.herokuapp.com', 'canguinhaal.com.br', 'www.canguinhaal.com.br']
 
 # Application Definition
 INSTALLED_APPS = [
