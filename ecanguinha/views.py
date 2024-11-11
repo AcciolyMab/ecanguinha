@@ -10,6 +10,7 @@ import json
 # Configuração de log para facilitar o debug
 logger = logging.getLogger(__name__)
 
+
 # View para a página inicial
 def home(request):
     if request.method == "GET":
@@ -17,6 +18,7 @@ def home(request):
     else:
         nome = request.POST['nome']
         return HttpResponse(nome)
+
 
 # Função para obter latitude e longitude
 @require_GET
@@ -44,7 +46,6 @@ def get_lat_long(request):
         return JsonResponse({'error': 'Erro ao obter localização', 'details': str(e)}, status=500)
 
 
-
 def localizacao(request):
     return render(request, 'localizacao.html')
 
@@ -58,7 +59,7 @@ def contact(request):
 
 
 # View para listar produtos
-def consultarProduto(gtin, raio, my_lat, my_lon, dias):
+def consultarproduto(gtin, raio, my_lat, my_lon, dias):
     url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/produto/pesquisa'
 
     # Certifique-se de que latitude e longitude são float
@@ -88,9 +89,7 @@ def consultarProduto(gtin, raio, my_lat, my_lon, dias):
         logger.error(f"Erro na API para GTIN {gtin}: {response.status_code} - {response.text}")
         return None
 
-# Funções auxiliares
 
-# View para listar produtos
 # View para listar produtos
 def listar_produtos(request):
     if request.method == 'POST' or 'page' in request.GET:
@@ -116,7 +115,7 @@ def listar_produtos(request):
         response_list = []
         for item in item_list:
             try:
-                response = consultarProduto(item, raio, latitude, longitude, dias)
+                response = consultarproduto(item, raio, latitude, longitude, dias)
                 if response and 'conteudo' in response:
                     response_list.extend(response['conteudo'])
             except Exception as e:
@@ -175,7 +174,8 @@ def listar_produtos(request):
                 return 'Desconhecido'
 
             df['CATEGORIA'] = df['CODIGO_BARRAS'].apply(categorizar_produto)
-            df = df[['CATEGORIA', 'VALOR', 'MERCADO', 'ENDERECO', 'LAT', 'LONG']].rename(columns={'CATEGORIA': 'PRODUTO'})
+            df = df[['CATEGORIA', 'VALOR', 'MERCADO', 'ENDERECO', 'LAT', 'LONG']].rename(
+                columns={'CATEGORIA': 'PRODUTO'})
             data = df.to_dict(orient='records')
 
             paginator = Paginator(data, 10)
