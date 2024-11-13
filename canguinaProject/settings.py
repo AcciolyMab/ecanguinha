@@ -8,6 +8,19 @@ from pathlib import Path
 import dj_database_url
 import os
 from decouple import config
+import logging
+logger = logging.getLogger(__name__)
+from django.core.cache import cache
+
+# Teste do cache
+try:
+    cache.set('teste_log', 'valor_log', timeout=60)
+    valor = cache.get('teste_log')
+    print(f"Valor do cache: {valor}")  # Deve mostrar 'valor_log'
+except Exception as e:
+    print(f"Erro ao acessar o cache: {e}")
+
+
 
 # Base Directory
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -64,19 +77,49 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'canguinaProject.wsgi.application'
 
-# Configuração de Banco de Dados
-# Usar SQLite em desenvolvimento e PostgreSQL em produção
-if DEBUG:
-    DATABASES = {
+# Configuração de Cache com Django-Redis
+if DEBUG:  # Ambiente local
+    # Configuração de Cache com Django-Redis
+    CACHES = {
         'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': config('REDIS_URL', default='redis://127.0.0.1:6379/1'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'SERIALIZER': 'django_redis.serializers.pickle.PickleSerializer',
+                'IGNORE_EXCEPTIONS': DEBUG,
+                'CONNECTION_POOL_KWARGS': {
+                    'max_connections': 100,
+                    'socket_timeout': 20
+                }
+            }
         }
     }
-else:
-    DATABASES = {
-        'default': dj_database_url.parse(config('DATABASE_URL'), conn_max_age=600, ssl_require=True)
+else:  # Ambiente de Produção
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': config('REDIS_URL_PROD'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'SERIALIZER': 'django_redis.serializers.json.JSONSerializer',
+                'IGNORE_EXCEPTIONS': True,
+            }
+        }
     }
+
+# Configuração para usar o Redis como backend de sessão
+SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+SESSION_CACHE_ALIAS = 'default'
+
+# Configuração de Banco de Dados usando SQLite para todos os ambientes
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
 
 # Validação de Senha
 AUTH_PASSWORD_VALIDATORS = [
@@ -106,11 +149,6 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # Configuração para Whitenoise
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-# Configurações adicionais para Heroku
-if not DEBUG:
-    import mimetypes
-    mimetypes.add_type("text/css", ".css", True)
 
 # Configurações adicionais
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
