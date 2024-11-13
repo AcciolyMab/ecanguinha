@@ -8,14 +8,10 @@
 
 body {
     background-color: rgba(0, 0, 0, 0.05);
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
     color: #004d40;
     font-size: 16px;
     line-height: 1.6;
     overflow-x: hidden;
-    position: relative;
 }
 
 /* Navbar */
@@ -26,15 +22,7 @@ body {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.navbar-brand {
-    color: #FFFFFF;
-    font-size: 1.8rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-}
-
-.navbar-nav .nav-link {
+.navbar-brand, .navbar-nav .nav-link {
     color: #FFFFFF;
     font-weight: bold;
     text-transform: uppercase;
@@ -53,7 +41,6 @@ body {
     background: rgba(255, 255, 255, 0.9);
     border-radius: 15px;
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-    color: #004d40;
 }
 
 h1 {
@@ -68,11 +55,11 @@ label {
     font-weight: bold;
 }
 
-/* Alinhamento dos campos de Latitude, Longitude, Raio e Dias */
+/* Alinhamento dos campos */
 .location-fields {
     display: flex;
     gap: 20px;
-    align-items: flex-end; /* Alinhamento pela parte inferior */
+    align-items: flex-end;
     justify-content: space-between;
 }
 
@@ -82,37 +69,25 @@ label {
 
 input.small-input {
     width: 100px;
-    margin-bottom: 0; /* Remover margem inferior para melhor alinhamento */
 }
 
 /* Ajustes para Inputs */
-input[type="text"], input[type="email"], input[type="submit"], textarea {
+input[type="text"], input[type="email"], textarea {
     width: 100%;
     padding: 1rem;
     margin-bottom: 1.5rem;
     border: 1px solid #004d40;
     border-radius: 5px;
-    background-color: rgba(255, 255, 255, 0.1);
-    color: #004d40;
 }
 
 /* Ajustes para campos menores */
 input.half-width {
     width: 48%;
-    display: inline-block;
 }
 
 input.small-input {
     width: 80px;
-    display: inline-block;
     margin-right: 10px;
-}
-
-/* Alinhamento dos campos */
-.form-group-inline {
-    display: flex;
-    align-items: center;
-    gap: 10px;
 }
 
 /* Botão de envio */
@@ -146,12 +121,6 @@ input[type="submit"]:hover {
 /* Tabelas */
 .table-container {
     margin-top: 20px;
-    border-radius: 8px;
-}
-
-.table {
-    width: 100%;
-    border-collapse: collapse;
 }
 
 .table th,
@@ -168,7 +137,6 @@ input[type="submit"]:hover {
 .btn {
     padding: 0.8rem;
     border-radius: 50px;
-    cursor: pointer;
 }
 
 .btn-primary {
@@ -178,10 +146,6 @@ input[type="submit"]:hover {
 
 .btn-primary:hover {
     background-color: #2e4c82;
-}
-
-.btn-success {
-    background-color: #28a745;
 }
 
 .btn-success:hover {
@@ -196,55 +160,66 @@ footer {
     text-align: center;
 }
 
-.logo-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 300px; /* Ajuste a altura conforme necessário */
-}
-
 .logo-img {
     max-width: 100%;
     max-height: 200px;
-    opacity: 0.8;
-    object-fit: contain;
 }
 
-/* Responsividade para Dispositivos Móveis */
-@media (max-width: 576px) {
-    .container {
+/* Estilização aprimorada para sliders */
+.slider-container {
+    width: 40%; /* O contêiner ocupa toda a largura disponível */
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 10px 0;
+    text-align: left;
+}
+
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 40%; /* Ajuste da largura para ocupar a maior parte do contêiner */
+    max-width: 200px;
+    height: 10px;
+    border-radius: 10px;
+    background: linear-gradient(90deg, #007bff 0%, #00c853 100%);
+    outline: none;
+    margin: 0 auto;
+    display: block;
+}
+
+/* Estilo do polegar para diferentes navegadores */
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #007bff;
+    cursor: pointer;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #007bff;
+    cursor: pointer;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+}
+
+input[type="range"]::-ms-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #007bff;
+    cursor: pointer;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+}
+
+/* Ajuste para dispositivos móveis */
+@media (max-width: 600px) {
+    input[type="range"] {
+        width: 100%;
         max-width: 100%;
-        padding: 1rem;
-    }
-
-    h1 {
-        font-size: 1.5rem;
-    }
-
-    input[type="text"], input[type="email"], textarea {
-        padding: 0.8rem;
-        font-size: 0.9rem;
-    }
-
-    input.half-width {
-        width: 100%;
-    }
-
-    .form-buttons {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .btn {
-        width: 100%;
-    }
-
-    .navbar-nav {
-        flex-direction: column;
-        align-items: center;
-    }
-
-    .navbar-nav .nav-link {
-        padding: 0.5rem;
     }
 }
