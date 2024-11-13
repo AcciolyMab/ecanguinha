@@ -167,9 +167,8 @@ footer {
 
 /* Estilização aprimorada para sliders */
 .slider-container {
-    width: 40%; /* O contêiner ocupa toda a largura disponível */
+    width: 100%;
     max-width: 600px;
-    margin: 0 auto;
     padding: 10px 0;
     text-align: left;
 }
@@ -177,14 +176,12 @@ footer {
 input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
-    width: 40%; /* Ajuste da largura para ocupar a maior parte do contêiner */
-    max-width: 200px;
+    width: 100%; /* O slider ocupa toda a largura do contêiner */
+    max-width: 400px;
     height: 10px;
     border-radius: 10px;
     background: linear-gradient(90deg, #007bff 0%, #00c853 100%);
     outline: none;
-    margin: 0 auto;
-    display: block;
 }
 
 /* Estilo do polegar para diferentes navegadores */
@@ -220,6 +217,5 @@ input[type="range"]::-ms-thumb {
 @media (max-width: 600px) {
     input[type="range"] {
         width: 100%;
-        max-width: 100%;
     }
 }
