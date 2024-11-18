@@ -27,3 +27,4 @@ redis>=5.2.0
 async-timeout==5.0.1
 dj-config-url~=0.1.1
 OSMnx==2.0.0rc2
+scikit-learn>=1.0
