@@ -106,11 +106,13 @@ def listar_produtos(request):
         raio = request.POST.get('raio')
         item_list = request.POST.get('item_list')
 
+        # Verificação se os parâmetros obrigatórios foram recebidos
         if not item_list:
             messages.error(request, "Nenhum produto selecionado.")
             return render(request, 'lista.html', {'resultado': None})
 
         try:
+            # Processamento da lista de produtos
             item_list = json.loads(item_list) if isinstance(item_list, str) else item_list
             gtin_list = [int(gtin) for gtin in item_list]
         except Exception as e:
@@ -120,25 +122,31 @@ def listar_produtos(request):
 
         try:
             # Chamada síncrona para obter os produtos
-            df = obter_produtos(gtin_list, int(raio), float(latitude), float(longitude), int(dias))
+            df = obter_produtos(request, gtin_list, int(raio), float(latitude), float(longitude), int(dias))
 
             if df.empty:
                 messages.warning(request, "Nenhum dado foi retornado pela API.")
                 return render(request, 'lista.html', {'resultado': None})
 
+            # Calcular latitude e longitude médias
             avg_lat = df["LAT"].mean() if "LAT" in df.columns else float(latitude)
             avg_lon = df["LONG"].mean() if "LONG" in df.columns else float(longitude)
 
+            # Gerar dados para o solver
             tpplib_data = create_tpplib_data(df, avg_lat, avg_lon)
 
+            # Parâmetros do solver
             max_iterations = 10000
             no_improve_limit = 100
+
+            # Resolver o problema
             resultado_solver = alns_solve_tpp(tpplib_data, max_iterations, no_improve_limit)
 
             if not resultado_solver:
                 messages.error(request, "Não foi possível encontrar uma solução viável.")
                 return render(request, 'lista.html', {'resultado': None})
 
+            # Processamento dos resultados
             rota = [idx for idx in resultado_solver.get('route', []) if 1 <= idx <= len(resultado_solver.get('mercados_comprados', []))]
             purchases = resultado_solver.get('purchases', {})
             total_cost = resultado_solver.get('total_cost', 0.0)
@@ -146,14 +154,17 @@ def listar_produtos(request):
             execution_time = resultado_solver.get('execution_time', 0.0)
             mercados_comprados = resultado_solver.get('mercados_comprados', [])
 
+            # Coordenadas dos mercados
             node_coords = {
                 str(idx): [float(mercado.get('latitude')), float(mercado.get('longitude'))]
                 for idx, mercado in enumerate(mercados_comprados, start=1)
                 if mercado.get('latitude') and mercado.get('longitude')
             }
 
+            # Ajustar nomes dos produtos
             processed_purchases = {key.replace('Produtos comprados no ', ''): value for key, value in purchases.items()}
 
+            # Contexto para renderização
             context = {
                 'resultado': {
                     'rota': rota,
@@ -178,4 +189,5 @@ def listar_produtos(request):
             messages.error(request, "Erro ao processar a solicitação.")
             return render(request, 'lista.html', {'resultado': None})
 
+    # Redirecionar para a página de localização se não for POST
     return redirect('localizacao')

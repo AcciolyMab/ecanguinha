@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 from django.contrib.messages.storage import session
 from requests.adapters import HTTPAdapter
 from urllib3.exceptions import InsecureRequestWarning
+from django.contrib import messages
 
 import os
 
@@ -52,7 +53,7 @@ for category, gtins in category_map.items():
         gtin_to_category[gtin] = category
         gtin_to_product_name[gtin] = category  # Usaremos o nome da categoria como nome do produto
 
-def consultar_produto(gtin, raio, my_lat, my_lon, dias):
+def consultar_produto(request, gtin, raio, my_lat, my_lon, dias):
     url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/produto/pesquisa'
     data = {
         "produto": {
@@ -76,37 +77,42 @@ def consultar_produto(gtin, raio, my_lat, my_lon, dias):
     }
 
     try:
-        # Usar `session` com retry
-        response = session.post(url, json=data, headers=headers, verify=False, timeout=10)
+        # Fazer a requisição para a API
+        response = requests.post(url, json=data, headers=headers, verify=False)
         response.raise_for_status()
-        logger.info(f"Resposta recebida para o GTIN {gtin}: {response.status_code}")
+        logger.debug(f"Resposta recebida: {response.text}")
         return response.json()
     except requests.exceptions.HTTPError as http_err:
         logger.error(f"HTTP error ao consultar o GTIN {gtin}: {http_err}")
+        messages.error(request, f"Erro HTTP ao consultar o GTIN {gtin}.")
+        return None
     except requests.exceptions.ConnectionError as conn_err:
         logger.error(f"Erro de conexão ao consultar o GTIN {gtin}: {conn_err}")
-    except requests.exceptions.Timeout:
-        logger.error(f"Timeout ao consultar o GTIN {gtin}")
+        messages.error(request, f"Erro de conexão ao consultar o GTIN {gtin}.")
+        return None
     except Exception as e:
         logger.error(f"Erro inesperado ao consultar o GTIN {gtin}: {e}")
-
-    return None
+        messages.error(request, f"Erro inesperado ao consultar o GTIN {gtin}.")
+        return None
 
 # Função para obter produtos e criar o DataFrame
-def obter_produtos(gtin_list, raio, my_lat, my_lon, dias):
+def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
     response_list = []
     for gtin in gtin_list:
-        response = consultar_produto(gtin, raio, my_lat, my_lon, dias)
+        response = consultar_produto(request, gtin, raio, my_lat, my_lon, dias)
         if response and 'conteudo' in response:
             if response['conteudo']:
                 response_list.append(response)
             else:
                 logger.warning(f"Nenhum conteúdo encontrado para o GTIN {gtin}.")
+                messages.warning(request, f"Nenhum conteúdo encontrado para o GTIN {gtin}.")
         else:
             logger.warning(f"Resposta inválida para o GTIN {gtin}.")
+            messages.warning(request, f"Resposta inválida para o GTIN {gtin}.")
 
     if not response_list:
         logger.warning("Nenhum dado válido foi retornado pela API.")
+        messages.warning(request, "Nenhum dado válido foi retornado pela API.")
         return pd.DataFrame()
 
     # Processamento dos dados e criação do DataFrame
@@ -139,9 +145,11 @@ def obter_produtos(gtin_list, raio, my_lat, my_lon, dias):
                 data_list.append(data_entry)
             except Exception as e:
                 logger.error(f"Erro ao processar item com GTIN {gtin}: {e}")
+                messages.error(request, f"Erro ao processar item com GTIN {gtin}: {e}")
 
     if not data_list:
         logger.warning("Nenhum dado processado para criar o DataFrame.")
+        messages.warning(request, "Nenhum dado processado para criar o DataFrame.")
         return pd.DataFrame()
 
     df = pd.DataFrame(data_list)
