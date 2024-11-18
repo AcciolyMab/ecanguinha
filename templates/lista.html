@@ -86,90 +86,108 @@
         {{ mercados_comprados|json_script:"mercados-data" }}
 
         <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                if (typeof L === 'undefined') {
-                    console.error("Leaflet não foi carregado corretamente.");
-                    return;
-                }
-                var map = L.map('map').setView([0, 0], 12);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; OpenStreetMap contributors'
-                }).addTo(map);
+            document.addEventListener('DOMContentLoaded', async function () {
+            if (typeof L === 'undefined') {
+                console.error("Leaflet não foi carregado corretamente.");
+                return;
+            }
         
-                var routeOrder = JSON.parse(document.getElementById('rota-data').textContent || '[]');
-                var nodeCoords = JSON.parse(document.getElementById('node-coords-data').textContent || '{}');
-                var mercados = JSON.parse(document.getElementById('mercados-data').textContent || '[]');
+            // Função para obter coordenadas do usuário com fallback
+            async function obterCoordenadas() {
+                let lat = parseFloat(localStorage.getItem('userLatitude'));
+                let lon = parseFloat(localStorage.getItem('userLongitude'));
         
-                var nodeCoordsList = Array.isArray(nodeCoords) ? nodeCoords : Object.values(nodeCoords);
-                var coordinates = [];
-        
-                var userLat = parseFloat(localStorage.getItem('userLatitude'));
-                var userLon = parseFloat(localStorage.getItem('userLongitude'));
-        
-                if (isNaN(userLat) || isNaN(userLon)) {
-                    console.error("Erro: Coordenadas da geolocalização do usuário são inválidas.");
-                    userLat = 0;
-                    userLon = 0;
-                }
-        
-                coordinates.push([userLat, userLon]);
-                L.marker([userLat, userLon], { color: 'red' }).addTo(map).bindPopup("Origem e Destino");
-        
-                // Adicionar pontos de parada, ignorando índices inválidos
-                routeOrder.forEach(function(index) {
-                    var adjustedIndex = index - 1;
-        
-                    if (adjustedIndex >= 0 && adjustedIndex < nodeCoordsList.length) {
-                        var coord = nodeCoordsList[adjustedIndex];
-                        var lat = coord[0];
-                        var lon = coord[1];
-        
-                        if (!isNaN(lat) && !isNaN(lon)) {
-                            coordinates.push([lat, lon]);
-                            L.marker([lat, lon]).addTo(map).bindPopup(`Parada ${index}`);
-                        } else {
-                            console.warn(`Coordenadas inválidas para o ponto de parada: ${index}`);
-                        }
-                    } else {
-                        console.warn(`Índice ajustado inválido no routeOrder: ${index}`);
-                        console.log("Quantidade de coordenadas disponíveis em nodeCoordsList:", nodeCoordsList.length);
-                    }
-                });
-        
-                coordinates.push([userLat, userLon]);
-        
-                console.log("Coordenadas para a rota:", coordinates);
-        
-                if (coordinates.length > 1) {
-                    var osrmCoordinates = coordinates.map(coord => `${coord[1]},${coord[0]}`).join(';');
-                    var osrmUrl = `https://router.project-osrm.org/route/v1/driving/${osrmCoordinates}?overview=full&geometries=geojson`;
-        
-                    fetch(osrmUrl)
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.routes && data.routes.length > 0) {
-                                var routeCoordinates = data.routes[0].geometry.coordinates;
-                                var latLngRoute = routeCoordinates.map(coord => [coord[1], coord[0]]);
-        
-                                //L.polyline(latLngRoute, {
-                                //    color: 'blue',
-                                //    weight: 5,
-                                //    opacity: 0.8
-                               // }).addTo(map);
-        
-                                map.fitBounds(L.polyline(latLngRoute).getBounds());
-                            } else {
-                                console.error("Erro: Não foi possível obter a rota.");
-                                console.log("Resposta da API:", data);
-                            }
-                        })
-                        .catch(error => {
-                            console.error("Erro ao obter a rota:", error);
+                // Se as coordenadas não estiverem definidas, tenta obter via Geolocation API
+                if (isNaN(lat) || isNaN(lon)) {
+                    try {
+                        const position = await new Promise((resolve, reject) => {
+                            navigator.geolocation.getCurrentPosition(resolve, reject);
                         });
-                } else {
-                    console.error("Erro: Coordenadas insuficientes para traçar a rota.");
+                        lat = position.coords.latitude;
+                        lon = position.coords.longitude;
+        
+                        // Salva as coordenadas no localStorage
+                        localStorage.setItem('userLatitude', lat);
+                        localStorage.setItem('userLongitude', lon);
+                    } catch (error) {
+                        console.error("Erro ao obter geolocalização:", error.message);
+                        // Coordenadas padrão
+                        lat = -9.6592443;
+                        lon = -35.7025463;
+                    }
+                }
+        
+                return { lat, lon };
+            }
+        
+            // Obtém as coordenadas e inicializa o mapa
+            const { lat: userLat, lon: userLon } = await obterCoordenadas();
+        
+            if (isNaN(userLat) || isNaN(userLon)) {
+                console.error("Erro: Coordenadas da geolocalização do usuário são inválidas.");
+                alert("Não foi possível obter a localização do usuário.");
+                return;
+            }
+        
+            // Inicializa o mapa
+            const map = L.map('map').setView([userLat, userLon], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+        
+            // Adiciona marcador de origem/destino
+            L.marker([userLat, userLon], { color: 'red' }).addTo(map).bindPopup("Origem e Destino");
+        
+            // Processa a rota e adiciona ao mapa
+            const routeOrder = JSON.parse(document.getElementById('rota-data').textContent || '[]');
+            const nodeCoords = JSON.parse(document.getElementById('node-coords-data').textContent || '{}');
+            const nodeCoordsList = Array.isArray(nodeCoords) ? nodeCoords : Object.values(nodeCoords);
+            const coordinates = [[userLat, userLon]];
+        
+            // Adicionar pontos de parada
+            routeOrder.forEach((index) => {
+                const adjustedIndex = index - 1;
+                if (adjustedIndex >= 0 && adjustedIndex < nodeCoordsList.length) {
+                    const [lat, lon] = nodeCoordsList[adjustedIndex];
+                    if (!isNaN(lat) && !isNaN(lon)) {
+                        coordinates.push([lat, lon]);
+                        L.marker([lat, lon]).addTo(map).bindPopup(`Parada ${index}`);
+                    }
                 }
             });
+        
+            coordinates.push([userLat, userLon]);
+        
+            if (coordinates.length > 1) {
+                const osrmCoordinates = coordinates.map(coord => `${coord[1]},${coord[0]}`).join(';');
+                const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${osrmCoordinates}?overview=full&geometries=geojson`;
+        
+                fetch(osrmUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.routes && data.routes.length > 0) {
+                            const routeCoordinates = data.routes[0].geometry.coordinates;
+                            const latLngRoute = routeCoordinates.map(coord => [coord[1], coord[0]]);
+        
+                            //L.polyline(latLngRoute, {
+                            //    color: 'blue',
+                            //    weight: 5,
+                            //    opacity: 0.8
+                            //}).addTo(map);
+        
+                            map.fitBounds(L.polyline(latLngRoute).getBounds());
+                        } else {
+                            console.error("Erro: Não foi possível obter a rota.");
+                            console.log("Resposta da API:", data);
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Erro ao obter a rota:", error);
+                    });
+            } else {
+                console.error("Erro: Coordenadas insuficientes para traçar a rota.");
+            }
+        });
         </script>
     {% elif error %}
         <div><p>{{ error }}</p></div>

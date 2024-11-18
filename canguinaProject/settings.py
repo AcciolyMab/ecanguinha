@@ -166,7 +166,11 @@ LOGGING = {
     },
     'root': {
         'handlers': ['console'],
-        'level': 'DEBUG' if DEBUG else 'INFO',  # Muda para 'INFO' quando DEBUG=False
+        'level': 'INFO' if not DEBUG else 'DEBUG',
+    },
+    'django': {
+        'handlers': ['console'],
+        'level': 'INFO' if not DEBUG else 'DEBUG',
+        'propagate': True,
     },
 }
-
