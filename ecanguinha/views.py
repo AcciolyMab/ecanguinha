@@ -140,8 +140,19 @@ def listar_produtos(request):
                     'mercados_comprados': []
                 })
 
+            # Calcular a média das coordenadas dinamicamente
+            if "LAT" in df.columns and "LONG" in df.columns:
+                avg_lat = df["LAT"].mean()
+                avg_lon = df["LONG"].mean()
+            else:
+                logger.error("Dados de localização não estão presentes no DataFrame.")
+                avg_lat = float(latitude) if latitude else 0.0
+                avg_lon = float(longitude) if longitude else 0.0
+
+            logger.debug(f"Coordenadas médias calculadas: Latitude={avg_lat}, Longitude={avg_lon}")
+
             # Gerar dados para o solver
-            tpplib_data = create_tpplib_data(df)
+            tpplib_data = create_tpplib_data(df, avg_lat, avg_lon)
 
             logger.debug(f"Dados preparados para o solver: {tpplib_data}")
 
@@ -174,16 +185,12 @@ def listar_produtos(request):
             mercados_comprados = resultado_solver.get('mercados_comprados', [])
 
             # Validar e corrigir o routeOrder
-            rota = resultado_solver.get('route', [])
             max_index = len(mercados_comprados)
-
-            # Corrigir o routeOrder para evitar índices inválidos
             rota = [idx for idx in rota if 1 <= idx <= max_index]
 
             if len(rota) != len(resultado_solver.get('route', [])):
                 logger.warning("O routeOrder foi corrigido para evitar índices inválidos.")
 
-            # Atualizar o resultado_solver com a rota corrigida
             resultado_solver['route'] = rota
 
             # Preencher node_coords com as coordenadas dos mercados comprados
@@ -194,14 +201,11 @@ def listar_produtos(request):
                 if lat and lon:
                     node_coords[str(idx)] = [float(lat), float(lon)]
 
-            # Processar as chaves de purchases para remover o prefixo 'Produtos comprados no '
+            # Processar as chaves de purchases
             processed_purchases = {}
             prefix = 'Produtos comprados no '
             for key, value in purchases.items():
-                if key.startswith(prefix):
-                    mercado_nome = key[len(prefix):]
-                else:
-                    mercado_nome = key
+                mercado_nome = key[len(prefix):] if key.startswith(prefix) else key
                 processed_purchases[mercado_nome] = value
 
             context = {
@@ -214,8 +218,8 @@ def listar_produtos(request):
                 },
                 'mercados_comprados': mercados_comprados,
                 'node_coords': node_coords,
-                'latitude': float(latitude),
-                'longitude': float(longitude),
+                'latitude': avg_lat,
+                'longitude': avg_lon,
                 'dias': int(dias),
                 'raio': int(raio),
                 'item_list': gtin_list

@@ -5,18 +5,22 @@ import osmnx as ox
 import time
 
 
-def create_tpplib_data(dataframe):
+def create_tpplib_data(dataframe, *args):
     """
     Cria um dicionário `data` com a estrutura semelhante ao arquivo TPP, a partir de um DataFrame com as colunas
     'PRODUTO', 'VALOR', 'MERCADO', 'ENDERECO', 'LAT', 'LONG', usando OSMnx para calcular distâncias viárias.
 
     Parâmetros:
     - dataframe (pd.DataFrame): DataFrame contendo as colunas 'PRODUTO', 'VALOR', 'MERCADO', 'ENDERECO', 'LAT', 'LONG'.
+    - *args: Argumentos adicionais ignorados para compatibilidade.
 
     Retorna:
     - dict: Dicionário `data` com as variáveis necessárias.
     """
     data = {}
+    required_columns = {'PRODUTO', 'VALOR', 'MERCADO', 'ENDERECO', 'LAT', 'LONG'}
+    if not required_columns.issubset(dataframe.columns):
+        raise ValueError(f"DataFrame não contém as colunas necessárias: {required_columns - set(dataframe.columns)}")
 
     # Atribuir IDs inteiros aos produtos, excluindo o depósito
     produtos_df = dataframe.copy()
