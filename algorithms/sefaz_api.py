@@ -1,18 +1,28 @@
-import pandas as pd
 import requests
 import json
 import logging
 import time
-
-from django.contrib.messages.storage import session
-from requests.adapters import HTTPAdapter
 from urllib3.exceptions import InsecureRequestWarning
-from urllib3.util.retry import Retry
-from sklearn.cluster import KMeans  # Exemplo de importação do scikit-learn
+import urllib3
+import pandas as pd
+import requests
 
 # Configuração de logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+from django.contrib.messages.storage import session
+from requests.adapters import HTTPAdapter
+from urllib3.exceptions import InsecureRequestWarning
+
+import os
+
+LOG_LEVEL = 'DEBUG' if os.getenv('DEBUG', 'False') == 'True' else 'INFO'
+logging.basicConfig(level=LOG_LEVEL)
+logger = logging.getLogger(__name__)
+
+# Suprimir warnings de InsecureRequest
+urllib3.disable_warnings(InsecureRequestWarning)
 
 # Mapeamento de GTIN para categorias personalizadas e nomes de produtos
 category_map = {
@@ -42,16 +52,6 @@ for category, gtins in category_map.items():
         gtin_to_category[gtin] = category
         gtin_to_product_name[gtin] = category  # Usaremos o nome da categoria como nome do produto
 
-import pandas as pd
-import requests
-import json
-import logging
-
-# Configuração de logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-
 def consultar_produto(gtin, raio, my_lat, my_lon, dias):
     url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/produto/pesquisa'
     data = {
@@ -76,20 +76,21 @@ def consultar_produto(gtin, raio, my_lat, my_lon, dias):
     }
 
     try:
-        # Fazer a requisição sem `retry` e sem `timeout`
-        response = requests.post(url, json=data, headers=headers, verify=False)
+        # Usar `session` com retry
+        response = session.post(url, json=data, headers=headers, verify=False, timeout=10)
         response.raise_for_status()
-        logger.debug(f"Resposta recebida: {response.text}")
+        logger.info(f"Resposta recebida para o GTIN {gtin}: {response.status_code}")
         return response.json()
     except requests.exceptions.HTTPError as http_err:
         logger.error(f"HTTP error ao consultar o GTIN {gtin}: {http_err}")
-        return None
     except requests.exceptions.ConnectionError as conn_err:
         logger.error(f"Erro de conexão ao consultar o GTIN {gtin}: {conn_err}")
-        return None
+    except requests.exceptions.Timeout:
+        logger.error(f"Timeout ao consultar o GTIN {gtin}")
     except Exception as e:
         logger.error(f"Erro inesperado ao consultar o GTIN {gtin}: {e}")
-        return None
+
+    return None
 
 # Função para obter produtos e criar o DataFrame
 def obter_produtos(gtin_list, raio, my_lat, my_lon, dias):
