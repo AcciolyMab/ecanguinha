@@ -3,6 +3,8 @@ import requests
 import json
 import logging
 import time
+
+from django.contrib.messages.storage import session
 from requests.adapters import HTTPAdapter
 from urllib3.exceptions import InsecureRequestWarning
 from urllib3.util.retry import Retry
@@ -11,17 +13,6 @@ from sklearn.cluster import KMeans  # Exemplo de importação do scikit-learn
 # Configuração de logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-
-# Configuração da sessão global
-session = requests.Session()
-retries = Retry(
-    total=5,
-    backoff_factor=0.5,
-    status_forcelist=[500, 502, 503, 504],
-    allowed_methods=["POST"]
-)
-session.mount('http://', HTTPAdapter(max_retries=retries))
-session.headers.update({'Connection': 'keep-alive'})
 
 # Mapeamento de GTIN para categorias personalizadas e nomes de produtos
 category_map = {
@@ -51,10 +42,17 @@ for category, gtins in category_map.items():
         gtin_to_category[gtin] = category
         gtin_to_product_name[gtin] = category  # Usaremos o nome da categoria como nome do produto
 
+import pandas as pd
+import requests
+import json
+import logging
 
-# Função para consultar a API da SEFAZ com retentativas e SSL desabilitado
+# Configuração de logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+
 def consultar_produto(gtin, raio, my_lat, my_lon, dias):
-    global session  # Adiciona esta linha para acessar a sessão global
     url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/produto/pesquisa'
     data = {
         "produto": {
@@ -71,29 +69,27 @@ def consultar_produto(gtin, raio, my_lat, my_lon, dias):
         "pagina": 1,
         "registrosPorPagina": 50
     }
+
     headers = {
         "Content-Type": "application/json",
-        "AppToken": "ad909a7a6f0d6a130941ae2a9706eec58c0bb65d",
+        "AppToken": "ad909a7a6f0d6a130941ae2a9706eec58c0bb65d"
     }
 
     try:
-        response = session.post(url, headers=headers, json=data, timeout=30)
+        # Fazer a requisição sem `retry` e sem `timeout`
+        response = requests.post(url, json=data, headers=headers, verify=False)
         response.raise_for_status()
         logger.debug(f"Resposta recebida: {response.text}")
         return response.json()
     except requests.exceptions.HTTPError as http_err:
-        logger.error(f"HTTP error ocorreu ao consultar o GTIN {gtin}: {http_err}")
+        logger.error(f"HTTP error ao consultar o GTIN {gtin}: {http_err}")
+        return None
     except requests.exceptions.ConnectionError as conn_err:
-        logger.error(f"Connection error ocorreu ao consultar o GTIN {gtin}: {conn_err}")
-    except requests.exceptions.Timeout as timeout_err:
-        logger.error(f"Timeout ao consultar o GTIN {gtin}: {timeout_err}")
-    except requests.exceptions.RequestException as req_err:
-        logger.error(f"Erro na requisição ao consultar o GTIN {gtin}: {req_err}")
+        logger.error(f"Erro de conexão ao consultar o GTIN {gtin}: {conn_err}")
+        return None
     except Exception as e:
         logger.error(f"Erro inesperado ao consultar o GTIN {gtin}: {e}")
-
-    return None
-
+        return None
 
 # Função para obter produtos e criar o DataFrame
 def obter_produtos(gtin_list, raio, my_lat, my_lon, dias):
@@ -101,16 +97,16 @@ def obter_produtos(gtin_list, raio, my_lat, my_lon, dias):
     for gtin in gtin_list:
         response = consultar_produto(gtin, raio, my_lat, my_lon, dias)
         if response and 'conteudo' in response:
-            if response['conteudo']:  # Verifica se 'conteudo' não está vazio
+            if response['conteudo']:
                 response_list.append(response)
             else:
                 logger.warning(f"Nenhum conteúdo encontrado para o GTIN {gtin}.")
         else:
-            logger.warning(f"Resposta inválida ou sem 'conteudo' para o GTIN {gtin}.")
+            logger.warning(f"Resposta inválida para o GTIN {gtin}.")
 
     if not response_list:
-        logger.warning("Nenhum dado válido foi retornado pela API para os GTINs fornecidos.")
-        return pd.DataFrame()  # Retorna DataFrame vazio
+        logger.warning("Nenhum dado válido foi retornado pela API.")
+        return pd.DataFrame()
 
     # Processamento dos dados e criação do DataFrame
     data_list = []
@@ -120,8 +116,9 @@ def obter_produtos(gtin_list, raio, my_lat, my_lon, dias):
             estabelecimento = item.get('estabelecimento', {})
             endereco = estabelecimento.get('endereco', {})
             gtin = produto.get('gtin')
-            if gtin is None:
-                logger.warning("GTIN ausente no item de conteúdo.")
+
+            if not gtin:
+                logger.warning("GTIN ausente no item.")
                 continue
 
             try:
@@ -130,7 +127,7 @@ def obter_produtos(gtin_list, raio, my_lat, my_lon, dias):
                     'CATEGORIA': gtin_to_category.get(int(gtin), "OUTROS"),
                     'PRODUTO': gtin_to_product_name.get(int(gtin), "OUTROS"),
                     'VALOR': produto.get('venda', {}).get('valorVenda', 0.0),
-                    'CNPJ': int(estabelecimento.get('cnpj', 0)),
+                    'CNPJ': estabelecimento.get('cnpj', 'Desconhecido'),
                     'MERCADO': estabelecimento.get('razaoSocial', 'Desconhecido'),
                     'ENDERECO': endereco.get('nomeLogradouro', 'Desconhecido'),
                     'NUMERO': endereco.get('numeroImovel', 'S/N'),
@@ -140,11 +137,11 @@ def obter_produtos(gtin_list, raio, my_lat, my_lon, dias):
                 }
                 data_list.append(data_entry)
             except Exception as e:
-                logger.error(f"Erro ao processar o item com GTIN {gtin}: {e}")
+                logger.error(f"Erro ao processar item com GTIN {gtin}: {e}")
 
     if not data_list:
         logger.warning("Nenhum dado processado para criar o DataFrame.")
-        return pd.DataFrame()  # Retorna DataFrame vazio
+        return pd.DataFrame()
 
     df = pd.DataFrame(data_list)
     return df

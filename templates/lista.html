@@ -6,12 +6,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resultados da Busca</title>
-
-    <!-- CSS do Leaflet -->
     <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <style>
         .flex-container {
             display: flex;
@@ -21,7 +17,7 @@
         .table-container {
             flex: 0.3;
             overflow-y: auto;
-            max-height: 900px;
+            max-height: 800px;
             margin-left: 10px;
         }
 
@@ -35,13 +31,49 @@
             width: 95%;
             border-collapse: collapse;
             font-size: 10px;
-            border: 1px solid #ddd;
         }
 
         .table th, .table td {
             padding: 5px;
             text-align: left;
-            border: 1px solid #ddd;
+            border: 3px solid #ddd;
+        }
+
+        .table thead {
+            background-color: #f2f2f2;
+        }
+
+        .popup-text {
+            font-size: 10px;
+        }
+
+        .summary-container {
+            margin-top: 10px;
+            font-size: 12px;
+        }
+
+        .summary-container p {
+            margin: 5px 0;
+        }
+
+        .button-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .btn-avaliar {
+            padding: 10px 20px;
+            font-size: 14px;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .btn-avaliar:hover {
+            background-color: #0056b3;
         }
     </style>
 </head>
@@ -67,130 +99,69 @@
                                     <td>{{ produto.produto }}</td>
                                     <td>R$ {{ produto.preco|floatformat:2 }}</td>
                                 </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="2">Nenhum produto encontrado</td>
+                                </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 {% endfor %}
-                <!-- Resumo logo abaixo da tabela -->
+
                 <div class="summary-container">
                     <p><strong>Custo Total:</strong> R$ {{ resultado.total_cost }}</p>
                     <p><strong>Distância Total:</strong> {{ resultado.total_distance }} km | <strong>Tempo de Execução:</strong> {{ resultado.execution_time }} segundos</p>
                 </div>
-            <button onclick="window.location.href='{% url 'avaliar' %}'">Avaliar</button>
             </div>
+
             <div id="map"></div>
+        </div>
+
+        <div class="button-container">
+            <a href="{% url 'avaliar' %}" class="btn-avaliar">Avaliar</a>
         </div>
 
         {{ resultado.rota|json_script:"rota-data" }}
         {{ node_coords|json_script:"node-coords-data" }}
         {{ mercados_comprados|json_script:"mercados-data" }}
 
+        <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
         <script>
-            document.addEventListener('DOMContentLoaded', async function () {
-            if (typeof L === 'undefined') {
-                console.error("Leaflet não foi carregado corretamente.");
-                return;
-            }
-        
-            // Função para obter coordenadas do usuário com fallback
-            async function obterCoordenadas() {
-                let lat = parseFloat(localStorage.getItem('userLatitude'));
-                let lon = parseFloat(localStorage.getItem('userLongitude'));
-        
-                // Se as coordenadas não estiverem definidas, tenta obter via Geolocation API
-                if (isNaN(lat) || isNaN(lon)) {
-                    try {
-                        const position = await new Promise((resolve, reject) => {
-                            navigator.geolocation.getCurrentPosition(resolve, reject);
-                        });
-                        lat = position.coords.latitude;
-                        lon = position.coords.longitude;
-        
-                        // Salva as coordenadas no localStorage
-                        localStorage.setItem('userLatitude', lat);
-                        localStorage.setItem('userLongitude', lon);
-                    } catch (error) {
-                        console.error("Erro ao obter geolocalização:", error.message);
-                        // Coordenadas padrão
-                        lat = -9.6592443;
-                        lon = -35.7025463;
-                    }
-                }
-        
-                return { lat, lon };
-            }
-        
-            // Obtém as coordenadas e inicializa o mapa
-            const { lat: userLat, lon: userLon } = await obterCoordenadas();
-        
-            if (isNaN(userLat) || isNaN(userLon)) {
-                console.error("Erro: Coordenadas da geolocalização do usuário são inválidas.");
-                alert("Não foi possível obter a localização do usuário.");
-                return;
-            }
-        
-            // Inicializa o mapa
-            const map = L.map('map').setView([userLat, userLon], 12);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(map);
-        
-            // Adiciona marcador de origem/destino
-            L.marker([userLat, userLon], { color: 'red' }).addTo(map).bindPopup("Origem e Destino");
-        
-            // Processa a rota e adiciona ao mapa
-            const routeOrder = JSON.parse(document.getElementById('rota-data').textContent || '[]');
-            const nodeCoords = JSON.parse(document.getElementById('node-coords-data').textContent || '{}');
-            const nodeCoordsList = Array.isArray(nodeCoords) ? nodeCoords : Object.values(nodeCoords);
-            const coordinates = [[userLat, userLon]];
-        
-            // Adicionar pontos de parada
-            routeOrder.forEach((index) => {
-                const adjustedIndex = index - 1;
-                if (adjustedIndex >= 0 && adjustedIndex < nodeCoordsList.length) {
-                    const [lat, lon] = nodeCoordsList[adjustedIndex];
-                    if (!isNaN(lat) && !isNaN(lon)) {
-                        coordinates.push([lat, lon]);
-                        L.marker([lat, lon]).addTo(map).bindPopup(`Parada ${index}`);
-                    }
+            // Inicializar o mapa com uma visão padrão
+            var map = L.map('map').setView([0.0, 0.0], 2);
+            var bounds = L.latLngBounds([]);
+
+            // Obter dados dos mercados comprados
+            var mercados = JSON.parse(document.getElementById('mercados-data').textContent);
+
+            // Adicionar marcadores no mapa para cada mercado
+            mercados.forEach(function(mercado) {
+                var lat = parseFloat(mercado.latitude);
+                var lon = parseFloat(mercado.longitude);
+                var popupContent = `<div class="popup-text"><b>${mercado.nome}</b><br>${mercado.endereco}</div>`;
+
+                // Validar coordenadas antes de adicionar o marcador
+                if (!isNaN(lat) && !isNaN(lon) && lat !== 0.0 && lon !== 0.0) {
+                    L.marker([lat, lon]).addTo(map).bindPopup(popupContent);
+                    bounds.extend([lat, lon]);
+                } else {
+                    console.warn(`Coordenadas inválidas para o mercado: ${mercado.nome}`);
                 }
             });
-        
-            coordinates.push([userLat, userLon]);
-        
-            if (coordinates.length > 1) {
-                const osrmCoordinates = coordinates.map(coord => `${coord[1]},${coord[0]}`).join(';');
-                const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${osrmCoordinates}?overview=full&geometries=geojson`;
-        
-                fetch(osrmUrl)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.routes && data.routes.length > 0) {
-                            const routeCoordinates = data.routes[0].geometry.coordinates;
-                            const latLngRoute = routeCoordinates.map(coord => [coord[1], coord[0]]);
-        
-                            //L.polyline(latLngRoute, {
-                            //    color: 'blue',
-                            //    weight: 5,
-                            //    opacity: 0.8
-                            //}).addTo(map);
-        
-                            map.fitBounds(L.polyline(latLngRoute).getBounds());
-                        } else {
-                            console.error("Erro: Não foi possível obter a rota.");
-                            console.log("Resposta da API:", data);
-                        }
-                    })
-                    .catch(error => {
-                        console.error("Erro ao obter a rota:", error);
-                    });
+
+            // Ajustar o foco do mapa para incluir todos os marcadores
+            if (bounds.isValid()) {
+                map.fitBounds(bounds);
             } else {
-                console.error("Erro: Coordenadas insuficientes para traçar a rota.");
+                // Fallback para uma visão padrão se não houver marcadores válidos
+                map.setView([0.0, 0.0], 2);
             }
-        });
         </script>
+
     {% elif error %}
-        <div><p>{{ error }}</p></div>
+        <div class="error">
+            <p>{{ error }}</p>
+        </div>
     {% else %}
         <h2>Nenhum resultado encontrado</h2>
     {% endif %}

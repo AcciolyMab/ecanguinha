@@ -31,6 +31,8 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-o!f&%cc+m5r#4atn@28$b
 # Debug Mode
 DEBUG = config('DEBUG', default=False, cast=bool)
 
+ASGI_APPLICATION = None
+
 # Allowed Hosts
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.herokuapp.com', 'canguinhaal.com.br', 'www.canguinhaal.com.br']
 APPEND_SLASH = False
@@ -166,11 +168,21 @@ LOGGING = {
     },
     'root': {
         'handlers': ['console'],
-        'level': 'INFO' if not DEBUG else 'DEBUG',
+        'level': 'ERROR' if not DEBUG else 'DEBUG',
     },
     'django': {
         'handlers': ['console'],
-        'level': 'INFO' if not DEBUG else 'DEBUG',
+        'level': 'ERROR' if not DEBUG else 'INFO',
         'propagate': True,
+    },
+    'urllib3': {
+        'handlers': ['console'],
+        'level': 'WARNING',
+        'propagate': False,
+    },
+    'requests': {
+        'handlers': ['console'],
+        'level': 'WARNING',
+        'propagate': False,
     },
 }
