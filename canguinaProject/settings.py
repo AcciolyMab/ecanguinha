@@ -166,6 +166,7 @@ LOGGING = {
     },
     'root': {
         'handlers': ['console'],
-        'level': 'DEBUG',
+        'level': 'DEBUG' if DEBUG else 'INFO',  # Muda para 'INFO' quando DEBUG=False
     },
 }
+

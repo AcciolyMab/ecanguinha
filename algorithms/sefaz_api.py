@@ -12,6 +12,16 @@ from sklearn.cluster import KMeans  # Exemplo de importação do scikit-learn
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+# Configuração da sessão global
+session = requests.Session()
+retries = Retry(
+    total=5,
+    backoff_factor=0.5,
+    status_forcelist=[500, 502, 503, 504],
+    allowed_methods=["POST"]
+)
+session.mount('http://', HTTPAdapter(max_retries=retries))
+session.headers.update({'Connection': 'keep-alive'})
 
 # Mapeamento de GTIN para categorias personalizadas e nomes de produtos
 category_map = {
@@ -44,7 +54,7 @@ for category, gtins in category_map.items():
 
 # Função para consultar a API da SEFAZ com retentativas e SSL desabilitado
 def consultar_produto(gtin, raio, my_lat, my_lon, dias):
-    global response
+    global session  # Adiciona esta linha para acessar a sessão global
     url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/produto/pesquisa'
     data = {
         "produto": {
@@ -66,18 +76,6 @@ def consultar_produto(gtin, raio, my_lat, my_lon, dias):
         "AppToken": "ad909a7a6f0d6a130941ae2a9706eec58c0bb65d",
     }
 
-    # Log do payload
-    logger.debug(f"Enviando requisição para GTIN {gtin} com payload: {json.dumps(data)}")
-
-    session = requests.Session()
-    retries = Retry(
-        total=5,
-        backoff_factor=0.5,
-        status_forcelist=[500, 502, 503, 504],
-        allowed_methods=["POST"]
-    )
-    session.mount('http://', HTTPAdapter(max_retries=retries))
-
     try:
         response = session.post(url, headers=headers, json=data, timeout=30)
         response.raise_for_status()
@@ -85,11 +83,6 @@ def consultar_produto(gtin, raio, my_lat, my_lon, dias):
         return response.json()
     except requests.exceptions.HTTPError as http_err:
         logger.error(f"HTTP error ocorreu ao consultar o GTIN {gtin}: {http_err}")
-        try:
-            error_content = response.json()
-            logger.error(f"Detalhes do erro: {error_content}")
-        except json.JSONDecodeError:
-            logger.error(f"Conteúdo da resposta: {response.text}")
     except requests.exceptions.ConnectionError as conn_err:
         logger.error(f"Connection error ocorreu ao consultar o GTIN {gtin}: {conn_err}")
     except requests.exceptions.Timeout as timeout_err:
