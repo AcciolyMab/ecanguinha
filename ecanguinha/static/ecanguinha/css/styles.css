@@ -119,14 +119,21 @@ input[type="submit"]:hover {
 }
 
 /* Tabelas */
+/* styles.css */
 .table-container {
     margin-top: 20px;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
 }
 
 .table th,
 .table td {
     padding: 12px;
     text-align: center;
+    border: 2px solid #ddd;
 }
 
 .table tbody tr:hover {
@@ -176,7 +183,7 @@ footer {
 input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
-    width: 100%; /* O slider ocupa toda a largura do contêiner */
+    width: 100%;
     max-width: 400px;
     height: 10px;
     border-radius: 10px;

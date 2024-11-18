@@ -4,13 +4,13 @@ mangum
 uvicorn
 whitenoise==6.0.0
 matplotlib>=3.5.0
-gunicorn==20.1.0
+gunicorn==22.0.0
 async-exit-stack
 async-generator
 passlib[bcrypt]
 python-dotenv
 Jinja2
-requests==2.31.0
+requests==2.32.0
 numpy==1.24.3
 pandas==2.1.1
 geopy
@@ -26,3 +26,4 @@ django-redis>=5.4.0
 redis>=5.2.0
 async-timeout==5.0.1
 dj-config-url~=0.1.1
+OSMnx==2.0.0rc2

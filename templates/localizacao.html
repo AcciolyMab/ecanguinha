@@ -6,32 +6,6 @@
     <title>Localização do Comprador</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}">
-    <!-- Navbar Bootstrap -->
-    <nav class="navbar navbar-expand-lg">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">Canguinha Alagoas</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link active" aria-current="page" href="{% url 'home' %}">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'localizacao' %}">Localização</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'about' %}">Sobre</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'contact' %}">Contato</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-</head>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <style>
         .checkbox-group {
@@ -62,6 +36,30 @@
             justify-content: center;
         }
     </style>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Canguinha Alagoas</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="{% url 'home' %}">Home</a>
+                    </li>
+                    <!--<li class="nav-item">
+                        <a class="nav-link" href="{% url 'localizacao' %}">Localização</a>
+                    </li>-->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'about' %}">Sobre</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'contact' %}">Contato</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
 </head>
 <body>
     <div class="container mt-5">
@@ -108,6 +106,10 @@
 
             <div class="mb-3 p-3 border rounded shadow-sm">
                 <h3 class="mb-3 text-primary">Selecione os Produtos</h3>
+                <div class="form-check mb-3">
+                    <input type="checkbox" class="form-check-input" id="selectAllCheckbox">
+                    <label class="form-check-label" for="selectAllCheckbox">Selecionar Todos</label>
+                </div>
                 <div id="categoryCheckboxes" class="checkbox-group"></div>
             </div>
 
@@ -200,6 +202,29 @@
                     checkboxContainer.appendChild(checkboxWrapper);
                 }
             }
+
+            // Funcionalidade de selecionar todos
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+
+            selectAllCheckbox.addEventListener('change', () => {
+                const checkboxes = document.querySelectorAll('input[name="category"]');
+                const isChecked = selectAllCheckbox.checked;
+
+                checkboxes.forEach((checkbox) => {
+                    checkbox.checked = isChecked;
+                });
+            });
+
+            // Atualizar o checkbox "Selecionar Todos" quando um checkbox individual mudar
+            function updateSelectAllCheckbox() {
+                const checkboxes = document.querySelectorAll('input[name="category"]');
+                const allChecked = Array.from(checkboxes).every((checkbox) => checkbox.checked);
+                selectAllCheckbox.checked = allChecked;
+            }
+
+            document.querySelectorAll('input[name="category"]').forEach((checkbox) => {
+                checkbox.addEventListener('change', updateSelectAllCheckbox);
+            });
 
             // Processar seleção de produtos
             document.getElementById('locationForm').addEventListener('submit', (event) => {

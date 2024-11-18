@@ -14,6 +14,8 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 from ecanguinha import views
@@ -27,4 +29,9 @@ urlpatterns = [
     path('contato/', views.contact, name='contact'),  # Nova URL
     path('api/get_lat_long/', views.get_lat_long, name='get_lat_long'),  # API para obter latitude e longitude
     path('listar_produtos/', views.listar_produtos, name='listar_produtos'),  # Adicione esta linha
+    path('avaliar/', views.avaliar, name='avaliar'),
+    path('submit/', views.submit_feedback, name='submit_feedback'),
+    path('agradecimento/', views.agradecimento, name='agradecimento'),
 ]
+if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

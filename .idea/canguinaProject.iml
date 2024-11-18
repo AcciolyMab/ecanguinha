@@ -22,6 +22,7 @@
     <orderEntry type="library" name="axios" level="application" />
     <orderEntry type="library" name="@popperjs/core" level="application" />
     <orderEntry type="library" name="bootstrap-icons" level="application" />
+    <orderEntry type="library" name="leaflet" level="application" />
   </component>
   <component name="TemplatesService">
     <option name="TEMPLATE_CONFIGURATION" value="Django" />

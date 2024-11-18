@@ -33,6 +33,7 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 
 # Allowed Hosts
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.herokuapp.com', 'canguinhaal.com.br', 'www.canguinhaal.com.br']
+APPEND_SLASH = False
 
 # Application Definition
 INSTALLED_APPS = [
@@ -71,6 +72,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
+            'debug': True,
         },
     },
 ]
@@ -152,3 +154,42 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Configurações adicionais
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': 'debug.log',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'ecanguinha': {  # Substitua 'ecanguinha' pelo nome do seu app
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+}

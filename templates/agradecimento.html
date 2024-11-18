@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Obrigado!</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+        .message-container {
+            text-align: center;
+            background: #fff;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #007bff;
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 16px;
+            color: #333;
+        }
+    </style>
+    <script>
+        // Redireciona para a página inicial após 3 segundos
+        setTimeout(function() {
+            window.location.href = "{% url 'home' %}";
+        }, 3000);
+    </script>
+</head>
+<body>
+    <div class="message-container">
+        <h1>Obrigado pelo seu Feedback!</h1>
+        <p>Redirecionando para a página inicial...</p>
+    </div>
+</body>
+</html>

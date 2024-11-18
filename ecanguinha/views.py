@@ -1,22 +1,34 @@
+# ecanguinha/views.py
+
 import requests
 import pandas as pd
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_GET
-from django.core.paginator import Paginator
 import logging
 import json
+
+# Importações dos módulos personalizados
+from algorithms.sefaz_api import obter_produtos
+from algorithms.tpplib_data import create_tpplib_data
+from algorithms.alns_solver import alns_solve_tpp
 
 # Configuração de log para facilitar o debug
 logger = logging.getLogger(__name__)
 
-
 # View para a página inicial
+from django.shortcuts import render
+from django.http import HttpResponse
+
+
 def home(request):
     if request.method == "GET":
-        return render(request, 'home.html')
+        contexto = {
+            'name': 'Seja bem vindo!'  # Substitua pelo valor desejado ou obtenha dinamicamente
+        }
+        return render(request, 'home.html', contexto)
     else:
-        nome = request.POST['nome']
+        nome = request.POST.get('nome', '')
         return HttpResponse(nome)
 
 
@@ -31,7 +43,7 @@ def get_lat_long(request):
         response = requests.get(
             'https://nominatim.openstreetmap.org/search',
             params={'q': endereco, 'format': 'json', 'limit': 1},
-            headers={'User-Agent': 'canguinhaApp/1.0 (your-email@example.com)'}
+            headers={'User-Agent': 'canguinhaApp/1.0 (seu-email@exemplo.com)'}
         )
         response.raise_for_status()
         data = response.json()
@@ -58,140 +70,173 @@ def contact(request):
     return render(request, 'contact.html')
 
 
-# View para listar produtos
-def consultarproduto(gtin, raio, my_lat, my_lon, dias):
-    url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/produto/pesquisa'
-
-    # Certifique-se de que latitude e longitude são float
-    data = {
-        "produto": {"gtin": gtin},
-        "estabelecimento": {
-            "geolocalizacao": {
-                "latitude": float(my_lat),
-                "longitude": float(my_lon),
-                "raio": int(raio)
-            }
-        },
-        "dias": int(dias),
-        "pagina": 1,
-        "registrosPorPagina": 50
-    }
-
-    headers = {
-        "Content-Type": "application/json",
-        "AppToken": "ad909a7a6f0d6a130941ae2a9706eec58c0bb65d"
-    }
-
-    response = requests.post(url, headers=headers, json=data)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        logger.error(f"Erro na API para GTIN {gtin}: {response.status_code} - {response.text}")
-        return None
+def avaliar(request):
+    return render(request, 'avaliar.html')
 
 
-# View para listar produtos
+from django.shortcuts import render, redirect
+
+
+def submit_feedback(request):
+    if request.method == 'POST':
+        nome = request.POST.get('name')
+        email = request.POST.get('email')
+        facilidade = request.POST.get('ease-of-use')
+        melhoria = request.POST.get('improvement')
+        recomendacao = request.POST.get('recommend')
+
+        # Você pode salvar o feedback em um banco de dados aqui
+
+        # Renderiza a página de agradecimento
+        return render(request, 'agradecimento.html')
+
+    return redirect('avaliar')
+
+
+def agradecimento(request):
+    return render(request, 'agradecimento.html')
+
+
+# View para listar produtos e processar a rota
 def listar_produtos(request):
-    if request.method == 'POST' or 'page' in request.GET:
-        latitude = request.POST.get('latitude') or request.GET.get('latitude')
-        longitude = request.POST.get('longitude') or request.GET.get('longitude')
-        dias = request.POST.get('dias') or request.GET.get('dias')
-        raio = request.POST.get('raio') or request.GET.get('raio')
-        item_list = request.POST.get('item_list') or request.GET.get('item_list')
+    if request.method == 'POST':
+        latitude = request.POST.get('latitude')
+        longitude = request.POST.get('longitude')
+        dias = request.POST.get('dias')
+        raio = request.POST.get('raio')
+        item_list = request.POST.get('item_list')
 
-        # Verificação de item_list
+        # Verificação se item_list foi fornecido
         if not item_list:
             logger.error("item_list está vazio ou não foi enviado.")
-            return render(request, 'lista.html', {'error': "Nenhum produto selecionado."})
+            return render(request, 'lista.html', {
+                'error': "Nenhum produto selecionado.",
+                'resultado': None,
+                'mercados_comprados': []
+            })
 
         try:
-            # Decodificar item_list se for uma string JSON
+            # Processar item_list para garantir que é uma lista de inteiros
             if isinstance(item_list, str):
                 item_list = json.loads(item_list)
-        except json.JSONDecodeError as e:
-            logger.error("Erro ao decodificar item_list: %s", e)
-            return render(request, 'lista.html', {'error': "Erro ao processar a lista de produtos."})
-
-        response_list = []
-        for item in item_list:
-            try:
-                response = consultarproduto(item, raio, latitude, longitude, dias)
-                if response and 'conteudo' in response:
-                    response_list.extend(response['conteudo'])
-            except Exception as e:
-                logger.error(f"Erro ao consultar o produto {item}: {e}")
-
-        if response_list:
-            data_list = [
-                {
-                    'CODIGO_BARRAS': str(produto['gtin']),
-                    'NCM': str(produto['ncm']),
-                    'PRODUTO': produto['descricao'],
-                    'VALOR': produto['venda']['valorVenda'],
-                    'CNPJ': str(estabelecimento['cnpj']),
-                    'MERCADO': estabelecimento['razaoSocial'],
-                    'ENDERECO': f"{endereco['nomeLogradouro']}, {endereco['numeroImovel']} - {endereco['bairro']}",
-                    'LAT': endereco['latitude'],
-                    'LONG': endereco['longitude']
-                }
-                for item in response_list
-                for produto, estabelecimento, endereco in
-                [(item['produto'], item['estabelecimento'], item['estabelecimento']['endereco'])]
-            ]
-
-            df = pd.DataFrame(data_list)
-
-            # Função para categorizar o produto
-            def categorizar_produto(codigo_barras):
-                # Definindo o dicionário de categorias dentro da função
-                categorias = {
-                    'FEIJAO': ['7896006744115', '7893500007715', '7898383101000', '7898907040969', '7898902735167'],
-                    'ARROZ': ['7896006716112', '7893500024996', '7896012300213', '7898018160082', '7896084700027'],
-                    'MACARRAO': ['7896213005184', '7896532701576', '7896022200879', '7896005030530', '7896016411021'],
-                    'FARINHA MANDIOCA': ['7898994092216', '7898902735099', '7898272919211', '7898272919068',
-                                         '7898277160021'],
-                    'CAFE 250G': ['7896005800027', '7896224808101', '7896224803069', '7898286200060', '7896005213018'],
-                    'BOLACHA': ['7896213006266', '7896005030356', '7898657832173', '7896003738636', '7891962014982'],
-                    'FLOCAO MILHO': ['7896481130106', '7891091010718', '7898366932973', '7898932426042',
-                                     '7898366930023'],
-                    'MARGARINA': ['7894904271733', '7893000979932', '7894904929108', '7891152506815', '7891515901066'],
-                    'MANTEIGA': ['7898912485496', '7896596000059', '7896010400885', '7898939253399', '7898043230798'],
-                    'LEITE PO': ['7898215152330', '7896051130079', '7898949565017', '7896259410133', '7898403780918'],
-                    'LEITE UHT': ['7896259412861', '7898118390860', '7898403782394', '7898387120380', '7896085393488'],
-                    'OLEO DE SOJA': ['7891107101621', '7896279600538', '7898247780075', '7896036090244',
-                                     '7892300030060'],
-                    'ACUCAR CRISTAL': ['7896065200072', '7896215300591', '7896065200065', '7897261800011',
-                                       '7897154430103'],
-                    'OVOS': ['7897146402019', '7897146405010', '7897146402033', '7898903159085', '7896414410121'],
-                    'SARDINHA 125G': ['7891167021013', '7891167023017', '7891167023024', '7896009301063',
-                                      '7891167021075']
-                }
-
-                # Verificar a categoria do código de barras
-                for categoria, codigos in categorias.items():
-                    if codigo_barras in codigos:
-                        return categoria
-                return 'Desconhecido'
-
-            df['CATEGORIA'] = df['CODIGO_BARRAS'].apply(categorizar_produto)
-            df = df[['CATEGORIA', 'VALOR', 'MERCADO', 'ENDERECO', 'LAT', 'LONG']].rename(
-                columns={'CATEGORIA': 'PRODUTO'})
-            data = df.to_dict(orient='records')
-
-            paginator = Paginator(data, 10)
-            page_number = request.GET.get('page')
-            page_obj = paginator.get_page(page_number)
-
+            gtin_list = [int(gtin) for gtin in item_list]
+        except Exception as e:
+            logger.error("Erro ao processar item_list: %s", e)
             return render(request, 'lista.html', {
-                'page_obj': page_obj,
-                'latitude': latitude,
-                'longitude': longitude,
-                'dias': dias,
-                'raio': raio,
-                'item_list': json.dumps(item_list)
+                'error': "Erro ao processar a lista de produtos.",
+                'resultado': None,
+                'mercados_comprados': []
             })
-        else:
-            logger.warning("Nenhum dado foi retornado pela API.")
-            return render(request, 'lista.html', {'error': "Nenhum dado foi retornado pela API."})
 
+        try:
+            # Chamar a função para obter produtos
+            df = obter_produtos(gtin_list, int(raio), float(latitude), float(longitude), int(dias))
+
+            if df.empty:
+                logger.warning("Nenhum dado foi retornado pela API.")
+                return render(request, 'lista.html', {
+                    'error': "Nenhum dado foi retornado pela API.",
+                    'resultado': None,
+                    'mercados_comprados': []
+                })
+
+            # Gerar dados para o solver
+            tpplib_data = create_tpplib_data(df)
+
+            logger.debug(f"Dados preparados para o solver: {tpplib_data}")
+
+            # Executar o solver
+            max_iterations = 10000
+            no_improve_limit = 100
+            resultado_solver = alns_solve_tpp(tpplib_data, max_iterations, no_improve_limit)
+
+            logger.debug(f"Resultado formatado do solver: {resultado_solver}")
+
+            if resultado_solver is None:
+                logger.error("Não foi possível encontrar uma solução viável.")
+                return render(request, 'lista.html', {
+                    'error': "Não foi possível encontrar uma solução viável.",
+                    'resultado': None,
+                    'mercados_comprados': [],
+                    'latitude': float(latitude),
+                    'longitude': float(longitude),
+                    'dias': int(dias),
+                    'raio': int(raio),
+                    'item_list': gtin_list
+                })
+
+            # Preparar o contexto para o template
+            rota = resultado_solver.get('route', [])
+            purchases = resultado_solver.get('purchases', {})
+            total_cost = resultado_solver.get('total_cost', 0.0)
+            total_distance = resultado_solver.get('total_distance', 0.0)
+            execution_time = resultado_solver.get('execution_time', 0.0)
+            mercados_comprados = resultado_solver.get('mercados_comprados', [])
+
+            # Validar e corrigir o routeOrder
+            rota = resultado_solver.get('route', [])
+            max_index = len(mercados_comprados)
+
+            # Corrigir o routeOrder para evitar índices inválidos
+            rota = [idx for idx in rota if 1 <= idx <= max_index]
+
+            if len(rota) != len(resultado_solver.get('route', [])):
+                logger.warning("O routeOrder foi corrigido para evitar índices inválidos.")
+
+            # Atualizar o resultado_solver com a rota corrigida
+            resultado_solver['route'] = rota
+
+            # Preencher node_coords com as coordenadas dos mercados comprados
+            node_coords = {}
+            for idx, mercado in enumerate(mercados_comprados, start=1):
+                lat = mercado.get('latitude')
+                lon = mercado.get('longitude')
+                if lat and lon:
+                    node_coords[str(idx)] = [float(lat), float(lon)]
+
+            # Processar as chaves de purchases para remover o prefixo 'Produtos comprados no '
+            processed_purchases = {}
+            prefix = 'Produtos comprados no '
+            for key, value in purchases.items():
+                if key.startswith(prefix):
+                    mercado_nome = key[len(prefix):]
+                else:
+                    mercado_nome = key
+                processed_purchases[mercado_nome] = value
+
+            context = {
+                'resultado': {
+                    'rota': rota,
+                    'purchases': processed_purchases,
+                    'total_cost': total_cost,
+                    'total_distance': total_distance,
+                    'execution_time': execution_time
+                },
+                'mercados_comprados': mercados_comprados,
+                'node_coords': node_coords,
+                'latitude': float(latitude),
+                'longitude': float(longitude),
+                'dias': int(dias),
+                'raio': int(raio),
+                'item_list': gtin_list
+            }
+
+            logger.debug(f"Contexto passado para lista.html: {context}")
+            return render(request, 'lista.html', context)
+
+        except Exception as e:
+            logger.error("Erro ao processar a solicitação: %s", e)
+            return render(request, 'lista.html', {
+                'error': "Erro ao processar a solicitação.",
+                'resultado': None,
+                'mercados_comprados': [],
+                'node_coords': {},
+                'latitude': float(latitude) if latitude else 0.0,
+                'longitude': float(longitude) if longitude else 0.0,
+                'dias': int(dias) if dias else 1,
+                'raio': int(raio) if raio else 2,
+                'item_list': gtin_list
+            })
+
+    # Se não for POST, redireciona para a página de localização
     return render(request, 'localizacao.html')

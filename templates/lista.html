@@ -1,116 +1,180 @@
+{% load custom_filters %}
 {% load static %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lista de Produtos</title>
-    <!-- Bootstrap CSS para estilização -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- CSS personalizado -->
+    <title>Resultados da Busca</title>
+
+    <!-- CSS do Leaflet -->
     <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}">
-    <!-- Navbar Bootstrap -->
-    <nav class="navbar navbar-expand-lg">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">Canguinha Alagoas</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link active" aria-current="page" href="{% url 'home' %}">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'localizacao' %}">Localização</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'about' %}">Sobre</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'contact' %}">Contato</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-</head>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
-        /* Ajustes personalizados */
-        .custom-table {
-            font-size: 0.85rem; /* Diminui o tamanho da fonte */
-            width: 100%; /* Ajusta a tabela para ocupar toda a largura */
-            word-wrap: break-word; /* Quebra o texto longo */
+        .flex-container {
+            display: flex;
+            gap: 10px;
         }
+
         .table-container {
-            overflow-x: auto; /* Adiciona rolagem horizontal se necessário */
+            flex: 0.3;
+            overflow-y: auto;
+            max-height: 900px;
+            margin-left: 10px;
+        }
+
+        #map {
+            flex: 0.7;
+            height: 950px;
+            margin-right: 10px;
+        }
+
+        .table {
+            width: 95%;
+            border-collapse: collapse;
+            font-size: 10px;
+            border: 1px solid #ddd;
+        }
+
+        .table th, .table td {
+            padding: 5px;
+            text-align: left;
+            border: 1px solid #ddd;
         }
     </style>
 </head>
 <body>
-    <div class="container-fluid mt-5 table-container">
-        <h2 class="text-center">Lista de Produtos</h2>
+    <h1>Resultados da Busca</h1>
 
-        <!-- Verificação se a lista de produtos está vazia -->
-        {% if page_obj and page_obj.object_list %}
-            <div class="table-responsive">
-                <table class="table table-striped table-hover table-bordered custom-table">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Produto</th>
-                            <th>Valor (R$)</th>
-                            <th>Mercado</th>
-                            <th>Endereço</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in page_obj %}
+    {% if mercados_comprados %}
+        <div class="flex-container">
+            <div class="table-container">
+                <h3>Lista de Produtos por Mercado</h3>
+                {% for mercado in mercados_comprados %}
+                    <h5>{{ mercado.nome }} - {{ mercado.endereco }}</h5>
+                    <table class="table">
+                        <thead>
                             <tr>
-                                <td>{{ item.PRODUTO }}</td>
-                                <td>{{ item.VALOR|floatformat:2 }}</td>
-                                <td>{{ item.MERCADO }}</td>
-                                <td>{{ item.ENDERECO }}</td>
+                                <th>Produto</th>
+                                <th>Preço</th>
                             </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {% for produto in resultado.purchases|dict_get:mercado.nome %}
+                                <tr>
+                                    <td>{{ produto.produto }}</td>
+                                    <td>R$ {{ produto.preco|floatformat:2 }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endfor %}
+                <!-- Resumo logo abaixo da tabela -->
+                <div class="summary-container">
+                    <p><strong>Custo Total:</strong> R$ {{ resultado.total_cost }}</p>
+                    <p><strong>Distância Total:</strong> {{ resultado.total_distance }} km | <strong>Tempo de Execução:</strong> {{ resultado.execution_time }} segundos</p>
+                </div>
+            <button onclick="window.location.href='{% url 'avaliar' %}'">Avaliar</button>
             </div>
+            <div id="map"></div>
+        </div>
 
-            <!-- Paginação -->
-            <div class="d-flex justify-content-center">
-                <nav aria-label="Navegação de página">
-                    <ul class="pagination">
-                        {% if page_obj.has_previous %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}&latitude={{ latitude }}&longitude={{ longitude }}&dias={{ dias }}&raio={{ raio }}&item_list={{ item_list|urlencode }}" aria-label="Anterior">
-                                    <span aria-hidden="true">&laquo;</span>
-                                </a>
-                            </li>
-                        {% endif %}
-                        {% for num in page_obj.paginator.page_range %}
-                            <li class="page-item {% if page_obj.number == num %}active{% endif %}">
-                                <a class="page-link" href="?page={{ num }}&latitude={{ latitude }}&longitude={{ longitude }}&dias={{ dias }}&raio={{ raio }}&item_list={{ item_list|urlencode }}">{{ num }}</a>
-                            </li>
-                        {% endfor %}
-                        {% if page_obj.has_next %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ page_obj.next_page_number }}&latitude={{ latitude }}&longitude={{ longitude }}&dias={{ dias }}&raio={{ raio }}&item_list={{ item_list|urlencode }}" aria-label="Próximo">
-                                    <span aria-hidden="true">&raquo;</span>
-                                </a>
-                            </li>
-                        {% endif %}
-                    </ul>
-                </nav>
-            </div>
-        {% else %}
-            <div class="alert alert-warning text-center" role="alert">
-                Nenhum produto encontrado para os critérios especificados.
-            </div>
-        {% endif %}
-    </div>
+        {{ resultado.rota|json_script:"rota-data" }}
+        {{ node_coords|json_script:"node-coords-data" }}
+        {{ mercados_comprados|json_script:"mercados-data" }}
 
-    <!-- Bootstrap JS e dependências Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                if (typeof L === 'undefined') {
+                    console.error("Leaflet não foi carregado corretamente.");
+                    return;
+                }
+                var map = L.map('map').setView([0, 0], 12);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(map);
+        
+                var routeOrder = JSON.parse(document.getElementById('rota-data').textContent || '[]');
+                var nodeCoords = JSON.parse(document.getElementById('node-coords-data').textContent || '{}');
+                var mercados = JSON.parse(document.getElementById('mercados-data').textContent || '[]');
+        
+                var nodeCoordsList = Array.isArray(nodeCoords) ? nodeCoords : Object.values(nodeCoords);
+                var coordinates = [];
+        
+                var userLat = parseFloat(localStorage.getItem('userLatitude'));
+                var userLon = parseFloat(localStorage.getItem('userLongitude'));
+        
+                if (isNaN(userLat) || isNaN(userLon)) {
+                    console.error("Erro: Coordenadas da geolocalização do usuário são inválidas.");
+                    userLat = 0;
+                    userLon = 0;
+                }
+        
+                coordinates.push([userLat, userLon]);
+                L.marker([userLat, userLon], { color: 'red' }).addTo(map).bindPopup("Origem e Destino");
+        
+                // Adicionar pontos de parada, ignorando índices inválidos
+                routeOrder.forEach(function(index) {
+                    var adjustedIndex = index - 1;
+        
+                    if (adjustedIndex >= 0 && adjustedIndex < nodeCoordsList.length) {
+                        var coord = nodeCoordsList[adjustedIndex];
+                        var lat = coord[0];
+                        var lon = coord[1];
+        
+                        if (!isNaN(lat) && !isNaN(lon)) {
+                            coordinates.push([lat, lon]);
+                            L.marker([lat, lon]).addTo(map).bindPopup(`Parada ${index}`);
+                        } else {
+                            console.warn(`Coordenadas inválidas para o ponto de parada: ${index}`);
+                        }
+                    } else {
+                        console.warn(`Índice ajustado inválido no routeOrder: ${index}`);
+                        console.log("Quantidade de coordenadas disponíveis em nodeCoordsList:", nodeCoordsList.length);
+                    }
+                });
+        
+                coordinates.push([userLat, userLon]);
+        
+                console.log("Coordenadas para a rota:", coordinates);
+        
+                if (coordinates.length > 1) {
+                    var osrmCoordinates = coordinates.map(coord => `${coord[1]},${coord[0]}`).join(';');
+                    var osrmUrl = `https://router.project-osrm.org/route/v1/driving/${osrmCoordinates}?overview=full&geometries=geojson`;
+        
+                    fetch(osrmUrl)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.routes && data.routes.length > 0) {
+                                var routeCoordinates = data.routes[0].geometry.coordinates;
+                                var latLngRoute = routeCoordinates.map(coord => [coord[1], coord[0]]);
+        
+                                //L.polyline(latLngRoute, {
+                                //    color: 'blue',
+                                //    weight: 5,
+                                //    opacity: 0.8
+                               // }).addTo(map);
+        
+                                map.fitBounds(L.polyline(latLngRoute).getBounds());
+                            } else {
+                                console.error("Erro: Não foi possível obter a rota.");
+                                console.log("Resposta da API:", data);
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Erro ao obter a rota:", error);
+                        });
+                } else {
+                    console.error("Erro: Coordenadas insuficientes para traçar a rota.");
+                }
+            });
+        </script>
+    {% elif error %}
+        <div><p>{{ error }}</p></div>
+    {% else %}
+        <h2>Nenhum resultado encontrado</h2>
+    {% endif %}
 </body>
 </html>
