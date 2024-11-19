@@ -32,7 +32,17 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 ASGI_APPLICATION = None
 
 # Allowed Hosts
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.herokuapp.com', 'canguinhaal.com.br', 'www.canguinhaal.com.br']
+### ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.herokuapp.com', 'canguinhaal.com.br', 'www.canguinhaal.com.br']
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '.herokuapp.com',
+    'canguinhaal.com.br',
+    'www.canguinhaal.com.br',
+    'web-production-6a008.up.railway.app',
+    '.railway.app'
+]
+
 APPEND_SLASH = False
 
 # Application Definition
