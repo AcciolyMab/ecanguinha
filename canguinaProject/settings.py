@@ -24,7 +24,7 @@ except Exception as e:
 
 # Base Directory
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+print("DEBUG - REDIS_URL_PROD:", os.getenv("REDIS_URL_PROD"))
 # Chave Secreta
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-o!f&%cc+m5r#4atn@28$b%dve1477nvc((4k^%3uxyde)w1+_5')
 
