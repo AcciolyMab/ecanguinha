@@ -12,14 +12,12 @@ import logging
 logger = logging.getLogger(__name__)
 from django.core.cache import cache
 
-# Teste do cache
 try:
     cache.set('teste_log', 'valor_log', timeout=60)
     valor = cache.get('teste_log')
     print(f"Valor do cache: {valor}")  # Deve mostrar 'valor_log'
 except Exception as e:
     print(f"Erro ao acessar o cache: {e}")
-
 
 
 # Base Directory
