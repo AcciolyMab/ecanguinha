@@ -1,5 +1,5 @@
 # Core packages para Django
-django==5.1.2
+django==5.1.5
 gunicorn==22.0.0
 whitenoise==6.0.0
 python-decouple==3.8
