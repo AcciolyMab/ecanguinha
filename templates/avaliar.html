@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    {% load static %}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>Pesquisa de Usabilidade</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            padding: 20px;
+        }
+        .form-container {
+            max-width: 500px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            font-weight: bold;
+        }
+        input[type="text"],
+        input[type="email"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Canguinha Alagoas</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="{% url 'home' %}">Home</a>
+                    </li>
+                    <!--<li class="nav-item">
+                        <a class="nav-link" href="{% url 'localizacao' %}">Localização</a>
+                    </li>-->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'about' %}">Sobre</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'contact' %}">Contato</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+</head>
+<body>
+
+<div class="form-container">
+    <h2>Pesquisa de Usabilidade</h2>
+    <form name="avaliacaoForm" action="/submit/" method="POST">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="name">Seu Nome:</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+    
+        <div class="form-group">
+            <label for="email">Seu E-mail:</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+    
+        <div class="form-group">
+            <label for="ease-of-use">O site é fácil de usar?</label>
+            <select id="ease-of-use" name="ease-of-use" required>
+                <option value="">Selecione</option>
+                <option value="1">1 - Muito difícil</option>
+                <option value="2">2 - Difícil</option>
+                <option value="3">3 - Neutro</option>
+                <option value="4">4 - Fácil</option>
+                <option value="5">5 - Muito fácil</option>
+            </select>
+        </div>
+    
+        <div class="form-group">
+            <label for="improvement">Como podemos melhorar?</label>
+            <textarea id="improvement" name="improvement" rows="4" placeholder="Dê sua sugestão"></textarea>
+        </div>
+    
+        <div class="form-group">
+            <label for="recommend">Você recomendaria este site para um amigo?</label>
+            <input type="radio" id="recommend-yes" name="recommend" value="Sim" required>
+            <label for="recommend-yes">Sim</label>
+            <input type="radio" id="recommend-no" name="recommend" value="Não">
+            <label for="recommend-no">Não</label>
+        </div>
+    
+        <button type="submit">Enviar Feedback</button>
+    </form>
+
+</div>
+
+</body>
+</html>

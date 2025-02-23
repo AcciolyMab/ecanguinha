@@ -1,0 +1,207 @@
+{% load custom_filters %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultados da Busca</title>
+    <!-- CSS do Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- CSS do Leaflet Awesome Markers -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.awesome-markers@2.0.2/dist/leaflet.awesome-markers.css" />
+    <!-- Seu CSS -->
+    <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}">
+    
+    <!-- JS do Leaflet -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- JS do Leaflet Awesome Markers -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js"></script>
+
+
+    <style>
+        .flex-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .table-container {
+            flex: 0.3;
+            overflow-y: auto;
+            max-height: 800px;
+            margin-left: 10px;
+        }
+
+        #map {
+            width: 100%;
+            flex: 0.7;
+            height: 800px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            display: block;
+        }
+
+        .table {
+            width: 95%;
+            border-collapse: collapse;
+            font-size: 10px;
+        }
+
+        .table th, .table td {
+            padding: 5px;
+            text-align: left;
+            border: 3px solid #ddd;
+        }
+
+        .table thead {
+            background-color: #f2f2f2;
+        }
+
+        .summary-container {
+            margin-top: 10px;
+            font-size: 12px;
+        }
+
+        .summary-container p {
+            margin: 5px 0;
+        }
+
+        .button-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .btn-avaliar {
+            padding: 10px 20px;
+            font-size: 14px;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        
+        .mercado-nome {
+            font-size: 12px;  /* Define um tamanho menor */
+            font-weight: bold; /* Mantém negrito */
+            line-height: 1.2;  /* Ajusta a altura da linha para melhor leitura */
+            margin-bottom: 5px; /* Reduz espaço abaixo */
+        }
+
+        .btn-avaliar:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Resultados da Busca</h1>
+
+    {% if mercados_comprados %}
+        <div class="flex-container">
+            <div class="table-container">
+                <h3>Lista de Produtos por Mercado</h3>
+                {% for mercado in mercados_comprados %}
+                    <h5 class="mercado-nome">{{ mercado.nome }} - {{ mercado.endereco }}</h5>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Preço</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for produto in resultado.purchases|dict_get:mercado.nome %}
+                                <tr>
+                                    <td>{{ produto.produto }}</td>
+                                    <td>R$ {{ produto.preco|floatformat:2 }}</td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="2">Nenhum produto encontrado</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endfor %}
+
+                <div class="summary-container">
+                    <p><strong>Custo Total:</strong> R$ {{ resultado.total_cost|floatformat:2 }}</p>
+                    <p><strong>Distância Total:</strong> {{ resultado.total_distance }} km | <strong>Tempo de Execução:</strong> {{ resultado.execution_time }} segundos</p>
+                </div>
+            </div>
+
+            <div id="map"></div>
+        </div>
+
+        <div class="button-container">
+            <a href="{% url 'avaliar' %}" class="btn-avaliar">Avaliar</a>
+        </div>
+
+        {{ resultado.rota|json_script:"rota-data" }}
+        {{ node_coords|json_script:"node-coords-data" }}
+        {{ mercados_comprados|json_script:"mercados-data" }}
+        
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+            var urlParams = new URLSearchParams(window.location.search);
+            var userLat = parseFloat(urlParams.get("latitude")) || -9.6658;  // Latitude padrão (Maceió)
+            var userLon = parseFloat(urlParams.get("longitude")) || -35.7350; // Longitude padrão (Maceió)
+
+            // Inicializar o mapa
+            var map = L.map('map').setView([userLat, userLon], 12);
+            var bounds = L.latLngBounds([]);
+
+            // Adicionar camada do OpenStreetMap
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                minZoom: 0,
+                maxZoom: 18
+            }).addTo(map);
+
+            // Adicionar os mercados ao mapa
+            var mercados = JSON.parse(document.getElementById('mercados-data').textContent);
+            console.log("Lista completa de mercados carregados:", mercados);
+
+            mercados.forEach(function(mercado, index) {
+                var lat = parseFloat(mercado.latitude);
+                var lon = parseFloat(mercado.longitude);
+
+                if (!isNaN(lat) && !isNaN(lon) && lat !== 0.0 && lon !== 0.0) {
+                    console.log(`Mercado válido #${index}: ${mercado.nome}, Lat: ${lat}, Lon: ${lon}`);
+
+                    var popupContent = `<div class="popup-text"><b>${mercado.nome}</b><br>${mercado.endereco}</div>`;
+
+                    L.marker([lat, lon]).addTo(map).bindPopup(popupContent);
+                    bounds.extend([lat, lon]);
+                } else {
+                    console.warn(`ERRO: Mercado inválido #${index}: ${mercado.nome} (Lat: ${mercado.latitude}, Lon: ${mercado.longitude})`);
+                }
+            });
+
+            // Ajustar a visão do mapa para incluir todos os pontos
+            if (!bounds.isValid()) {
+                console.warn("Nenhum mercado válido encontrado. Ajustando para visão padrão.");
+                map.setView([userLat, userLon], 10);
+            } else {
+                map.fitBounds(bounds);
+            }
+
+            // Garante que o Leaflet renderize corretamente o mapa
+            setTimeout(() => {
+                map.invalidateSize();
+                console.log("Mapa atualizado com invalidateSize()");
+            }, 500);
+        });
+
+        </script>
+
+    {% elif error %}
+        <div class="error">
+            <p>{{ error }}</p>
+        </div>
+    {% else %}
+        <h2>Nenhum resultado encontrado</h2>
+    {% endif %}
+</body>
+</html>

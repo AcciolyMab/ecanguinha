@@ -1,0 +1,49 @@
+# Ambientes Virtuais
+venv/
+.env
+*.venv
+env/
+*.envrc
+
+# Banco de Dados
+*.sqlite3
+db.sqlite3  # Banco de dados local
+
+# Arquivos de Cache e Compilação
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+
+# Arquivos de Configuração Locais
+local_settings.py
+settings_local.py
+config.json
+railway.json  # Configuração do Railway específica para o ambiente
+
+# Arquivos de Sistema e IDE
+.DS_Store  # macOS
+.idea/     # JetBrains (PyCharm, WebStorm)
+.vscode/   # Configuração do VS Code
+*.swp
+*.swo
+
+# Logs e Debug
+logs/
+*.log
+debug.log  # Arquivo de log visto na imagem
+
+# Arquivos Redis (se aplicável)
+dump.rdb  # Arquivo de dump do Redis visto na imagem
+
+# Arquivos de Deploy e Plataforma
+staticfiles/
+static/
+media/
+uploads/
+CNAME  # Pode ser um arquivo específico para configuração de domínio
+Procfile  # Pode ser necessário para Heroku, mas se não quiser versioná-lo, pode ignorá-lo
+
+# Arquivos Temporários e Build
+runtime.txt
