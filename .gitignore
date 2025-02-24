@@ -16,8 +16,9 @@ __pycache__/
 *.pyd
 *.pdb
 #Pastas de cache
-.cache/
-.cached/
+cache/
+cache/*.json
+cached/
 # Arquivos de Configuração Locais
 local_settings.py
 settings_local.py
@@ -49,3 +50,4 @@ Procfile  # Pode ser necessário para Heroku, mas se não quiser versioná-lo, p
 
 # Arquivos Temporários e Build
 runtime.txt
+cache/29b1467b987e397d6e14c59190b7e84ac28a505b.json
