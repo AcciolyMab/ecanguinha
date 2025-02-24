@@ -1,5 +1,4 @@
 {% load static %}
-{% csrf_token %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -38,7 +37,23 @@
             display: flex;
             justify-content: center;
         }
-    </style>
+
+        @keyframes progressAnimation {
+            0% {
+                stroke-dashoffset: 251.2;
+            }
+            100% {
+                stroke-dashoffset: 0;
+            }
+        }
+        
+        svg circle {
+            animation: progressAnimation 3s linear infinite;
+        }
+        
+    </style>    
+</head>
+<body>
     <nav class="navbar navbar-expand-lg">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">Canguinha Alagoas</a>
@@ -63,11 +78,18 @@
             </div>
         </div>
     </nav>
-</head>
-<body>
+    <div id="progressContainer" style="display: none; text-align: center; margin-top: 20px;">
+        <svg viewBox="0 0 100 100" width="100" height="100">
+            <circle cx="50" cy="50" r="40" stroke="#007bff" stroke-width="10" fill="none" stroke-linecap="round"
+                    stroke-dasharray="251.2" stroke-dashoffset="251.2">
+            </circle>
+        </svg>
+        <p>Aguarde, processando...</p>
+    </div>    
     <div class="container mt-5">
         <h1>Localização do Comprador</h1>
-        <form id="locationForm" action="{% url 'listar_produtos' %}" method="post">
+        {% comment %} <form id="locationForm" action="{% url 'listar_produtos' %}" method="post"> {% endcomment %}
+        <form id="locationForm" action="{% url 'listar_produtos' %}" method="post" onsubmit="return validarCombustivel()">
             {% csrf_token %}
             <div class="mb-3">
                 <label for="nome" class="form-label">Nome do Comprador</label>
@@ -98,15 +120,17 @@
             </div>
 
             <div class="slider-container">
-                <label for="raioSlider">Raio (1-15 km)</label>
+                <label for="raioSlider">Raio de Busca (km):</label>
                 <input type="range" class="form-range" id="raioSlider" name="raio" min="1" max="15" value="1">
                 <span id="raioValue">1 km</span>
+                <small class="text-muted">Distância em quilômetros para busca. Máximo 15Km.</small>
             </div>
 
             <div class="slider-container">
-                <label for="diasSlider">Dias (1-10 dias)</label>
+                <label for="diasSlider">Período de Análise (dias):</label>
                 <input type="range" class="form-range" id="diasSlider" name="dias" min="1" max="10" value="1">
                 <span id="diasValue">1 dia</span>
+                <small class="text-muted">Quantidade de dias para a análise de preços. Máximo 10 dias.</small>
             </div>
             
             <div class="mb-3 p-3 border rounded shadow-sm">
@@ -199,13 +223,13 @@
                 });
         });
         
-        document.getElementById('locationForm').addEventListener('submit', (event) => {
+        /*document.getElementById('locationForm').addEventListener('submit', (event) => {
             const combustivelSelecionado = document.querySelector('input[name="combustivel"]:checked');
             if (!combustivelSelecionado) {
                 alert("Por favor, selecione um tipo de combustível.");
                 event.preventDefault();
             }
-        });
+        });*/
 
         document.addEventListener('DOMContentLoaded', () => {
             // Captura da geolocalização automática
@@ -312,67 +336,89 @@
 
             // Processar seleção de produtos
             document.getElementById('locationForm').addEventListener('submit', (event) => {
-                const selectedItems = [];
-                const checkboxes = document.querySelectorAll('input[name="category"]:checked');
+                    const selectedItems = [];
+                    const checkboxes = document.querySelectorAll('input[name="category"]:checked');
 
-                if (checkboxes.length === 0) {
-                    alert("Por favor, selecione ao menos um produto.");
-                    event.preventDefault();
+                    if (checkboxes.length === 0) {
+                        alert("Por favor, selecione ao menos um produto.");
+                        event.preventDefault();
+                        return;
+                    }
+
+                    checkboxes.forEach((checkbox) => {
+                        const barcodes = JSON.parse(checkbox.value);
+                        selectedItems.push(...barcodes);
+                    });
+
+                    document.getElementById('item_list').value = JSON.stringify(selectedItems);
+                });
+            });
+
+            document.getElementById("btnCalcularMedia").addEventListener("click", function() {
+                let combustivelSelecionado = document.querySelector('input[name="combustivel"]:checked');
+            
+                if (!combustivelSelecionado) {
+                    alert("Por favor, selecione um tipo de combustível.");
                     return;
                 }
-
-                checkboxes.forEach((checkbox) => {
-                    const barcodes = JSON.parse(checkbox.value);
-                    selectedItems.push(...barcodes);
-                });
-
-                document.getElementById('item_list').value = JSON.stringify(selectedItems);
-            });
-        });
-
-        document.getElementById("btnCalcularMedia").addEventListener("click", function() {
-            let combustivelSelecionado = document.querySelector('input[name="combustivel"]:checked');
-        
-            if (!combustivelSelecionado) {
-                alert("Por favor, selecione um tipo de combustível.");
-                return;
-            }
-        
-            let descricao = combustivelSelecionado.value;
-            let latitude = document.getElementById("latitude").value.trim();
-            let longitude = document.getElementById("longitude").value.trim();
-            let raio = document.getElementById("raioSlider").value;
-            let dias = document.getElementById("diasSlider").value;
-        
-            if (!latitude || !longitude || latitude === "" || longitude === "" || latitude === "0.0" || longitude === "0.0") {
-                alert("Latitude e longitude são obrigatórias.");
-                return;
-            }
-        
-            fetch("{% url 'processar_combustivel' %}", {
-                method: "POST",
-                headers: {
-                    "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                body: new URLSearchParams({
-                    "descricao": descricao,
-                    "latitude": latitude,
-                    "longitude": longitude,
-                    "raio": raio,
-                    "dias": dias
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.media_preco !== undefined) {
-                    document.getElementById("precoCombustivel").value = data.media_preco.toFixed(2);
-                } else {
-                    alert(data.error || "Erro ao calcular a média do combustível.");
+            
+                let descricao = combustivelSelecionado.value;
+                let latitude = document.getElementById("latitude").value.trim();
+                let longitude = document.getElementById("longitude").value.trim();
+                let raio = document.getElementById("raioSlider").value;
+                let dias = document.getElementById("diasSlider").value;
+            
+                if (!latitude || !longitude || latitude === "" || longitude === "" || latitude === "0.0" || longitude === "0.0") {
+                    alert("Latitude e longitude são obrigatórias.");
+                    return;
                 }
-            })
-            .catch(error => console.error("Erro:", error));
-        });
+            
+                fetch("{% url 'processar_combustivel' %}", {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                    body: new URLSearchParams({
+                        "descricao": descricao,
+                        "latitude": latitude,
+                        "longitude": longitude,
+                        "raio": raio,
+                        "dias": dias
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.media_preco !== undefined) {
+                        document.getElementById("precoCombustivel").value = data.media_preco.toFixed(2);
+                    } else {
+                        alert(data.error || "Erro ao calcular a média do combustível.");
+                    }
+                })
+                .catch(error => console.error("Erro:", error));
+            });
+
+            function validarCombustivel() {
+                let precoCombustivel = document.getElementById("precoCombustivel").value.trim();
+                if (!precoCombustivel || precoCombustivel === "0,00") {
+                    alert("Calcule a média do combustível antes de enviar o formulário.");
+                    return false;
+                }
+                return true;
+            }
+            
+            // Mostrar a barra de progresso ao enviar o formulário
+            document.getElementById("locationForm").addEventListener("submit", function (event) {
+                event.preventDefault(); // Impede o envio imediato
+        
+                // Exibir a barra de progresso
+                document.getElementById("progressContainer").style.display = "block";
+        
+                // Aguardar 3 segundos antes de enviar o formulário
+                setTimeout(() => {
+                    this.submit();
+                }, 3000);
+            });
     </script>
 </body>
 </html>

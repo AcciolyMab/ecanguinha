@@ -15,7 +15,9 @@ __pycache__/
 *.pyo
 *.pyd
 *.pdb
-
+#Pastas de cache
+.cache/
+.cached/
 # Arquivos de Configuração Locais
 local_settings.py
 settings_local.py

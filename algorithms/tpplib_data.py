@@ -4,8 +4,8 @@ import networkx as nx
 import osmnx as ox
 import time
 
-
-def create_tpplib_data(dataframe, *args):
+#create_tpplib_data(dataframe, *args):
+def create_tpplib_data(dataframe, avg_lat=None, avg_lon=None, media_preco=0.0):
     """
     Cria um dicionário `data` com a estrutura semelhante ao arquivo TPP, a partir de um DataFrame com as colunas
     'PRODUTO', 'VALOR', 'MERCADO', 'ENDERECO', 'LAT', 'LONG', usando OSMnx para calcular distâncias viárias.
@@ -18,6 +18,7 @@ def create_tpplib_data(dataframe, *args):
     - dict: Dicionário `data` com as variáveis necessárias.
     """
     data = {}
+    data['media_preco_combustivel'] = media_preco
     required_columns = {'PRODUTO', 'VALOR', 'MERCADO', 'ENDERECO', 'LAT', 'LONG'}
     if not required_columns.issubset(dataframe.columns):
         raise ValueError(f"DataFrame não contém as colunas necessárias: {required_columns - set(dataframe.columns)}")
@@ -27,6 +28,12 @@ def create_tpplib_data(dataframe, *args):
     produto_ids, categorias_unicas = produtos_df['PRODUTO'].factorize()
     produto_ids += 1  # IDs dos produtos a partir de 1
     data['K'] = set(range(1, len(categorias_unicas) + 1))  # IDs inteiros para os produtos
+
+    # Consumo Medio do veiculo
+    consumo_veiculo_km_por_litro = 10.5
+
+    # Custo Medio do Combustivel
+    valor_medio_km = data['media_preco_combustivel'] / consumo_veiculo_km_por_litro
 
     # Atribuir IDs inteiros aos mercados
     mercado_ids, mercados_unicos = produtos_df['MERCADO'].factorize()
@@ -79,7 +86,7 @@ def create_tpplib_data(dataframe, *args):
             if i != j:
                 try:
                     dist = nx.shortest_path_length(G, origin, destination, weight='length') / 1000
-                    distancias[i, j] = dist
+                    distancias[i, j] = dist * valor_medio_km  # Distância em quilômetros
                 except nx.NetworkXNoPath:
                     distancias[i, j] = float('inf')  # Distância infinita se não houver caminho
             else:

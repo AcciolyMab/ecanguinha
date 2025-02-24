@@ -151,7 +151,7 @@ def listar_produtos(request):
             avg_lon = df["LONG"].mean() if "LONG" in df.columns else float(longitude)
 
             # Gerar dados para o solver
-            tpplib_data = create_tpplib_data(df, avg_lat, avg_lon)
+            tpplib_data = create_tpplib_data(df, avg_lat, avg_lon, media_preco=float(request.POST.get('precoCombustivel', 0)))
 
             # Parâmetros do solver
             max_iterations = 10000
