@@ -182,96 +182,85 @@
             </div>
         </form>
     </div>
-
     <script>
-        document.getElementById("checkEndereco").addEventListener("change", function() {
-            document.getElementById("enderecoGroup").style.display = this.checked ? "block" : "none";
-        });
-
-        document.getElementById("btnObterLocalizacao").addEventListener("click", function() {
-            console.log("Botão Obter Localização clicado");
-            
+        document.addEventListener("DOMContentLoaded", () => {
+            const checkEndereco = document.getElementById("checkEndereco");
+            const enderecoGroup = document.getElementById("enderecoGroup");
             const geoStatus = document.getElementById("geoStatus");
-            geoStatus.style.display = "none";
-            const endereco = document.getElementById("endereco").value;
-            
-            if (!endereco) {
-                geoStatus.style.display = "block";
-                geoStatus.textContent = "Por favor, insira um endereço válido.";
-                return;
-            }
-            
-            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}`;
-            
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.length > 0) {
-                        const location = data[0];
-                        console.log("Localização obtida:", location.lat, location.lon);
-                        document.getElementById("latitude").value = location.lat;
-                        document.getElementById("longitude").value = location.lon;
-                    } else {
-                        geoStatus.style.display = "block";
-                        geoStatus.textContent = "Endereço não encontrado.";
-                    }
-                })
-                .catch(error => {
-                    console.error("Erro ao buscar localização:", error);
-                    geoStatus.style.display = "block";
-                    geoStatus.textContent = "Erro ao obter localização. Tente novamente.";
-                });
-        });
-        
-        /*document.getElementById('locationForm').addEventListener('submit', (event) => {
-            const combustivelSelecionado = document.querySelector('input[name="combustivel"]:checked');
-            if (!combustivelSelecionado) {
-                alert("Por favor, selecione um tipo de combustível.");
-                event.preventDefault();
-            }
-        });*/
-
-        document.addEventListener('DOMContentLoaded', () => {
-            // Captura da geolocalização automática
+            const latitudeField = document.getElementById("latitude");
+            const longitudeField = document.getElementById("longitude");
+            const raioSlider = document.getElementById("raioSlider");
+            const raioValue = document.getElementById("raioValue");
+            const diasSlider = document.getElementById("diasSlider");
+            const diasValue = document.getElementById("diasValue");
+            const btnObterLocalizacao = document.getElementById("btnObterLocalizacao");
+            const btnCalcularMedia = document.getElementById("btnCalcularMedia");
+            const locationForm = document.getElementById("locationForm");
+            const progressContainer = document.getElementById("progressContainer");
+            const selectAllCheckbox = document.getElementById("selectAllCheckbox");
+            const checkboxContainer = document.getElementById("categoryCheckboxes");
+    
+            // Alternar exibição do campo de endereço
+            checkEndereco.addEventListener("change", () => {
+                enderecoGroup.style.display = checkEndereco.checked ? "block" : "none";
+            });
+    
+            // Atualizar valores dos sliders
+            raioSlider.addEventListener("input", () => {
+                raioValue.textContent = `${raioSlider.value} km`;
+            });
+    
+            diasSlider.addEventListener("input", () => {
+                diasValue.textContent = `${diasSlider.value} dia(s)`;
+            });
+    
+            // Captura de geolocalização automática
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
-                        document.getElementById("latitude").value = position.coords.latitude;
-                        document.getElementById("longitude").value = position.coords.longitude;
+                        latitudeField.value = position.coords.latitude;
+                        longitudeField.value = position.coords.longitude;
                     },
                     (error) => {
                         console.error("Erro ao obter localização:", error.message);
                     }
                 );
             }
-
-            // Mostrar campo de endereço se o checkbox estiver marcado
-            const checkEndereco = document.getElementById("checkEndereco");
-            const enderecoGroup = document.getElementById("enderecoGroup");
-
-            checkEndereco.addEventListener("change", () => {
-                enderecoGroup.style.display = checkEndereco.checked ? "block" : "none";
+    
+            // Obter localização por endereço
+            btnObterLocalizacao.addEventListener("click", () => {
+                geoStatus.style.display = "none";
+                const endereco = document.getElementById("endereco").value.trim();
+    
+                if (!endereco) {
+                    geoStatus.style.display = "block";
+                    geoStatus.textContent = "Por favor, insira um endereço válido.";
+                    return;
+                }
+    
+                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}`;
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.length > 0) {
+                            const location = data[0];
+                            latitudeField.value = location.lat;
+                            longitudeField.value = location.lon;
+                        } else {
+                            geoStatus.style.display = "block";
+                            geoStatus.textContent = "Endereço não encontrado.";
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Erro ao buscar localização:", error);
+                        geoStatus.style.display = "block";
+                        geoStatus.textContent = "Erro ao obter localização. Tente novamente.";
+                    });
             });
-
-            // Atualizar valores dos sliders
-            const raioSlider = document.getElementById("raioSlider");
-            const raioValue = document.getElementById("raioValue");
-            const diasSlider = document.getElementById("diasSlider");
-            const diasValue = document.getElementById("diasValue");
-
-            raioSlider.addEventListener("input", () => {
-                raioValue.textContent = `${raioSlider.value} km`;
-            });
-
-            diasSlider.addEventListener("input", () => {
-                diasValue.textContent = `${diasSlider.value} dia(s)`;
-            });
-
-            createCheckboxes();
-
-            // Criação dos checkboxes de produtos
+    
+            // Criar checkboxes de produtos
             function createCheckboxes() {
-                const category = {
+                const categories = {
                     'FEIJAO': ["7896006744115", "7893500007715", "7898383101000", "7898907040969", "7898902735167"],
                     'ARROZ': ["7896006716112", "7893500024996", "7896012300213", "7898018160082", "7896084700027"],
                     'MACARRAO': ["7896213005184", "7896532701576", "7896022200879", "7896005030530", "7896016411021"],
@@ -288,91 +277,84 @@
                     'OVOS': ["7897146402019", "7897146405010", "7897146402033", "7898903159085", "7896414410121"],
                     'SARDINHA 125G': ["7891167021013", "7891167023017", "7891167023024", "7896009301063", "7891167021075"]
                 };
-
-                const checkboxContainer = document.getElementById('categoryCheckboxes');
-                checkboxContainer.innerHTML = '';
-
-                for (const [categoryName, barcodes] of Object.entries(category)) {
-                    const checkboxWrapper = document.createElement('div');
-                    checkboxWrapper.classList.add('form-check');
-
-                    const checkbox = document.createElement('input');
-                    checkbox.type = 'checkbox';
-                    checkbox.className = 'form-check-input';
-                    checkbox.name = 'category';
+    
+                checkboxContainer.innerHTML = "";
+                for (const [categoryName, barcodes] of Object.entries(categories)) {
+                    const checkboxWrapper = document.createElement("div");
+                    checkboxWrapper.classList.add("form-check");
+    
+                    const checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.className = "form-check-input";
+                    checkbox.name = "category";
                     checkbox.value = JSON.stringify(barcodes);
-
-                    const label = document.createElement('label');
-                    label.className = 'form-check-label';
+    
+                    const label = document.createElement("label");
+                    label.className = "form-check-label";
                     label.innerText = categoryName;
-
+    
                     checkboxWrapper.appendChild(checkbox);
                     checkboxWrapper.appendChild(label);
                     checkboxContainer.appendChild(checkboxWrapper);
                 }
             }
-
-            // Funcionalidade de selecionar todos
-            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-
-            selectAllCheckbox.addEventListener('change', () => {
+            createCheckboxes();
+    
+            // Selecionar todos os produtos
+            selectAllCheckbox.addEventListener("change", () => {
                 const checkboxes = document.querySelectorAll('input[name="category"]');
-                const isChecked = selectAllCheckbox.checked;
-
-                checkboxes.forEach((checkbox) => {
-                    checkbox.checked = isChecked;
-                });
+                checkboxes.forEach(checkbox => checkbox.checked = selectAllCheckbox.checked);
             });
-
-            // Atualizar o checkbox "Selecionar Todos" quando um checkbox individual mudar
+    
+            // Atualizar checkbox "Selecionar Todos"
             function updateSelectAllCheckbox() {
                 const checkboxes = document.querySelectorAll('input[name="category"]');
-                selectAllCheckbox.checked = Array.from(checkboxes).every((checkbox) => checkbox.checked);
+                selectAllCheckbox.checked = Array.from(checkboxes).every(checkbox => checkbox.checked);
             }
-
-            document.querySelectorAll('input[name="category"]').forEach((checkbox) => {
-                checkbox.addEventListener('change', updateSelectAllCheckbox);
+    
+            document.querySelectorAll('input[name="category"]').forEach(checkbox => {
+                checkbox.addEventListener("change", updateSelectAllCheckbox);
             });
-
-            // Processar seleção de produtos
-            document.getElementById('locationForm').addEventListener('submit', (event) => {
-                    const selectedItems = [];
-                    const checkboxes = document.querySelectorAll('input[name="category"]:checked');
-
-                    if (checkboxes.length === 0) {
-                        alert("Por favor, selecione ao menos um produto.");
-                        event.preventDefault();
-                        return;
-                    }
-
-                    checkboxes.forEach((checkbox) => {
-                        const barcodes = JSON.parse(checkbox.value);
-                        selectedItems.push(...barcodes);
-                    });
-
-                    document.getElementById('item_list').value = JSON.stringify(selectedItems);
+    
+            // Processar seleção de produtos no formulário
+            locationForm.addEventListener("submit", (event) => {
+                const selectedItems = [];
+                const checkboxes = document.querySelectorAll('input[name="category"]:checked');
+    
+                if (checkboxes.length === 0) {
+                    alert("Por favor, selecione ao menos um produto.");
+                    event.preventDefault();
+                    return;
+                }
+    
+                checkboxes.forEach(checkbox => {
+                    const barcodes = JSON.parse(checkbox.value);
+                    selectedItems.push(...barcodes);
                 });
+    
+                document.getElementById("item_list").value = JSON.stringify(selectedItems);
             });
-
-            document.getElementById("btnCalcularMedia").addEventListener("click", function() {
+    
+            // Calcular média do combustível
+            btnCalcularMedia.addEventListener("click", () => {
                 let combustivelSelecionado = document.querySelector('input[name="combustivel"]:checked');
-            
+    
                 if (!combustivelSelecionado) {
                     alert("Por favor, selecione um tipo de combustível.");
                     return;
                 }
-            
+    
                 let descricao = combustivelSelecionado.value;
-                let latitude = document.getElementById("latitude").value.trim();
-                let longitude = document.getElementById("longitude").value.trim();
-                let raio = document.getElementById("raioSlider").value;
-                let dias = document.getElementById("diasSlider").value;
-            
-                if (!latitude || !longitude || latitude === "" || longitude === "" || latitude === "0.0" || longitude === "0.0") {
+                let latitude = latitudeField.value.trim();
+                let longitude = longitudeField.value.trim();
+                let raio = raioSlider.value;
+                let dias = diasSlider.value;
+    
+                if (!latitude || !longitude || latitude === "0.0" || longitude === "0.0") {
                     alert("Latitude e longitude são obrigatórias.");
                     return;
                 }
-            
+    
                 fetch("{% url 'processar_combustivel' %}", {
                     method: "POST",
                     headers: {
@@ -397,28 +379,16 @@
                 })
                 .catch(error => console.error("Erro:", error));
             });
-
-            function validarCombustivel() {
-                let precoCombustivel = document.getElementById("precoCombustivel").value.trim();
-                if (!precoCombustivel || precoCombustivel === "0,00") {
-                    alert("Calcule a média do combustível antes de enviar o formulário.");
-                    return false;
-                }
-                return true;
-            }
-            
-            // Mostrar a barra de progresso ao enviar o formulário
-            document.getElementById("locationForm").addEventListener("submit", function (event) {
-                event.preventDefault(); // Impede o envio imediato
-        
-                // Exibir a barra de progresso
-                document.getElementById("progressContainer").style.display = "block";
-        
-                // Aguardar 3 segundos antes de enviar o formulário
+    
+            // Exibir barra de progresso ao enviar formulário
+            locationForm.addEventListener("submit", function (event) {
+                event.preventDefault();
+                progressContainer.style.display = "block";
                 setTimeout(() => {
                     this.submit();
                 }, 3000);
             });
+        });
     </script>
 </body>
 </html>

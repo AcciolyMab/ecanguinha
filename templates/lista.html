@@ -8,17 +8,14 @@
     <title>Resultados da Busca</title>
     <!-- CSS do Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- CSS do Leaflet Awesome Markers -->
+    <!-- CSS do Leaflet AwesomeMarkers -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet.awesome-markers@2.0.2/dist/leaflet.awesome-markers.css" />
-    <!-- Seu CSS -->
-    <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}">
-    
     <!-- JS do Leaflet -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- JS do Leaflet Awesome Markers -->
+    <!-- JS do Leaflet AwesomeMarkers -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js"></script>
-
-
+    <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}">
+    
     <style>
         .flex-container {
             display: flex;
@@ -96,7 +93,6 @@
 </head>
 <body>
     <h1>Resultados da Busca</h1>
-
     {% if mercados_comprados %}
         <div class="flex-container">
             <div class="table-container">
@@ -141,67 +137,155 @@
         {{ resultado.rota|json_script:"rota-data" }}
         {{ node_coords|json_script:"node-coords-data" }}
         {{ mercados_comprados|json_script:"mercados-data" }}
-        
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-            var urlParams = new URLSearchParams(window.location.search);
-            var userLat = parseFloat(urlParams.get("latitude")) || -9.6658;  // Latitude padrão (Maceió)
-            var userLon = parseFloat(urlParams.get("longitude")) || -35.7350; // Longitude padrão (Maceió)
 
-            // Inicializar o mapa
-            var map = L.map('map').setView([userLat, userLon], 12);
-            var bounds = L.latLngBounds([]);
+        <!-- Elemento onde o mapa será renderizado -->
+        <div id="map" style="width: 100%; height: 800px; border: 1px solid #ccc;"></div>
 
-            // Adicionar camada do OpenStreetMap
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors',
-                minZoom: 0,
-                maxZoom: 18
-            }).addTo(map);
+        <!-- JSON embutido contendo a localização do usuário -->
+        <script id="user-location" type="application/json">
+            { "latitude": "{{ user_lat }}", "longitude": "{{ user_lon }}" }
+        </script>
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+        <script src="https://unpkg.com/leaflet.awesome-markers@2.0.2/dist/leaflet.awesome-markers.min.js"></script>
 
-            // Adicionar os mercados ao mapa
-            var mercados = JSON.parse(document.getElementById('mercados-data').textContent);
-            console.log("Lista completa de mercados carregados:", mercados);
-
-            mercados.forEach(function(mercado, index) {
-                var lat = parseFloat(mercado.latitude);
-                var lon = parseFloat(mercado.longitude);
-
-                if (!isNaN(lat) && !isNaN(lon) && lat !== 0.0 && lon !== 0.0) {
-                    console.log(`Mercado válido #${index}: ${mercado.nome}, Lat: ${lat}, Lon: ${lon}`);
-
-                    var popupContent = `<div class="popup-text"><b>${mercado.nome}</b><br>${mercado.endereco}</div>`;
-
-                    L.marker([lat, lon]).addTo(map).bindPopup(popupContent);
-                    bounds.extend([lat, lon]);
-                } else {
-                    console.warn(`ERRO: Mercado inválido #${index}: ${mercado.nome} (Lat: ${mercado.latitude}, Lon: ${mercado.longitude})`);
-                }
-            });
-
-            // Ajustar a visão do mapa para incluir todos os pontos
-            if (!bounds.isValid()) {
-                console.warn("Nenhum mercado válido encontrado. Ajustando para visão padrão.");
-                map.setView([userLat, userLon], 10);
-            } else {
-                map.fitBounds(bounds);
-            }
-
-            // Garante que o Leaflet renderize corretamente o mapa
-            setTimeout(() => {
-                map.invalidateSize();
-                console.log("Mapa atualizado com invalidateSize()");
-            }, 500);
-        });
-
+        <!-- JSON embutido contendo os mercados -->
+        <script id="mercados-data" type="application/json">
+            {{ mercados_comprados|safe }}
         </script>
 
-    {% elif error %}
-        <div class="error">
-            <p>{{ error }}</p>
-        </div>
-    {% else %}
-        <h2>Nenhum resultado encontrado</h2>
-    {% endif %}
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                console.log("🔄 Iniciando a carga do mapa...");
+
+                // Obtém parâmetros da URL ou define coordenadas padrão (Maceió)
+                var urlParams = new URLSearchParams(window.location.search);
+                var userLat = parseFloat(urlParams.get("latitude"));
+                var userLon = parseFloat(urlParams.get("longitude"));
+
+                if (isNaN(userLat) || isNaN(userLon)) {
+                    userLat = -9.6658;  // Latitude padrão (Maceió)
+                    userLon = -35.7350; // Longitude padrão (Maceió)
+                }
+
+                // Inicializa o mapa
+                var map = L.map('map', {
+                    center: [userLat, userLon],
+                    zoom: 12,
+                    minZoom: 2,
+                    maxZoom: 18,
+                    preferCanvas: true
+                });
+
+                // Adiciona camada do OpenStreetMap
+                /*L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap contributors',
+                }).addTo(map);*/
+                L.tileLayer('https://tile.thunderforest.com/mobile-atlas/{z}/{x}/{y}.png?apikey={apikey}', {
+                    attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    apikey: '167efab150174855be732da176f2e3f2', // Sua chave
+                    maxZoom: 23
+                }).addTo(map);
+
+                var bounds = L.latLngBounds([]);
+
+                // 📍 Captura coordenadas do usuário da `Localizacao.html`
+                var localizacaoLat, localizacaoLon;
+
+                var userLocationScript = document.getElementById("user-location");
+                if (userLocationScript) {
+                    try {
+                        var userData = JSON.parse(userLocationScript.textContent);
+                        if (userData && userData.latitude && userData.longitude) {
+                            localizacaoLat = parseFloat(userData.latitude);
+                            localizacaoLon = parseFloat(userData.longitude);
+                        }
+                    } catch (error) {
+                        console.error("❌ Erro ao interpretar os dados de localização do usuário:", error);
+                    }
+                }
+
+                if (!isNaN(localizacaoLat) && !isNaN(localizacaoLon) && localizacaoLat !== 0.0 && localizacaoLon !== 0.0) {
+                    console.log(`📍 Adicionando marcador do usuário: Lat ${localizacaoLat}, Lon ${localizacaoLon}`);
+
+                    // 🔴 Ícone vermelho para a localização do usuário
+                    var redMarker = L.AwesomeMarkers.icon({
+                        icon: 'home',
+                        markerColor: 'red',
+                        prefix: 'fa'
+                    });
+
+                    L.marker([localizacaoLat, localizacaoLon], { icon: redMarker })
+                        .addTo(map)
+                        .bindPopup("<b>Sua Localização</b>")
+                        .openPopup();
+
+                    bounds.extend([localizacaoLat, localizacaoLon]);
+                } else {
+                    console.warn("⚠️ Coordenadas do usuário não encontradas ou inválidas.");
+                }
+
+                // 📌 Obtém os dados dos mercados e adiciona ao mapa
+                var mercadosData = document.getElementById("mercados-data");
+                if (!mercadosData) {
+                    console.error("❌ Elemento #mercados-data não encontrado. O mapa não pode ser populado.");
+                    return;
+                }
+
+                var mercados;
+                try {
+                    mercados = JSON.parse(mercadosData.textContent);
+                } catch (error) {
+                    console.error("❌ Erro ao interpretar os dados dos mercados:", error);
+                    return;
+                }
+
+                console.log("🛒 Lista completa de mercados carregados:", mercados);
+
+                var mercadoEncontrado = false;
+
+                // Adicionar mercados ao mapa
+                mercados.forEach(function(mercado, index) {
+                    var lat = parseFloat(mercado.latitude);
+                    var lon = parseFloat(mercado.longitude);
+
+                    if (!isNaN(lat) && !isNaN(lon) && lat !== 0.0 && lon !== 0.0) {
+                        console.log(`🛒 Mercado válido #${index}: ${mercado.nome}, Lat: ${lat}, Lon: ${lon}`);
+
+                        var popupContent = `<div class="popup-text">
+                                                <b>${mercado.nome}</b><br>
+                                                ${mercado.endereco}
+                                            </div>`;
+
+                        L.marker([lat, lon]).addTo(map).bindPopup(popupContent);
+                        bounds.extend([lat, lon]);
+                        mercadoEncontrado = true;
+                    } else {
+                        console.warn(`⚠️ ERRO: Mercado inválido #${index}: ${mercado.nome} (Lat: ${mercado.latitude}, Lon: ${mercado.longitude})`);
+                    }
+                });
+
+                // Ajustar a visão do mapa para incluir todos os pontos
+                if (mercadoEncontrado || (!isNaN(localizacaoLat) && !isNaN(localizacaoLon))) {
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                } else {
+                    console.warn("⚠️ Nenhum mercado ou usuário encontrado. Mantendo a visão padrão.");
+                    map.setView([userLat, userLon], 10);
+                }
+
+                // Garante que o Leaflet renderize corretamente o mapa
+                setTimeout(() => {
+                    map.invalidateSize();
+                    console.log("✅ Mapa atualizado com invalidateSize()");
+                }, 500);
+            });
+        </script>
+
+        {% elif error %}
+            <div class="error">
+                <p>{{ error }}</p>
+            </div>
+        {% else %}
+            <h2>Nenhum resultado encontrado</h2>
+        {% endif %}
 </body>
 </html>
