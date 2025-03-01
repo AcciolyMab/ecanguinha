@@ -19,6 +19,7 @@ __pycache__/
 cache/
 cache/*.json
 cached/
+
 # Arquivos de Configuração Locais
 local_settings.py
 settings_local.py
@@ -42,7 +43,6 @@ dump.rdb  # Arquivo de dump do Redis visto na imagem
 
 # Arquivos de Deploy e Plataforma
 staticfiles/
-static/
 media/
 uploads/
 CNAME  # Pode ser um arquivo específico para configuração de domínio
@@ -50,4 +50,4 @@ Procfile  # Pode ser necessário para Heroku, mas se não quiser versioná-lo, p
 
 # Arquivos Temporários e Build
 runtime.txt
-cache/29b1467b987e397d6e14c59190b7e84ac28a505b.json
+cache/*.json
