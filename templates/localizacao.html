@@ -89,7 +89,7 @@
     <div class="container mt-5">
         <h1>Localização do Comprador</h1>
         {% comment %} <form id="locationForm" action="{% url 'listar_produtos' %}" method="post"> {% endcomment %}
-        <form id="locationForm" action="{% url 'listar_produtos' %}" method="post" onsubmit="return validarCombustivel()">
+            <form id="locationForm" action="{% url 'listar_produtos' %}" method="post" onsubmit="return validarFormulario()">
             {% csrf_token %}
             <div class="mb-3">
                 <label for="nome" class="form-label">Nome do Comprador</label>
@@ -183,6 +183,18 @@
         </form>
     </div>
     <script>
+        function validarFormulario() {
+            const latitude = document.getElementById("latitude").value.trim();
+            const longitude = document.getElementById("longitude").value.trim();
+        
+            if (!latitude || !longitude || latitude === "0.0" || longitude === "0.0") {
+                alert("⚠️ Por favor, permita o acesso à sua localização ou insira as coordenadas manualmente.");
+                return false; // Impede o envio do formulário
+            }
+        
+            return validarCombustivel(); // Continua a validação do combustível
+        }        
+        
         document.addEventListener("DOMContentLoaded", () => {
             const checkEndereco = document.getElementById("checkEndereco");
             const enderecoGroup = document.getElementById("enderecoGroup");
@@ -227,25 +239,30 @@
                 );
             }
     
-            // Obter localização por endereço
+            //Obter localização por endereço
             btnObterLocalizacao.addEventListener("click", () => {
                 geoStatus.style.display = "none";
                 const endereco = document.getElementById("endereco").value.trim();
-    
+
                 if (!endereco) {
                     geoStatus.style.display = "block";
                     geoStatus.textContent = "Por favor, insira um endereço válido.";
                     return;
                 }
-    
+
                 const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}`;
                 fetch(url)
                     .then(response => response.json())
                     .then(data => {
                         if (data.length > 0) {
                             const location = data[0];
+                            if(location.lat && location.lon){
                             latitudeField.value = location.lat;
                             longitudeField.value = location.lon;
+                            } else {
+                            geoStatus.style.display = "block";
+                            geoStatus.textContent = "Endereço encontrado, mas coordenadas não disponíveis.";
+                            }
                         } else {
                             geoStatus.style.display = "block";
                             geoStatus.textContent = "Endereço não encontrado.";
@@ -257,6 +274,17 @@
                         geoStatus.textContent = "Erro ao obter localização. Tente novamente.";
                     });
             });
+
+            window.validarCombustivel = function() {
+                let combustivelSelecionado = document.querySelector('input[name="combustivel"]:checked');
+                
+                if (!combustivelSelecionado) {
+                    alert("Por favor, selecione um tipo de combustível antes de continuar.");
+                    return false; // Impede o envio do formulário
+                }
+                
+                return true; // Permite o envio do formulário se o combustível estiver selecionado
+            };
     
             // Criar checkboxes de produtos
             function createCheckboxes() {
