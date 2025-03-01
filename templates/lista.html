@@ -6,14 +6,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resultados da Busca</title>
-    <!-- CSS do Leaflet -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- CSS do Leaflet AwesomeMarkers -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.awesome-markers@2.0.2/dist/leaflet.awesome-markers.css" />
-    <!-- JS do Leaflet -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- JS do Leaflet AwesomeMarkers -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js"></script>
+
+
     <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}">
     
     <style>
@@ -143,7 +143,7 @@
 
         <!-- JSON embutido contendo a localização do usuário -->
         <script id="user-location" type="application/json">
-            { "latitude": "{{ user_lat }}", "longitude": "{{ user_lon }}" }
+            { "latitude": "{{ user_lat|default:-9.6658 }}", "longitude": "{{ user_lon|default:-35.7350 }}" }
         </script>
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
         <script src="https://unpkg.com/leaflet.awesome-markers@2.0.2/dist/leaflet.awesome-markers.min.js"></script>
@@ -156,20 +156,39 @@
         <script>
             document.addEventListener("DOMContentLoaded", function() {
                 console.log("🔄 Iniciando a carga do mapa...");
+                console.log("🔍 Iniciando depuração...");
 
-                // Obtém parâmetros da URL ou define coordenadas padrão (Maceió)
-                var urlParams = new URLSearchParams(window.location.search);
-                var userLat = parseFloat(urlParams.get("latitude"));
-                var userLon = parseFloat(urlParams.get("longitude"));
+                var userLocationScript = document.getElementById("user-location");
+                var localizacaoLat, localizacaoLon;
 
-                if (isNaN(userLat) || isNaN(userLon)) {
-                    userLat = -9.6658;  // Latitude padrão (Maceió)
-                    userLon = -35.7350; // Longitude padrão (Maceió)
+                if (userLocationScript) {
+                    try {
+                        var userData = JSON.parse(userLocationScript.textContent);
+                        localizacaoLat = parseFloat(userData.latitude);
+                        localizacaoLon = parseFloat(userData.longitude);
+                    } catch (error) {
+                        console.error("❌ Erro ao interpretar JSON de localização:", error);
+                    }
                 }
+
+                console.log("📍 Coordenadas obtidas do template:");
+                console.log("Latitude:", localizacaoLat, "Longitude:", localizacaoLon);
+
+                // Se a latitude e longitude forem inválidas, definir valores padrão
+                if (isNaN(localizacaoLat) || isNaN(localizacaoLon) || localizacaoLat === 0.0 || localizacaoLon === 0.0) {
+                    console.warn("⚠️ Coordenadas inválidas. Usando valores padrão.");
+                    localizacaoLat = -9.6658;  // Latitude padrão (Maceió)
+                    localizacaoLon = -35.7350; // Longitude padrão (Maceió)
+                }
+
+                console.log("📌 Coordenadas finais usadas:");
+                console.log("Latitude:", localizacaoLat, "Longitude:", localizacaoLon);
+
+
 
                 // Inicializa o mapa
                 var map = L.map('map', {
-                    center: [userLat, userLon],
+                    center: [localizacaoLat, localizacaoLon],
                     zoom: 12,
                     minZoom: 2,
                     maxZoom: 18,
@@ -204,25 +223,51 @@
                     }
                 }
 
-                if (!isNaN(localizacaoLat) && !isNaN(localizacaoLon) && localizacaoLat !== 0.0 && localizacaoLon !== 0.0) {
-                    console.log(`📍 Adicionando marcador do usuário: Lat ${localizacaoLat}, Lon ${localizacaoLon}`);
-
-                    // 🔴 Ícone vermelho para a localização do usuário
-                    var redMarker = L.AwesomeMarkers.icon({
-                        icon: 'home',
-                        markerColor: 'red',
-                        prefix: 'fa'
-                    });
-
-                    L.marker([localizacaoLat, localizacaoLon], { icon: redMarker })
-                        .addTo(map)
-                        .bindPopup("<b>Sua Localização</b>")
-                        .openPopup();
-
-                    bounds.extend([localizacaoLat, localizacaoLon]);
-                } else {
-                    console.warn("⚠️ Coordenadas do usuário não encontradas ou inválidas.");
+                function adicionarMarcadorUsuario() {
+                    if (!isNaN(localizacaoLat) && !isNaN(localizacaoLon) && localizacaoLat !== 0.0 && localizacaoLon !== 0.0) {
+                        console.log(`📍 Adicionando marcador do usuário: Lat ${localizacaoLat}, Lon ${localizacaoLon}`);
+                
+                        // 🔄 Espera até que AwesomeMarkers esteja pronto
+                        if (typeof L.AwesomeMarkers !== "undefined" && L.AwesomeMarkers.icon) {
+                            var redMarker = L.AwesomeMarkers.icon({
+                                icon: 'home',
+                                markerColor: 'red',
+                                prefix: 'fa'
+                            });
+                
+                            L.marker([localizacaoLat, localizacaoLon], { icon: redMarker })
+                                .addTo(map)
+                                .bindPopup("<b>Sua Localização</b>")
+                                .openPopup();
+                
+                            bounds.extend([localizacaoLat, localizacaoLon]);
+                        } else {
+                            console.warn("⚠️ Leaflet AwesomeMarkers ainda não carregado. Tentando novamente em 500ms...");
+                            setTimeout(adicionarMarcadorUsuario, 500);
+                        }
+                    } else {
+                        console.warn("⚠️ Coordenadas do usuário não encontradas ou inválidas.");
+                    }
                 }
+                
+                // ⏳ Aguarde até o DOM estar carregado
+                document.addEventListener("DOMContentLoaded", function () {
+                    console.log("🔄 Verificando se Leaflet AwesomeMarkers foi carregado...");
+                
+                    if (typeof L.AwesomeMarkers === "undefined") {
+                        console.warn("⚠️ Leaflet AwesomeMarkers não carregado. Adicionando dinamicamente...");
+                        var script = document.createElement("script");
+                        script.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js";
+                        script.onload = function () {
+                            console.log("✅ Leaflet AwesomeMarkers carregado com sucesso.");
+                            adicionarMarcadorUsuario();
+                        };
+                        document.body.appendChild(script);
+                    } else {
+                        adicionarMarcadorUsuario();
+                    }
+                });
+                
 
                 // 📌 Obtém os dados dos mercados e adiciona ao mapa
                 var mercadosData = document.getElementById("mercados-data");
@@ -279,6 +324,20 @@
                 }, 500);
             });
         </script>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                if (typeof L.AwesomeMarkers === "undefined") {
+                    console.warn("⚠️ Leaflet AwesomeMarkers ainda não carregado. Tentando carregar dinamicamente...");
+                    var script = document.createElement("script");
+                    script.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js";
+                    script.onload = function() {
+                        console.log("✅ Leaflet AwesomeMarkers carregado com sucesso.");
+                    };
+                    document.body.appendChild(script);
+                }
+            });
+            </script>
+            
 
         {% elif error %}
             <div class="error">
