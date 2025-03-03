@@ -389,8 +389,63 @@ def initial_solution(K: List[str], M: List[str], depot: str, Mk: Dict[str, Set[s
     return solution
 
 
+# def calculate_cost(solution: Dict, distancias: List[List[float]], node_index: Dict[str, int],
+#                   pik: Dict[Tuple[str, str], float]) -> float:
+#     if solution is None:
+#         return float('inf')
+
+#     route = solution['route_obj'].get_route()
+#     purchases = solution['purchases']
+
+#     # Custo de viagem
+#     total_distance = 0
+#     for i in range(len(route) - 1):
+#         origem = route[i]
+#         destino = route[i + 1]
+#         total_distance += distancias[node_index[origem]][node_index[destino]]
+#     # Voltar para o depósito
+#     total_distance += distancias[node_index[route[-1]]][node_index[route[0]]]
+
+#     # Custo de compra
+#     total_purchase_cost = 0
+#     for market, products in purchases.items():
+#         for k in products:
+#             if (market, k) in pik:
+#                 total_purchase_cost += pik[(market, k)]
+#             else:
+#                 logger.error(f"Erro: Produto {k} não está disponível no mercado {market}.")
+#                 return float('inf')  # Solução inviável
+
+#     total_cost = total_distance + total_purchase_cost
+#     return total_cost
+
+
+# def acceptance_criterion(current_cost: float, new_cost: float, iteration: int, max_iterations: int) -> bool:
+#     # Critério de aceitação usando Simulated Annealing
+#     if new_cost < current_cost:
+#         return True
+#     else:
+#         temperature = max(0.01, min(1, 1 - iteration / max_iterations))
+#         probability = math.exp(-(new_cost - current_cost) / temperature)
+#         return random.random() < probability
+
+def acceptance_criterion(current_cost: float, new_cost: float, iteration: int, max_iterations: int) -> bool:
+    """
+    Critério de aceitação usando Simulated Annealing:
+      - Se o novo custo é menor, aceita a solução.
+      - Caso contrário, aceita com uma probabilidade que diminui conforme a 'temperatura' (derivada da iteração atual).
+    """
+    if new_cost < current_cost:
+        return True
+    else:
+        # Calcula uma "temperatura" decrescente (mínimo de 0.01, máximo de 1)
+        temperature = max(0.01, min(1, 1 - iteration / max_iterations))
+        # Probabilidade de aceitar uma piora
+        probability = math.exp(-(new_cost - current_cost) / temperature)
+        return random.random() < probability
+    
 def calculate_cost(solution: Dict, distancias: List[List[float]], node_index: Dict[str, int],
-                  pik: Dict[Tuple[str, str], float]) -> float:
+                   pik: Dict[Tuple[str, str], float]) -> float:
     if solution is None:
         return float('inf')
 
@@ -416,18 +471,15 @@ def calculate_cost(solution: Dict, distancias: List[List[float]], node_index: Di
                 logger.error(f"Erro: Produto {k} não está disponível no mercado {market}.")
                 return float('inf')  # Solução inviável
 
+    # Penalizar mercados com apenas um item: para cada mercado com somente 1 produto, adiciona-se uma penalidade
+    penalty_value = 100  # Valor de penalidade (ajuste conforme necessário)
+    for market, products in purchases.items():
+        if len(products) == 1:
+            total_purchase_cost += penalty_value
+
     total_cost = total_distance + total_purchase_cost
     return total_cost
 
-
-def acceptance_criterion(current_cost: float, new_cost: float, iteration: int, max_iterations: int) -> bool:
-    # Critério de aceitação usando Simulated Annealing
-    if new_cost < current_cost:
-        return True
-    else:
-        temperature = max(0.01, min(1, 1 - iteration / max_iterations))
-        probability = math.exp(-(new_cost - current_cost) / temperature)
-        return random.random() < probability
 
 
 def random_removal(solution: Dict, remove_fraction: float = 0.2) -> Dict:
