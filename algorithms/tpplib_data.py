@@ -74,25 +74,51 @@ def create_tpplib_data(dataframe, avg_lat=None, avg_lon=None, media_preco=0.0):
     G = ox.graph_from_point((avg_lat, avg_lon), dist=5000, network_type='drive')
 
     # Identificação dos nós mais próximos e cálculo de distâncias na rede
+    mercado_ids_sorted = sorted(data['V'])  # ex.: [1, 2, 3, ...]
     node_ids = []
-    for mercado_id, (lat, lon) in data['node_coords'].items():
+
+    for mercado_id in mercado_ids_sorted:
+        lat, lon = data['node_coords'][mercado_id]
         nearest_node = ox.distance.nearest_nodes(G, lon, lat)
         node_ids.append(nearest_node)
 
-    time.sleep(1)  # Pausa para evitar sobrecarga na API do OSMnx
-    distancias = np.zeros((len(node_ids), len(node_ids)))
-    for i, origin in enumerate(node_ids):
-        for j, destination in enumerate(node_ids):
-            if i != j:
-                try:
-                    dist = nx.shortest_path_length(G, origin, destination, weight='length') / 1000
-                    distancias[i, j] = dist * valor_medio_km  # Distância em quilômetros
-                except nx.NetworkXNoPath:
-                    distancias[i, j] = float('inf')  # Distância infinita se não houver caminho
-            else:
-                distancias[i, j] = 0
+    # Agora, se mercado_ids_sorted[k] == m, então node_ids[k] é o "nearest_node" do mercado m
+    # E data['node_index'][m] == k
 
-    data['distancias'] = distancias.tolist()  # Convertendo para lista
+    distancias = np.zeros((len(node_ids), len(node_ids)))
+
+    for i, origin_node in enumerate(node_ids):
+        for j, dest_node in enumerate(node_ids):
+            if i == j:
+                distancias[i, j] = 0
+            else:
+                try:
+                    dist_km = nx.shortest_path_length(G, origin_node, dest_node, weight='length') / 1000
+                    distancias[i, j] = dist_km * valor_medio_km
+                except nx.NetworkXNoPath:
+                    distancias[i, j] = float('inf')
+
+    data['distancias'] = distancias.tolist()
+
+    # node_ids = []
+    # for mercado_id, (lat, lon) in data['node_coords'].items():
+    #     nearest_node = ox.distance.nearest_nodes(G, lon, lat)
+    #     node_ids.append(nearest_node)
+
+    # time.sleep(1)  # Pausa para evitar sobrecarga na API do OSMnx
+    # distancias = np.zeros((len(node_ids), len(node_ids)))
+    # for i, origin in enumerate(node_ids):
+    #     for j, destination in enumerate(node_ids):
+    #         if i != j:
+    #             try:
+    #                 dist = nx.shortest_path_length(G, origin, destination, weight='length') / 1000
+    #                 distancias[i, j] = dist * valor_medio_km  # Distância em quilômetros
+    #             except nx.NetworkXNoPath:
+    #                 distancias[i, j] = float('inf')  # Distância infinita se não houver caminho
+    #         else:
+    #             distancias[i, j] = 0
+
+    # data['distancias'] = distancias.tolist()  # Convertendo para lista
 
     # Mapeamento de ID do produto para nome do produto
     data['produtos'] = {idx + 1: produto for idx, produto in enumerate(categorias_unicas)}

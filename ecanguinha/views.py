@@ -153,7 +153,7 @@ def listar_produtos(request):
 
             tpplib_data = create_tpplib_data(df, avg_lat, avg_lon, media_preco=float(request.POST.get('precoCombustivel', 0)))
 
-            resultado_solver = alns_solve_tpp(tpplib_data, 10000, 100)
+            resultado_solver = alns_solve_tpp(tpplib_data, 20000, 100)
 
             if not resultado_solver:
                 messages.error(request, "Não foi possível encontrar uma solução viável.")
