@@ -176,21 +176,21 @@ LOGGING = {
     },
     'root': {
         'handlers': ['console'],
-        'level': 'ERROR' if not DEBUG else 'DEBUG',
+        'level': 'WARNING',  # Mudança de DEBUG para WARNING
     },
     'django': {
         'handlers': ['console'],
-        'level': 'ERROR' if not DEBUG else 'INFO',
+        'level': 'WARNING',  # Mudança de INFO para WARNING
         'propagate': True,
     },
     'urllib3': {
         'handlers': ['console'],
-        'level': 'WARNING',
+        'level': 'ERROR',
         'propagate': False,
     },
     'requests': {
         'handlers': ['console'],
-        'level': 'WARNING',
+        'level': 'ERROR',
         'propagate': False,
     },
 }
