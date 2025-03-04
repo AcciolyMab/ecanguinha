@@ -99,7 +99,7 @@
         <form id="locationForm" action="{% url 'listar_produtos' %}" method="post">
             {% csrf_token %}
             <div class="mb-3">
-                <label for="nome" class="form-label">Nome do Comprador</label>
+                <label for="nome" class="form-label">Nome do Comprador *</label>
                 <input type="text" class="form-control" id="nome" name="nome" placeholder="Insira o nome do comprador" required>
             </div>
 
@@ -141,7 +141,7 @@
             </div>
             
             <div class="mb-3 p-3 border rounded shadow-sm">
-                <h3 class="mb-3 text-primary">Selecione o Tipo de Combustível</h3>
+                <h3 class="mb-3 text-primary">Selecione o Tipo de Combustível *</h3>
                 <div class="d-flex flex-column gap-2">
                     <div class="d-flex align-items-center combustivel-item">
                         <input class="form-check-input" type="radio" name="combustivel" id="gnv" value="GNV" required>
@@ -170,7 +170,7 @@
             <!-- Seção de seleção de produtos e envio, inicialmente oculta -->
             <div id="productSection" style="display: none;">
                 <div class="mb-3 p-3 border rounded shadow-sm">
-                    <h3 class="mb-3 text-primary">Selecione os Produtos</h3>
+                    <h3 class="mb-3 text-primary">Selecione os Produtos *</h3>
                     <div class="form-check mb-3">
                         <input type="checkbox" class="form-check-input" id="selectAllCheckbox">
                         <label class="form-check-label" for="selectAllCheckbox">Selecionar Todos</label>
