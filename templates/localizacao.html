@@ -162,25 +162,29 @@
                 </div>
                 <div class="mt-3">
                     <label for="precoCombustivel" class="form-label">Preço do Combustível (R$)</label>
-                    <input type="text" class="form-control combustivel-input small-input" id="precoCombustivel" name="precoCombustivel" placeholder="0,00" readonly>
+                    <input type="text" class="form-control combustivel-input small-input" id="precoCombustivel" name="precoCombustivel" placeholder="0,00">
                     <button type="button" class="btn btn-primary" id="btnCalcularMedia">Calcular Média</button>
                 </div>
             </div>
 
-            <div class="mb-3 p-3 border rounded shadow-sm">
-                <h3 class="mb-3 text-primary">Selecione os Produtos</h3>
-                <div class="form-check mb-3">
-                    <input type="checkbox" class="form-check-input" id="selectAllCheckbox">
-                    <label class="form-check-label" for="selectAllCheckbox">Selecionar Todos</label>
+            <!-- Seção de seleção de produtos e envio, inicialmente oculta -->
+            <div id="productSection" style="display: none;">
+                <div class="mb-3 p-3 border rounded shadow-sm">
+                    <h3 class="mb-3 text-primary">Selecione os Produtos</h3>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="selectAllCheckbox">
+                        <label class="form-check-label" for="selectAllCheckbox">Selecionar Todos</label>
+                    </div>
+                    <div id="categoryCheckboxes" class="checkbox-group"></div>
                 </div>
-                <div id="categoryCheckboxes" class="checkbox-group"></div>
-            </div>
 
-            <input type="hidden" id="hiddenLatitude" name="hiddenLatitude">
-            <input type="hidden" id="hiddenLongitude" name="hiddenLongitude">
-            <input type="hidden" id="item_list" name="item_list">
-            <div class="form-buttons">
-                <button type="submit" class="btn btn-success">Enviar</button>
+                <input type="hidden" id="hiddenLatitude" name="hiddenLatitude">
+                <input type="hidden" id="hiddenLongitude" name="hiddenLongitude">
+                <input type="hidden" id="item_list" name="item_list">
+                
+                <div class="form-buttons">
+                    <button type="submit" class="btn btn-success">Enviar</button>
+                </div>
             </div>
         </form>
     </div>
@@ -264,6 +268,7 @@
             const progressContainer = document.getElementById("progressContainer");
             const selectAllCheckbox = document.getElementById("selectAllCheckbox");
             const checkboxContainer = document.getElementById("categoryCheckboxes");
+
     
             // Alterna exibição do campo de endereço
             checkEndereco.addEventListener("change", () => {
@@ -426,7 +431,6 @@
                 progressContainer.style.display = "block";
             });
     
-            // Calcular média do combustível via fetch
             btnCalcularMedia.addEventListener("click", () => {
                 const combustivelSelecionado = document.querySelector('input[name="combustivel"]:checked');
                 if (!combustivelSelecionado) {
@@ -460,12 +464,15 @@
                 .then(data => {
                     if (data.media_preco !== undefined) {
                         document.getElementById("precoCombustivel").value = data.media_preco.toFixed(2);
+            
+                        // 🔹 Garante que a seção de produtos seja exibida após preenchimento
+                        verificarPrecoCombustivel();
                     } else {
                         alert(data.error || "Erro ao calcular a média do combustível.");
                     }
                 })
                 .catch(error => console.error("Erro:", error));
-            });
+            });            
         });
     </script>
     <script>
@@ -477,5 +484,80 @@
             console.log("Longitude:", lonInput.value);
         });
     </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const precoCombustivelInput = document.getElementById("precoCombustivel");
+            const productSection = document.getElementById("productSection");
+    
+            function verificarPrecoCombustivel() {
+                if (precoCombustivelInput.value.trim() !== "" && precoCombustivelInput.value.trim() !== "0,00") {
+                    productSection.style.display = "block";  // Exibe a seção
+                } else {
+                    productSection.style.display = "none";   // Oculta a seção novamente
+                }
+            }
+    
+            // Dispara a verificação ao digitar ou mudar o valor manualmente
+            precoCombustivelInput.addEventListener("input", verificarPrecoCombustivel);
+            precoCombustivelInput.addEventListener("change", verificarPrecoCombustivel);
+    
+            // Verifica mudanças no campo de entrada de tempos em tempos (corrige alterações via JavaScript)
+            setInterval(verificarPrecoCombustivel, 500);
+    
+            // Garantia de que a função será chamada após o carregamento da página
+            verificarPrecoCombustivel();
+    
+            // Captura o botão "Calcular Média"
+            const btnCalcularMedia = document.getElementById("btnCalcularMedia");
+    
+            btnCalcularMedia.addEventListener("click", () => {
+                const combustivelSelecionado = document.querySelector('input[name="combustivel"]:checked');
+                if (!combustivelSelecionado) {
+                    alert("Por favor, selecione um tipo de combustível.");
+                    return;
+                }
+                const descricao = combustivelSelecionado.value;
+                const latitude = document.getElementById("latitude").value.trim();
+                const longitude = document.getElementById("longitude").value.trim();
+                const raio = document.getElementById("raioSlider").value;
+                const dias = document.getElementById("diasSlider").value;
+    
+                if (!latitude || !longitude || latitude === "0.0" || longitude === "0.0") {
+                    alert("Latitude e longitude são obrigatórias.");
+                    return;
+                }
+    
+                fetch("{% url 'processar_combustivel' %}", {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                    body: new URLSearchParams({
+                        "descricao": descricao,
+                        "latitude": latitude,
+                        "longitude": longitude,
+                        "raio": raio,
+                        "dias": dias
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.media_preco !== undefined) {
+                        precoCombustivelInput.value = data.media_preco.toFixed(2);
+                        
+                        // 🔹 Disparar evento manualmente para ativar os listeners
+                        precoCombustivelInput.dispatchEvent(new Event("change"));
+    
+                        // 🔹 Garante que a seção de produtos seja exibida
+                        verificarPrecoCombustivel();
+                    } else {
+                        alert(data.error || "Erro ao calcular a média do combustível.");
+                    }
+                })
+                .catch(error => console.error("Erro:", error));
+            });
+        });
+    </script>    
 </body>
 </html>

@@ -112,6 +112,20 @@
                 <p><strong>Custo Total:</strong> R$ {{ resultado.total_cost|floatformat:2 }}</p>
                 <p><strong>Distância Total:</strong> {{ resultado.total_distance }} km | <strong>Tempo de Execução:</strong> {{ resultado.execution_time }} segundos</p>
             </div>
+            <!-- Links para pesquisa e nova busca -->
+            <div style="margin-top: 20px; display: flex; gap: 10px;">
+                <!-- Link para responder à pesquisa -->
+                <a href="https://docs.google.com/forms/d/11vjae7ll1qfBtFNDwggg6bXRPbbAp0Jao29krbLR1uw/edit?pli=1" 
+                target="_blank" 
+                class="btn btn-primary">
+                📝 Responder Pesquisa
+                </a>
+
+                <!-- Link para voltar à página de localização -->
+                <a href="{% url 'localizacao' %}" class="btn btn-secondary">
+                🔄 Nova Busca
+                </a>
+            </div>
         </div>
         <div id="map"></div>
     </div>
@@ -152,7 +166,7 @@
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap contributors',
-                maxZoom: 24
+                maxZoom: 15
             }).addTo(map);
 
             L.marker([userLat, userLon], {
@@ -174,18 +188,30 @@
             }
         
             var bounds = L.latLngBounds([]);
-        
+
+            // Definir o ícone personalizado para mercados
+            var mercadoIcon = L.AwesomeMarkers.icon({
+                icon: 'shopping-cart',  // Ícone do FontAwesome (fa-shopping-cart)
+                markerColor: 'green',    // Cor do marcador (pode ser 'red', 'green', 'blue', etc.)
+                prefix: 'fa'            // Define o uso do FontAwesome
+            });
+
             mercados.forEach(function(mercado) {
                 var lat = parseFloat(mercado.latitude);
                 var lon = parseFloat(mercado.longitude);
-        
+
                 if (!isNaN(lat) && !isNaN(lon) && lat !== 0.0 && lon !== 0.0) {
                     var popupContent = `<b>${mercado.nome}</b><br>${mercado.endereco}`;
-                    L.marker([lat, lon]).addTo(map).bindPopup(popupContent);
+                    
+                    // Aplicar o ícone ao marcador
+                    L.marker([lat, lon], { icon: mercadoIcon })
+                        .addTo(map)
+                        .bindPopup(popupContent);
+
                     bounds.extend([lat, lon]);
                 }
             });
-        
+
             if (mercados.length > 0) {
                 map.fitBounds(bounds, { padding: [50, 50] });
             } else {
@@ -198,7 +224,6 @@
                 console.log("✅ Mapa atualizado com invalidateSize()"); 
             }, 500);
         });
-        </script>
-        
+    </script>      
 </body>
 </html>
