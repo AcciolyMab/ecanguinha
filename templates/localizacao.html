@@ -26,31 +26,25 @@
         .checkbox-group {
             columns: 3;
         }
-
         .location-fields {
             display: flex;
             gap: 20px;
             align-items: flex-end;
         }
-
         .location-group {
             flex: 1;
         }
-
         input.small-input {
             width: 100px;
         }
-
         .slider-container {
             display: flex;
             flex-direction: column;
         }
-
         .form-buttons {
             display: flex;
             justify-content: center;
         }
-
         @keyframes progressAnimation {
             0% {
                 stroke-dashoffset: 251.2;
@@ -59,18 +53,26 @@
                 stroke-dashoffset: 0;
             }
         }
-        
         svg circle {
             animation: progressAnimation 3s linear infinite;
         }
-        
-    </style>    
+    </style>
 </head>
 <body>
+    <!-- Barra de Progresso (inicialmente oculta) -->
+    <div id="progressContainer" style="display: none;">
+        <svg viewBox="0 0 100 100" width="100" height="100">
+            <circle cx="50" cy="50" r="40" stroke="#007bff" stroke-width="10" fill="none" stroke-linecap="round"
+                    stroke-dasharray="251.2" stroke-dashoffset="251.2"></circle>
+        </svg>
+        <p>Aguarde, estamos pechinchando para voce Canguinha...</p>
+    </div>
+
     <nav class="navbar navbar-expand-lg">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">Canguinha Alagoas</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
@@ -91,18 +93,10 @@
             </div>
         </div>
     </nav>
-    <div id="progressContainer" style="display: none; text-align: center; margin-top: 20px;">
-        <svg viewBox="0 0 100 100" width="100" height="100">
-            <circle cx="50" cy="50" r="40" stroke="#007bff" stroke-width="10" fill="none" stroke-linecap="round"
-                    stroke-dasharray="251.2" stroke-dashoffset="251.2">
-            </circle>
-        </svg>
-        <p>Aguarde, processando...</p>
-    </div>    
+
     <div class="container mt-5">
         <h1>Localização do Comprador</h1>
-        {% comment %} <form id="locationForm" action="{% url 'listar_produtos' %}" method="post"> {% endcomment %}
-            <form id="locationForm" action="{% url 'listar_produtos' %}" method="post" onsubmit="return validarFormulario()">
+        <form id="locationForm" action="{% url 'listar_produtos' %}" method="post">
             {% csrf_token %}
             <div class="mb-3">
                 <label for="nome" class="form-label">Nome do Comprador</label>
@@ -136,42 +130,36 @@
                 <label for="raioSlider">Raio de Busca (km):</label>
                 <input type="range" class="form-range small-input" id="raioSlider" name="raio" min="1" max="15" value="1">
                 <span id="raioValue">1 km</span>
-                <small class="text-muted">Distância em quilômetros para busca. Máximo 15Km.</small>
+                <small class="text-muted">Máximo 15Km.</small>
             </div>
 
             <div class="slider-container">
                 <label for="diasSlider">Período de Análise (dias):</label>
                 <input type="range" class="form-range small-input" id="diasSlider" name="dias" min="1" max="10" value="1">
                 <span id="diasValue">1 dia</span>
-                <small class="text-muted">Quantidade de dias para a análise de preços. Máximo 10 dias.</small>
+                <small class="text-muted">Máximo 10 dias.</small>
             </div>
             
             <div class="mb-3 p-3 border rounded shadow-sm">
                 <h3 class="mb-3 text-primary">Selecione o Tipo de Combustível</h3>
-            
                 <div class="d-flex flex-column gap-2">
                     <div class="d-flex align-items-center combustivel-item">
                         <input class="form-check-input" type="radio" name="combustivel" id="gnv" value="GNV" required>
-                        <label class="form-check-label combustivel-label" for="gnv">GNV</label>
+                        <label class="form-check-label" for="gnv">GNV</label>
                     </div>
-            
                     <div class="d-flex align-items-center combustivel-item">
                         <input class="form-check-input" type="radio" name="combustivel" id="etanol" value="Etanol">
-                        <label class="form-check-label combustivel-label" for="etanol">Etanol</label>
+                        <label class="form-check-label" for="etanol">Etanol</label>
                     </div>
-            
                     <div class="d-flex align-items-center combustivel-item">
                         <input class="form-check-input" type="radio" name="combustivel" id="gasolina" value="Gasolina">
-                        <label class="form-check-label combustivel-label" for="gasolina">Gasolina</label>
+                        <label class="form-check-label" for="gasolina">Gasolina</label>
                     </div>
-            
                     <div class="d-flex align-items-center combustivel-item">
                         <input class="form-check-input" type="radio" name="combustivel" id="diesel" value="Diesel">
-                        <label class="form-check-label combustivel-label" for="diesel">Diesel</label>
+                        <label class="form-check-label" for="diesel">Diesel</label>
                     </div>
                 </div>
-            
-                <!-- Caixa de texto única para o preço -->
                 <div class="mt-3">
                     <label for="precoCombustivel" class="form-label">Preço do Combustível (R$)</label>
                     <input type="text" class="form-control combustivel-input small-input" id="precoCombustivel" name="precoCombustivel" placeholder="0,00" readonly>
@@ -188,26 +176,78 @@
                 <div id="categoryCheckboxes" class="checkbox-group"></div>
             </div>
 
+            <input type="hidden" id="hiddenLatitude" name="hiddenLatitude">
+            <input type="hidden" id="hiddenLongitude" name="hiddenLongitude">
             <input type="hidden" id="item_list" name="item_list">
-
             <div class="form-buttons">
                 <button type="submit" class="btn btn-success">Enviar</button>
             </div>
         </form>
     </div>
+
     <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Atraso para garantir que a geolocalização preenche os inputs
+            setTimeout(function() {
+                var latInput = document.getElementById("latitude");
+                var lonInput = document.getElementById("longitude");
+                console.log("Valores dos inputs na localizacao.html:");
+                console.log("Latitude:", latInput.value);
+                console.log("Longitude:", lonInput.value);
+            }, 2000); // 2 segundos de atraso
+        });
+    </script>
+
+    <script>
+        // Função de validação
         function validarFormulario() {
             const latitude = document.getElementById("latitude").value.trim();
             const longitude = document.getElementById("longitude").value.trim();
-        
             if (!latitude || !longitude || latitude === "0.0" || longitude === "0.0") {
                 alert("⚠️ Por favor, permita o acesso à sua localização ou insira as coordenadas manualmente.");
-                return false; // Impede o envio do formulário
+                return false;
             }
+            return validarCombustivel();
+        }
         
-            return validarCombustivel(); // Continua a validação do combustível
-        }        
-        
+        // Validação do combustível
+        window.validarCombustivel = function() {
+            const combustivelSelecionado = document.querySelector('input[name="combustivel"]:checked');
+            if (!combustivelSelecionado) {
+                alert("Por favor, selecione um tipo de combustível antes de continuar.");
+                return false;
+            }
+            return true;
+        };
+
+        // Função para obter a localização automaticamente caso os campos estejam vazios
+        function obterLocalizacao() {
+            if (navigator.geolocation) {
+                console.log("🌍 Obtendo geolocalização...");
+
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        let latitude = position.coords.latitude.toFixed(6);
+                        let longitude = position.coords.longitude.toFixed(6);
+
+                        document.getElementById("latitude").value = latitude;
+                        document.getElementById("longitude").value = longitude;
+                        document.getElementById("hiddenLatitude").value = latitude;
+                        document.getElementById("hiddenLongitude").value = longitude;
+
+                        console.log("📍 Coordenadas capturadas:", latitude, longitude);
+                    },
+                    function(error) {
+                        console.error("❌ Erro ao obter localização:", error.message);
+                        alert("Erro ao obter localização. Verifique as permissões do seu navegador.");
+                    }
+                );
+            } else {
+                console.error("⚠️ Geolocalização não suportada pelo navegador.");
+                alert("Seu navegador não suporta geolocalização. Insira manualmente.");
+            }
+        }
+
         document.addEventListener("DOMContentLoaded", () => {
             const checkEndereco = document.getElementById("checkEndereco");
             const enderecoGroup = document.getElementById("enderecoGroup");
@@ -225,35 +265,49 @@
             const selectAllCheckbox = document.getElementById("selectAllCheckbox");
             const checkboxContainer = document.getElementById("categoryCheckboxes");
     
-            // Alternar exibição do campo de endereço
+            // Alterna exibição do campo de endereço
             checkEndereco.addEventListener("change", () => {
                 enderecoGroup.style.display = checkEndereco.checked ? "block" : "none";
             });
     
-            // Atualizar valores dos sliders
+            // Atualiza valores dos sliders
             raioSlider.addEventListener("input", () => {
                 raioValue.textContent = `${raioSlider.value} km`;
             });
-    
             diasSlider.addEventListener("input", () => {
                 diasValue.textContent = `${diasSlider.value} dia(s)`;
             });
+
+            // Executa a função ao carregar a página
+            obterLocalizacao();
     
-            // Captura de geolocalização automática
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        latitudeField.value = position.coords.latitude;
-                        longitudeField.value = position.coords.longitude;
-                    },
-                    (error) => {
-                        console.error("Erro ao obter localização:", error.message);
-                    }
-                );
+            let latInput = document.getElementById("latitude");
+            let lonInput = document.getElementById("longitude");
+            let hiddenLatInput = document.getElementById("hiddenLatitude");
+            let hiddenLonInput = document.getElementById("hiddenLongitude");
+
+            if (latInput && lonInput) {
+                let latitude = parseFloat(latInput.value.trim());
+                let longitude = parseFloat(lonInput.value.trim());
+
+                // 🛠️ Corrigir valores multiplicados erroneamente
+                if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
+                    console.warn("⚠️ Coordenadas anormais detectadas. Normalizando valores...");
+                    latitude = latitude / 1000000;
+                    longitude = longitude / 1000000;
+                }
+
+                if (latitude && longitude) {
+                    hiddenLatInput.value = latitude.toFixed(6);
+                    hiddenLonInput.value = longitude.toFixed(6);
+                    console.log("📌 Coordenadas corrigidas antes do envio:", latitude, longitude);
+                } else {
+                    obterLocalizacao();
+                }
             }
-    
-            //Obter localização por endereço
-            btnObterLocalizacao.addEventListener("click", () => {
+
+            // Captura localização por endereço (quando usuário insere manualmente)
+            btnObterLocalizacao.addEventListener("click", function() {
                 geoStatus.style.display = "none";
                 const endereco = document.getElementById("endereco").value.trim();
 
@@ -263,43 +317,40 @@
                     return;
                 }
 
+                console.log("🔍 Buscando localização para o endereço:", endereco);
                 const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}`;
+
                 fetch(url)
                     .then(response => response.json())
                     .then(data => {
                         if (data.length > 0) {
                             const location = data[0];
-                            if(location.lat && location.lon){
                             latitudeField.value = location.lat;
                             longitudeField.value = location.lon;
-                            } else {
-                            geoStatus.style.display = "block";
-                            geoStatus.textContent = "Endereço encontrado, mas coordenadas não disponíveis.";
-                            }
+                            hiddenLatitude.value = location.lat;
+                            hiddenLongitude.value = location.lon;
+                            console.log("📍 Endereço convertido em coordenadas:", location.lat, location.lon);
                         } else {
                             geoStatus.style.display = "block";
                             geoStatus.textContent = "Endereço não encontrado.";
                         }
                     })
                     .catch(error => {
-                        console.error("Erro ao buscar localização:", error);
+                        console.error("❌ Erro ao buscar localização:", error);
                         geoStatus.style.display = "block";
                         geoStatus.textContent = "Erro ao obter localização. Tente novamente.";
                     });
             });
 
-            window.validarCombustivel = function() {
-                let combustivelSelecionado = document.querySelector('input[name="combustivel"]:checked');
-                
-                if (!combustivelSelecionado) {
-                    alert("Por favor, selecione um tipo de combustível antes de continuar.");
-                    return false; // Impede o envio do formulário
+            // Validação antes de enviar o formulário
+            locationForm.addEventListener("submit", function(event) {
+                if (!hiddenLatitude.value || !hiddenLongitude.value) {
+                    alert("⚠️ A localização não foi capturada corretamente. Por favor, insira manualmente ou permita o acesso à localização.");
+                    event.preventDefault();
                 }
-                
-                return true; // Permite o envio do formulário se o combustível estiver selecionado
-            };
+            });
     
-            // Criar checkboxes de produtos
+            // Cria os checkboxes de produtos
             function createCheckboxes() {
                 const categories = {
                     'FEIJAO': ["7896006744115", "7893500007715", "7898383101000", "7898907040969", "7898902735167"],
@@ -318,22 +369,18 @@
                     'OVOS': ["7897146402019", "7897146405010", "7897146402033", "7898903159085", "7896414410121"],
                     'SARDINHA 125G': ["7891167021013", "7891167023017", "7891167023024", "7896009301063", "7891167021075"]
                 };
-    
                 checkboxContainer.innerHTML = "";
                 for (const [categoryName, barcodes] of Object.entries(categories)) {
                     const checkboxWrapper = document.createElement("div");
                     checkboxWrapper.classList.add("form-check");
-    
                     const checkbox = document.createElement("input");
                     checkbox.type = "checkbox";
                     checkbox.className = "form-check-input";
                     checkbox.name = "category";
                     checkbox.value = JSON.stringify(barcodes);
-    
                     const label = document.createElement("label");
                     label.className = "form-check-label";
                     label.innerText = categoryName;
-    
                     checkboxWrapper.appendChild(checkbox);
                     checkboxWrapper.appendChild(label);
                     checkboxContainer.appendChild(checkboxWrapper);
@@ -347,55 +394,54 @@
                 checkboxes.forEach(checkbox => checkbox.checked = selectAllCheckbox.checked);
             });
     
-            // Atualizar checkbox "Selecionar Todos"
+            // Atualizar o checkbox "Selecionar Todos"
             function updateSelectAllCheckbox() {
                 const checkboxes = document.querySelectorAll('input[name="category"]');
                 selectAllCheckbox.checked = Array.from(checkboxes).every(checkbox => checkbox.checked);
             }
-    
             document.querySelectorAll('input[name="category"]').forEach(checkbox => {
                 checkbox.addEventListener("change", updateSelectAllCheckbox);
             });
     
-            // Processar seleção de produtos no formulário
+            // Processar seleção de produtos e validar o formulário antes do envio
             locationForm.addEventListener("submit", (event) => {
+                if (!validarFormulario()) {
+                    event.preventDefault();
+                    return;
+                }
                 const selectedItems = [];
                 const checkboxes = document.querySelectorAll('input[name="category"]:checked');
-    
                 if (checkboxes.length === 0) {
                     alert("Por favor, selecione ao menos um produto.");
                     event.preventDefault();
                     return;
                 }
-    
                 checkboxes.forEach(checkbox => {
                     const barcodes = JSON.parse(checkbox.value);
                     selectedItems.push(...barcodes);
                 });
-    
                 document.getElementById("item_list").value = JSON.stringify(selectedItems);
+                // Adiciona a classe "loading" ao body para ocultar os demais elementos
+                document.body.classList.add("loading");
+                progressContainer.style.display = "block";
             });
     
-            // Calcular média do combustível
+            // Calcular média do combustível via fetch
             btnCalcularMedia.addEventListener("click", () => {
-                let combustivelSelecionado = document.querySelector('input[name="combustivel"]:checked');
-    
+                const combustivelSelecionado = document.querySelector('input[name="combustivel"]:checked');
                 if (!combustivelSelecionado) {
                     alert("Por favor, selecione um tipo de combustível.");
                     return;
                 }
-    
-                let descricao = combustivelSelecionado.value;
-                let latitude = latitudeField.value.trim();
-                let longitude = longitudeField.value.trim();
-                let raio = raioSlider.value;
-                let dias = diasSlider.value;
-    
+                const descricao = combustivelSelecionado.value;
+                const latitude = latitudeField.value.trim();
+                const longitude = longitudeField.value.trim();
+                const raio = raioSlider.value;
+                const dias = diasSlider.value;
                 if (!latitude || !longitude || latitude === "0.0" || longitude === "0.0") {
                     alert("Latitude e longitude são obrigatórias.");
                     return;
                 }
-    
                 fetch("{% url 'processar_combustivel' %}", {
                     method: "POST",
                     headers: {
@@ -420,15 +466,15 @@
                 })
                 .catch(error => console.error("Erro:", error));
             });
-    
-            // Exibir barra de progresso ao enviar formulário
-            locationForm.addEventListener("submit", function (event) {
-                event.preventDefault();
-                progressContainer.style.display = "block";
-                setTimeout(() => {
-                    this.submit();
-                }, 3000);
-            });
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var latInput = document.getElementById("latitude");
+            var lonInput = document.getElementById("longitude");
+            console.log("Valores dos inputs na localizacao.html:");
+            console.log("Latitude:", latInput.value);
+            console.log("Longitude:", lonInput.value);
         });
     </script>
 </body>

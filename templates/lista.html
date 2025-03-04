@@ -6,38 +6,45 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resultados da Busca</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js"></script>
-
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js"></script>
-
-
     <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}">
-    
+
     <style>
+        /* 🔹 Layout Principal */
         .flex-container {
             display: flex;
+            margin-left: 10px;
             gap: 10px;
+            box-sizing: border-box;
         }
 
+        /* 🔹 Tabela de Produtos */
         .table-container {
-            flex: 0.3;
+            flex: 0.3; /* Ocupa 30% da largura */
             overflow-y: auto;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
             max-height: 800px;
             margin-left: 10px;
         }
 
+        /* 🔹 Mapa */
         #map {
             width: 100%;
             flex: 0.7;
             height: 800px;
             margin-right: 10px;
+            margin-top: 10px;
             border: 1px solid #ccc;
             display: block;
         }
 
+        /* 🔹 Tabela de Produtos */
         .table {
             width: 95%;
             border-collapse: collapse;
@@ -47,304 +54,151 @@
         .table th, .table td {
             padding: 5px;
             text-align: left;
-            border: 3px solid #ddd;
+            border: 1px solid #ddd;
         }
 
         .table thead {
             background-color: #f2f2f2;
         }
 
-        .summary-container {
-            margin-top: 10px;
-            font-size: 12px;
-        }
-
-        .summary-container p {
-            margin: 5px 0;
-        }
-
-        .button-container {
-            text-align: center;
-            margin-top: 20px;
-        }
-
-        .btn-avaliar {
-            padding: 10px 20px;
-            font-size: 14px;
-            color: #fff;
-            background-color: #007bff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            text-decoration: none;
-        }
-        
+        /* 🔹 Título dos Mercados */
         .mercado-nome {
-            font-size: 12px;  /* Define um tamanho menor */
-            font-weight: bold; /* Mantém negrito */
+            font-size: 12px;
+            font-weight: bold;
             line-height: 1.2;  /* Ajusta a altura da linha para melhor leitura */
-            margin-bottom: 5px; /* Reduz espaço abaixo */
+            margin-botton: 5px;
         }
 
-        .btn-avaliar:hover {
-            background-color: #0056b3;
+        /* 🔹 Resumo */
+        .summary-container {
+            font-size: 12px;
+            padding: 10px;
+            background: #ffffff;
+            border-radius: 8px;
+            margin-top: 10px;
+            margin-left: 10px;
+            margin: 5px 0;
         }
     </style>
 </head>
 <body>
-    <h1>Resultados da Busca</h1>
-    {% if mercados_comprados %}
-        <div class="flex-container">
-            <div class="table-container">
-                <h3>Lista de Produtos por Mercado</h3>
-                {% for mercado in mercados_comprados %}
-                    <h5 class="mercado-nome">{{ mercado.nome }} - {{ mercado.endereco }}</h5>
-                    <table class="table">
-                        <thead>
+    <div class="flex-container">
+        <div class="table-container">
+            <h3>Lista de Produtos por Mercado</h3>
+            {% for mercado in mercados_comprados %}
+                <h5 class="mercado-nome">{{ mercado.nome }} - {{ mercado.endereco }}</h5>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th>Preço</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for produto in resultado.purchases|dict_get:mercado.nome %}
                             <tr>
-                                <th>Produto</th>
-                                <th>Preço</th>
+                                <td>{{ produto.produto }}</td>
+                                <td>R$ {{ produto.preco|floatformat:2 }}</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {% for produto in resultado.purchases|dict_get:mercado.nome %}
-                                <tr>
-                                    <td>{{ produto.produto }}</td>
-                                    <td>R$ {{ produto.preco|floatformat:2 }}</td>
-                                </tr>
-                            {% empty %}
-                                <tr>
-                                    <td colspan="2">Nenhum produto encontrado</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                {% endfor %}
-
-                <div class="summary-container">
-                    <p><strong>Custo Total:</strong> R$ {{ resultado.total_cost|floatformat:2 }}</p>
-                    <p><strong>Distância Total:</strong> {{ resultado.total_distance }} km | <strong>Tempo de Execução:</strong> {{ resultado.execution_time }} segundos</p>
-                </div>
+                        {% empty %}
+                            <tr>
+                                <td colspan="2">Nenhum produto encontrado</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endfor %}
+            <div class="summary-container">
+                <p><strong>Custo Total:</strong> R$ {{ resultado.total_cost|floatformat:2 }}</p>
+                <p><strong>Distância Total:</strong> {{ resultado.total_distance }} km | <strong>Tempo de Execução:</strong> {{ resultado.execution_time }} segundos</p>
             </div>
-
-            <div id="map"></div>
         </div>
+        <div id="map"></div>
+    </div>
 
-        <div class="button-container">
-            <a href="{% url 'avaliar' %}" class="btn-avaliar">Avaliar</a>
-        </div>
+    {{ user_latitude|json_script:"user-latitude" }}
+    {{ user_longitude|json_script:"user-longitude" }}
+    {{ resultado.rota|json_script:"rota-data" }}
+    {{ node_coords|json_script:"node-coords-data" }}
+    {{ mercados_comprados|json_script:"mercados-data" }}
 
-        {{ resultado.rota|json_script:"rota-data" }}
-        {{ node_coords|json_script:"node-coords-data" }}
-        {{ mercados_comprados|json_script:"mercados-data" }}
+    {% comment %} <script id="user-location" type="application/json">
+        {
+            "latitude": {{ latitude|default:"-9.648139"|floatformat:"6"|stringformat:"s"|safe|cut:"," }},
+            "longitude": {{ longitude|default:"-35.717239"|floatformat:"6"|stringformat:"s"|safe|cut:"," }}
+        }
+    </script>     {% endcomment %}
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            console.log("📌 Iniciando o carregamento do mapa...");
+        
+            var userLat = document.getElementById("user-latitude");
+            var userLon = document.getElementById("user-longitude");
+            var localizacaoLat = -9.648139; // Valor padrão
+            var localizacaoLon = -35.717239; // Valor padrão
 
-        <!-- Elemento onde o mapa será renderizado -->
-        <div id="map" style="width: 100%; height: 800px; border: 1px solid #ccc;"></div>
+            var userLat = JSON.parse(userLat.textContent);
+            var userLon = JSON.parse(userLon.textContent);
+            console.log("📍 JSON de localização recebido:", userLat);
+            console.log("📍 JSON de localização recebido:", userLon);
 
-        <!-- JSON embutido contendo a localização do usuário -->
-        <script id="user-location" type="application/json">
-            { "latitude": "{{ user_lat|default:-9.6658 }}", "longitude": "{{ user_lon|default:-35.7350 }}" }
-        </script>
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-        <script src="https://unpkg.com/leaflet.awesome-markers@2.0.2/dist/leaflet.awesome-markers.min.js"></script>
+            //var lat = parseFloat(userLat.latitude);
+            //var lon = parseFloat(userLon.longitude);
 
-        <!-- JSON embutido contendo os mercados -->
-        <script id="mercados-data" type="application/json">
-            {{ mercados_comprados|safe }}
-        </script>
+            console.log("✅ Coordenadas corrigidas:", userLat, userLon);
 
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                console.log("🔄 Iniciando a carga do mapa...");
-                console.log("🔍 Iniciando depuração...");
+            var map = L.map('map').setView([userLat, userLon], 14);
 
-                var userLocationScript = document.getElementById("user-location");
-                var localizacaoLat, localizacaoLon;
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 24
+            }).addTo(map);
 
-                if (userLocationScript) {
-                    try {
-                        var userData = JSON.parse(userLocationScript.textContent);
-                        localizacaoLat = parseFloat(userData.latitude);
-                        localizacaoLon = parseFloat(userData.longitude);
-                    } catch (error) {
-                        console.error("❌ Erro ao interpretar JSON de localização:", error);
-                    }
-                }
-
-                console.log("📍 Coordenadas obtidas do template:");
-                console.log("Latitude:", localizacaoLat, "Longitude:", localizacaoLon);
-
-                // Se a latitude e longitude forem inválidas, definir valores padrão
-                if (isNaN(localizacaoLat) || isNaN(localizacaoLon) || localizacaoLat === 0.0 || localizacaoLon === 0.0) {
-                    console.warn("⚠️ Coordenadas inválidas. Usando valores padrão.");
-                    localizacaoLat = -9.6658;  // Latitude padrão (Maceió)
-                    localizacaoLon = -35.7350; // Longitude padrão (Maceió)
-                }
-
-                console.log("📌 Coordenadas finais usadas:");
-                console.log("Latitude:", localizacaoLat, "Longitude:", localizacaoLon);
-
-
-
-                // Inicializa o mapa
-                var map = L.map('map', {
-                    center: [localizacaoLat, localizacaoLon],
-                    zoom: 12,
-                    minZoom: 2,
-                    maxZoom: 18,
-                    preferCanvas: true
-                });
-
-                // Adiciona camada do OpenStreetMap
-                /*L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; OpenStreetMap contributors',
-                }).addTo(map);*/
-                L.tileLayer('https://tile.thunderforest.com/mobile-atlas/{z}/{x}/{y}.png?apikey={apikey}', {
-                    attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                    apikey: '167efab150174855be732da176f2e3f2', // Sua chave
-                    maxZoom: 23
-                }).addTo(map);
-
-                var bounds = L.latLngBounds([]);
-
-                // 📍 Captura coordenadas do usuário da `Localizacao.html`
-                var localizacaoLat, localizacaoLon;
-
-                var userLocationScript = document.getElementById("user-location");
-                if (userLocationScript) {
-                    try {
-                        var userData = JSON.parse(userLocationScript.textContent);
-                        if (userData && userData.latitude && userData.longitude) {
-                            localizacaoLat = parseFloat(userData.latitude);
-                            localizacaoLon = parseFloat(userData.longitude);
-                        }
-                    } catch (error) {
-                        console.error("❌ Erro ao interpretar os dados de localização do usuário:", error);
-                    }
-                }
-
-                function adicionarMarcadorUsuario() {
-                    if (!isNaN(localizacaoLat) && !isNaN(localizacaoLon) && localizacaoLat !== 0.0 && localizacaoLon !== 0.0) {
-                        console.log(`📍 Adicionando marcador do usuário: Lat ${localizacaoLat}, Lon ${localizacaoLon}`);
-                
-                        // 🔄 Espera até que AwesomeMarkers esteja pronto
-                        if (typeof L.AwesomeMarkers !== "undefined" && L.AwesomeMarkers.icon) {
-                            var redMarker = L.AwesomeMarkers.icon({
-                                icon: 'home',
-                                markerColor: 'red',
-                                prefix: 'fa'
-                            });
-                
-                            L.marker([localizacaoLat, localizacaoLon], { icon: redMarker })
-                                .addTo(map)
-                                .bindPopup("<b>Sua Localização</b>")
-                                .openPopup();
-                
-                            bounds.extend([localizacaoLat, localizacaoLon]);
-                        } else {
-                            console.warn("⚠️ Leaflet AwesomeMarkers ainda não carregado. Tentando novamente em 500ms...");
-                            setTimeout(adicionarMarcadorUsuario, 500);
-                        }
-                    } else {
-                        console.warn("⚠️ Coordenadas do usuário não encontradas ou inválidas.");
-                    }
-                }
-                
-                // ⏳ Aguarde até o DOM estar carregado
-                document.addEventListener("DOMContentLoaded", function () {
-                    console.log("🔄 Verificando se Leaflet AwesomeMarkers foi carregado...");
-                
-                    if (typeof L.AwesomeMarkers === "undefined") {
-                        console.warn("⚠️ Leaflet AwesomeMarkers não carregado. Adicionando dinamicamente...");
-                        var script = document.createElement("script");
-                        script.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js";
-                        script.onload = function () {
-                            console.log("✅ Leaflet AwesomeMarkers carregado com sucesso.");
-                            adicionarMarcadorUsuario();
-                        };
-                        document.body.appendChild(script);
-                    } else {
-                        adicionarMarcadorUsuario();
-                    }
-                });
-                
-
-                // 📌 Obtém os dados dos mercados e adiciona ao mapa
-                var mercadosData = document.getElementById("mercados-data");
-                if (!mercadosData) {
-                    console.error("❌ Elemento #mercados-data não encontrado. O mapa não pode ser populado.");
-                    return;
-                }
-
-                var mercados;
-                try {
-                    mercados = JSON.parse(mercadosData.textContent);
-                } catch (error) {
-                    console.error("❌ Erro ao interpretar os dados dos mercados:", error);
-                    return;
-                }
-
-                console.log("🛒 Lista completa de mercados carregados:", mercados);
-
-                var mercadoEncontrado = false;
-
-                // Adicionar mercados ao mapa
-                mercados.forEach(function(mercado, index) {
-                    var lat = parseFloat(mercado.latitude);
-                    var lon = parseFloat(mercado.longitude);
-
-                    if (!isNaN(lat) && !isNaN(lon) && lat !== 0.0 && lon !== 0.0) {
-                        console.log(`🛒 Mercado válido #${index}: ${mercado.nome}, Lat: ${lat}, Lon: ${lon}`);
-
-                        var popupContent = `<div class="popup-text">
-                                                <b>${mercado.nome}</b><br>
-                                                ${mercado.endereco}
-                                            </div>`;
-
-                        L.marker([lat, lon]).addTo(map).bindPopup(popupContent);
-                        bounds.extend([lat, lon]);
-                        mercadoEncontrado = true;
-                    } else {
-                        console.warn(`⚠️ ERRO: Mercado inválido #${index}: ${mercado.nome} (Lat: ${mercado.latitude}, Lon: ${mercado.longitude})`);
-                    }
-                });
-
-                // Ajustar a visão do mapa para incluir todos os pontos
-                if (mercadoEncontrado || (!isNaN(localizacaoLat) && !isNaN(localizacaoLon))) {
-                    map.fitBounds(bounds, { padding: [50, 50] });
-                } else {
-                    console.warn("⚠️ Nenhum mercado ou usuário encontrado. Mantendo a visão padrão.");
-                    map.setView([userLat, userLon], 10);
-                }
-
-                // Garante que o Leaflet renderize corretamente o mapa
-                setTimeout(() => {
-                    map.invalidateSize();
-                    console.log("✅ Mapa atualizado com invalidateSize()");
-                }, 500);
-            });
-        </script>
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                if (typeof L.AwesomeMarkers === "undefined") {
-                    console.warn("⚠️ Leaflet AwesomeMarkers ainda não carregado. Tentando carregar dinamicamente...");
-                    var script = document.createElement("script");
-                    script.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js";
-                    script.onload = function() {
-                        console.log("✅ Leaflet AwesomeMarkers carregado com sucesso.");
-                    };
-                    document.body.appendChild(script);
+            L.marker([userLat, userLon], {
+                icon: L.AwesomeMarkers.icon({
+                    icon: 'home',
+                    markerColor: 'red',
+                    prefix: 'fa'
+                })
+            }).addTo(map).bindPopup(`<b>Sua Localização</b><br>Lat: ${userLat}<br>Lon: ${userLon}`).openPopup();
+        
+            // Pegando os mercados da página Django
+            var mercadosData = document.getElementById("mercados-data");
+            var mercados = [];
+            try {
+                mercados = JSON.parse(mercadosData.textContent);
+                //console.log("🛒 Mercados carregados:", mercados);
+            } catch (error) {
+                console.error("❌ Erro ao interpretar mercados:", error);
+            }
+        
+            var bounds = L.latLngBounds([]);
+        
+            mercados.forEach(function(mercado) {
+                var lat = parseFloat(mercado.latitude);
+                var lon = parseFloat(mercado.longitude);
+        
+                if (!isNaN(lat) && !isNaN(lon) && lat !== 0.0 && lon !== 0.0) {
+                    var popupContent = `<b>${mercado.nome}</b><br>${mercado.endereco}`;
+                    L.marker([lat, lon]).addTo(map).bindPopup(popupContent);
+                    bounds.extend([lat, lon]);
                 }
             });
-            </script>
-            
-
-        {% elif error %}
-            <div class="error">
-                <p>{{ error }}</p>
-            </div>
-        {% else %}
-            <h2>Nenhum resultado encontrado</h2>
-        {% endif %}
+        
+            if (mercados.length > 0) {
+                map.fitBounds(bounds, { padding: [50, 50] });
+            } else {
+                console.warn("⚠️ Nenhum mercado encontrado.");
+                map.setView([localizacaoLat, localizacaoLon], 12);
+            }
+        
+            setTimeout(() => { 
+                map.invalidateSize();
+                console.log("✅ Mapa atualizado com invalidateSize()"); 
+            }, 500);
+        });
+        </script>
+        
 </body>
 </html>
