@@ -1,5 +1,3 @@
-# ecanguinha/views.py
-
 import json
 import logging
 import re
@@ -28,9 +26,9 @@ import pandas as pd
 def home(request):
     if request.method == "GET":
         contexto = {
-            'name': 'Seja bem vindo!'  # Substitua pelo valor desejado ou obtenha dinamicamente
+            'Seja bem vindo!'  # Substitua pelo valor desejado ou obtenha dinamicamente
         }
-        return render(request, 'home.html', contexto)
+        return render(request, 'localizacao.html', contexto)
     else:
         nome = request.POST.get('nome', '')
         return HttpResponse(nome)
@@ -116,6 +114,18 @@ def submit_feedback(request):
 
 def agradecimento(request):
     return render(request, 'agradecimento.html')
+
+def obter_rota(request):
+    """
+    View para retornar a rota detalhada gerada pelo OSMnx.
+    """
+    try:
+        # Aqui, você deve garantir que `mercados_df` tenha os dados necessários.
+        data = create_tpplib_data(mercados_df, buyer_lat, buyer_lon, media_preco=5.5, raio_busca=5.0)
+        return JsonResponse({'rota': data['rota_osmnx']})
+    
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 def listar_produtos(request):

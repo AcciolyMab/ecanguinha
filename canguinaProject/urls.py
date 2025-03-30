@@ -8,7 +8,7 @@ from ecanguinha.views import processar_combustivel
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', views.home, name='home'),
+    path('', views.localizacao, name='localizacao'),
     path('home/', views.home, name='home'),
     path('localizacao/', views.localizacao, name='localizacao'),
     path('sobre/', views.about, name='about'),

@@ -11,6 +11,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js"></script>
+    
+    <!-- Adicionando a biblioteca de roteamento -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
     <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}">
 
     <style>
@@ -114,12 +118,12 @@
             </div>
             <!-- Links para pesquisa e nova busca -->
             <div style="margin-top: 20px; display: flex; gap: 10px;">
-                <!-- Link para responder à pesquisa -->
+                {% comment %} <!-- Link para responder à pesquisa -->
                 <a href="https://docs.google.com/forms/d/e/1FAIpQLScGGkVHWDzm5U_krrlk9UNQLJA--cMFvcnRM1NRykeSOYQ3jw/viewform?usp=header" 
                 target="_blank" 
                 class="btn btn-primary">
                 📝 Responder Pesquisa
-                </a>
+                </a> {% endcomment %}
 
                 <!-- Link para voltar à página de localização -->
                 <a href="{% url 'localizacao' %}" class="btn btn-secondary">
@@ -135,6 +139,7 @@
     {{ resultado.rota|json_script:"rota-data" }}
     {{ node_coords|json_script:"node-coords-data" }}
     {{ mercados_comprados|json_script:"mercados-data" }}
+    {% comment %} {{ resultado.rota_osmnx|json_script:"rota-osmnx-data" }} {% endcomment %}
 
     {% comment %} <script id="user-location" type="application/json">
         {
@@ -147,83 +152,75 @@
         document.addEventListener("DOMContentLoaded", function() {
             console.log("📌 Iniciando o carregamento do mapa...");
         
-            var userLat = document.getElementById("user-latitude");
-            var userLon = document.getElementById("user-longitude");
-            var localizacaoLat = -9.571306; // Valor padrão
-            var localizacaoLon = -36.781950; // Valor padrão
-
-            var userLat = JSON.parse(userLat.textContent);
-            var userLon = JSON.parse(userLon.textContent);
-            console.log("📍 JSON de localização recebido:", userLat);
-            console.log("📍 JSON de localização recebido:", userLon);
-
-            //var lat = parseFloat(userLat.latitude);
-            //var lon = parseFloat(userLon.longitude);
-
-            console.log("✅ Coordenadas corrigidas:", userLat, userLon);
-
+            var userLat = JSON.parse(document.getElementById("user-latitude").textContent);
+            var userLon = JSON.parse(document.getElementById("user-longitude").textContent);
+        
+            console.log("📍 Localização do usuário:", userLat, userLon);
+        
             var map = L.map('map').setView([userLat, userLon], 14);
-
+        
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap contributors',
-                maxZoom: 15
+                maxZoom: 18
             }).addTo(map);
-
-            L.marker([userLat, userLon], {
-                icon: L.AwesomeMarkers.icon({
-                    icon: 'home',
-                    markerColor: 'red',
-                    prefix: 'fa'
-                })
-            }).addTo(map).bindPopup(`<b>Sua Localização</b><br>Lat: ${userLat}<br>Lon: ${userLon}`).openPopup();
+        
+            // Ícone para a localização do usuário
+            var userMarker = L.AwesomeMarkers.icon({
+                icon: 'home',
+                markerColor: 'red',
+                prefix: 'fa'
+            });
+        
+            L.marker([userLat, userLon], { icon: userMarker })
+                .addTo(map)
+                .bindPopup(`<b>Sua Localização</b><br>Lat: ${userLat}<br>Lon: ${userLon}`).openPopup();
         
             // Pegando os mercados da página Django
-            var mercadosData = document.getElementById("mercados-data");
-            var mercados = [];
-            try {
-                mercados = JSON.parse(mercadosData.textContent);
-                //console.log("🛒 Mercados carregados:", mercados);
-            } catch (error) {
-                console.error("❌ Erro ao interpretar mercados:", error);
-            }
-        
-            var bounds = L.latLngBounds([]);
-
-            // Definir o ícone personalizado para mercados
+            var mercadosData = JSON.parse(document.getElementById("mercados-data").textContent);
             var mercadoIcon = L.AwesomeMarkers.icon({
-                icon: 'shopping-cart',  // Ícone do FontAwesome (fa-shopping-cart)
-                markerColor: 'green',    // Cor do marcador (pode ser 'red', 'green', 'blue', etc.)
-                prefix: 'fa'            // Define o uso do FontAwesome
+                icon: 'shopping-cart',
+                markerColor: 'green',
+                prefix: 'fa'
             });
-
-            mercados.forEach(function(mercado) {
+        
+            var waypoints = [L.latLng(userLat, userLon)]; // Começa com a posição do usuário
+        
+            mercadosData.forEach(function(mercado) {
                 var lat = parseFloat(mercado.latitude);
                 var lon = parseFloat(mercado.longitude);
-
-                if (!isNaN(lat) && !isNaN(lon) && lat !== 0.0 && lon !== 0.0) {
-                    var popupContent = `<b>${mercado.nome}</b><br>${mercado.endereco}`;
-                    
-                    // Aplicar o ícone ao marcador
+        
+                if (!isNaN(lat) && !isNaN(lon)) {
                     L.marker([lat, lon], { icon: mercadoIcon })
                         .addTo(map)
-                        .bindPopup(popupContent);
-
-                    bounds.extend([lat, lon]);
+                        .bindPopup(`<b>${mercado.nome}</b><br>${mercado.endereco}`);
+        
+                    waypoints.push(L.latLng(lat, lon)); // Adiciona mercado à rota
                 }
             });
-
-            if (mercados.length > 0) {
-                map.fitBounds(bounds, { padding: [50, 50] });
+        
+            // 🔹 Adiciona o retorno ao ponto de partida
+            waypoints.push(L.latLng(userLat, userLon));
+        
+            if (waypoints.length > 2) { // Garante pelo menos um destino
+                L.Routing.control({
+                    waypoints: waypoints,
+                    routeWhileDragging: true,
+                    showAlternatives: false,
+                    createMarker: function(i, waypoint, n) {
+                        return L.marker(waypoint.latLng, {
+                            icon: i === 0 || i === n - 1 ? userMarker : mercadoIcon
+                        }).bindPopup(i === 0 || i === n - 1 ? "📍 Ponto de Partida" : "🛒 Mercado");
+                    },
+                    lineOptions: {
+                        styles: [{ color: 'blue', opacity: 0.7, weight: 6 }] // Modifica a linha
+                    }
+                }).addTo(map);
             } else {
-                console.warn("⚠️ Nenhum mercado encontrado.");
-                map.setView([localizacaoLat, localizacaoLon], 12);
+                console.warn("⚠️ Nenhum mercado válido encontrado para criar uma rota.");
             }
         
-            setTimeout(() => { 
-                map.invalidateSize();
-                console.log("✅ Mapa atualizado com invalidateSize()"); 
-            }, 500);
+            console.log("✅ Roteamento com retorno ao ponto de partida adicionado ao mapa!");
         });
-    </script>      
+    </script>
 </body>
 </html>
