@@ -125,6 +125,7 @@
                     <input type="text" class="form-control small-input" id="longitude" name="longitude" readonly>
                 </div>
             </div>
+            <p id="labelLocalizacaoObtida" class="text-success mt-2" style="display: none;">📍 Localização obtida com sucesso!</p>
 
             <div class="slider-container">
                 <label for="raioSlider">Raio de Busca (km):</label>
@@ -242,6 +243,9 @@
                         document.getElementById("hiddenLongitude").value = longitude;
 
                         console.log("📍 Coordenadas capturadas:", latitude, longitude);
+
+                        //Mostrar o label de sucesso
+                        document.getElementById("labelLocalizacaoObtida").style.display = "block";
                     },
                     function(error) {
                         console.error("❌ Erro ao obter localização:", error.message);
