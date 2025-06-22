@@ -14,6 +14,7 @@
     <!-- Roteamento Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <!-- CSS  -->
     <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}">
     <style>
         body {
@@ -182,13 +183,13 @@
                 maxZoom: 18
             }).addTo(map);
 
-            var userMarker = L.AwesomeMarkers.icon({ icon: 'home', markerColor: 'red', prefix: 'fa' });
+            var userMarker = L.AwesomeMarkers.icon({ icon: 'home', markerColor: 'green', prefix: 'fa' });
             L.marker([userLat, userLon], { icon: userMarker })
                 .addTo(map)
                 .bindPopup(`<b>Sua Localização</b><br>Lat: ${userLat}<br>Lon: ${userLon}`).openPopup();
 
             var mercadosData = JSON.parse(document.getElementById("mercados-data").textContent);
-            var mercadoIcon = L.AwesomeMarkers.icon({ icon: 'shopping-cart', markerColor: 'green', prefix: 'fa' });
+            var mercadoIcon = L.AwesomeMarkers.icon({ icon: 'shopping-cart', markerColor: 'blue', prefix: 'fa' });
             var waypoints = [L.latLng(userLat, userLon)];
 
             mercadosData.forEach(function(mercado) {
@@ -214,7 +215,7 @@
                         });
                     },
                     lineOptions: {
-                        styles: [{ color: 'blue', opacity: 0.7, weight: 6 }]
+                        styles: [{ color: 'red', opacity: 0.9, weight: 10 }]
                     },
                     router: L.Routing.osrmv1({
                         serviceUrl: 'https://router.project-osrm.org/route/v1'
@@ -230,8 +231,31 @@
                 }).addTo(map);
             }
         });
+
+        const spans = document.querySelectorAll(".status-aberto");
+            const now = new Date();
+            const currentHour = now.getHours();
+
+            spans.forEach(span => {
+                const nome = span.dataset.nome;
+                const endereco = span.dataset.endereco;
+
+                const is24h = nome.includes("Especiarya Industria e Comercio Ltda") &&
+                            endereco.includes("Rua Deputado José Lages");
+
+                if (is24h) {
+                    span.textContent = "Aberto 24h";
+                    span.style.backgroundColor = "#0d6efd"; // Azul
+                } else if (currentHour >= 7 && currentHour < 22) {
+                    span.textContent = "Aberto";
+                    span.style.backgroundColor = "#28a745"; // Verde
+                } else {
+                    span.textContent = "Fechado";
+                    span.style.backgroundColor = "#dc3545"; // Vermelho
+                }
+            });
     </script>
-    <script>
+    <!--<script>
         document.addEventListener("DOMContentLoaded", function () {
             const spans = document.querySelectorAll(".status-aberto");
             const now = new Date();
@@ -256,7 +280,6 @@
                 }
             });
         });
-    </script>
-
+    </script>-->
 </body>
 </html>
