@@ -226,3 +226,26 @@ input[type="range"]::-ms-thumb {
         width: 100%;
     }
 }
+
+/*Product Session*/
+#productSection {
+    max-width: 100%;
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+#categoryCheckboxes {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 20px;
+    flex-direction: row;
+    flex-wrap: wrap; /* opcional: remove se quiser 100% horizontal */
+    justify-content: start;
+}
+
+#categoryCheckboxes .form-check {
+    white-space: nowrap;
+}
+
+

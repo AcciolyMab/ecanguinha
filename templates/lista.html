@@ -11,124 +11,153 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js"></script>
-    
-    <!-- Adicionando a biblioteca de roteamento -->
+    <!-- Roteamento Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
     <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}">
-
     <style>
-        /* 🔹 Layout Principal */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f2f4f5;
+        }
         .flex-container {
             display: flex;
-            margin-left: 10px;
-            gap: 10px;
-            box-sizing: border-box;
+            gap: 15px;
+            padding: 15px;
+            transform: scale(0.95);
+            transform-origin: top left;
         }
-
-        /* 🔹 Tabela de Produtos */
         .table-container {
-            flex: 0.3; /* Ocupa 30% da largura */
-            overflow-y: auto;
-            background: #f8f9fa;
-            padding: 10px;
-            border-radius: 8px;
-            max-height: 800px;
-            margin-left: 10px;
+            flex: 1;
+            max-width: 850px;
         }
-
-        /* 🔹 Mapa */
         #map {
-            width: 100%;
-            flex: 0.7;
-            height: 800px;
-            margin-right: 10px;
-            margin-top: 10px;
-            border: 1px solid #ccc;
-            display: block;
-        }
-
-        /* 🔹 Tabela de Produtos */
-        .table {
-            width: 95%;
-            border-collapse: collapse;
-            font-size: 10px;
-        }
-
-        .table th, .table td {
-            padding: 5px;
-            text-align: left;
-            border: 1px solid #ddd;
-        }
-
-        .table thead {
-            background-color: #f2f2f2;
-        }
-
-        /* 🔹 Título dos Mercados */
-        .mercado-nome {
-            font-size: 12px;
-            font-weight: bold;
-            line-height: 1.2;  /* Ajusta a altura da linha para melhor leitura */
-            margin-botton: 5px;
-        }
-
-        /* 🔹 Resumo */
-        .summary-container {
-            font-size: 12px;
-            padding: 10px;
-            background: #ffffff;
+            flex: 1;
+            height: auto;
+            min-height: 900px;
             border-radius: 8px;
+        }
+        .mercado-card {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .mercado-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .mercado-nome {
+            font-size: 15px;
+            font-weight: bold;
+            color: #084c41;
+        }
+        .mercado-endereco {
+            font-size: 12px;
+            color: #666;
+        }
+        .mercado-meta {
+            font-size: 12px;
+            color: #444;
+        }
+        .mercado-preco {
+            font-size: 18px;
+            font-weight: bold;
+            color: #168f53;
+            text-align: right;
+        }
+        .status-aberto {
+            background-color: #000;
+            color: #fff;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 12px;
+            margin-left: 6px;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
             margin-top: 10px;
-            margin-left: 10px;
-            margin: 5px 0;
+        }
+        .table th, .table td {
+            border: 1px solid #ddd;
+            padding: 6px 10px;
+        }
+        .table thead {
+            background-color: #e8f5e9;
+            font-weight: bold;
+            color: #084c41;
+        }
+        .summary-container {
+            background: #e9f7ef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 16px;
+            color: #333;
         }
     </style>
 </head>
 <body>
     <div class="flex-container">
         <div class="table-container">
-            <h3>Lista de Produtos por Mercado</h3>
-            {% for mercado in mercados_comprados %}
-                <h5 class="mercado-nome">{{ mercado.nome }} - {{ mercado.endereco }}</h5>
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Produto</th>
-                            <th>Preço</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for produto in resultado.purchases|dict_get:mercado.nome %}
-                            <tr>
-                                <td>{{ produto.produto }}</td>
-                                <td>R$ {{ produto.preco|floatformat:2 }}</td>
-                            </tr>
-                        {% empty %}
-                            <tr>
-                                <td colspan="2">Nenhum produto encontrado</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            {% endfor %}
-            <div class="summary-container">
-                <p><strong>Custo Total:</strong> R$ {{ resultado.total_cost|floatformat:2 }}</p>
-                <p><strong>Distância Total:</strong> {{ resultado.total_distance }} km | <strong>Tempo de Execução:</strong> {{ resultado.execution_time }} segundos</p>
-            </div>
-            <!-- Links para pesquisa e nova busca -->
-            <div style="margin-top: 20px; display: flex; gap: 10px;">
-                {% comment %} <!-- Link para responder à pesquisa -->
-                <a href="https://docs.google.com/forms/d/e/1FAIpQLScGGkVHWDzm5U_krrlk9UNQLJA--cMFvcnRM1NRykeSOYQ3jw/viewform?usp=header" 
-                target="_blank" 
-                class="btn btn-primary">
-                📝 Responder Pesquisa
-                </a> {% endcomment %}
+            <h3 style="color: #084c41;">Mercados Próximos</h3>
+            <p>{{ mercados_comprados|length }} estabelecimentos encontrados</p>
 
-                <!-- Link para voltar à página de localização -->
-                <a href="{% url 'localizacao' %}" class="btn btn-secondary">
-                🔄 Nova Busca
-                </a>
+            {% for mercado in mercados_comprados %}
+                <div class="mercado-card">
+                    <div class="mercado-header">
+                        <div>
+                            <div class="mercado-nome">
+                                {{ mercado.nome }}
+                                <span class="status-aberto" 
+                                    data-nome="{{ mercado.nome|escapejs }}" 
+                                    data-endereco="{{ mercado.endereco|escapejs }}">
+                                    <!-- O texto será preenchido dinamicamente -->
+                                </span>
+                            </div>
+                            <div class="mercado-endereco">
+                                <i class="fa fa-map-marker"></i> {{ mercado.endereco }}
+                            </div>
+                            <div class="mercado-meta">
+                                ⭐ {{ mercado.avaliacao|default:4.0 }} &nbsp;&nbsp; 📍 {{ mercado.distancia|default:'1,0' }} km
+                            </div>
+                        </div>
+                       {% with resultado.purchases|dict_get:mercado.nome as produtos_mercado %}
+                            <div class="mercado-preco">
+                                R$ {{ produtos_mercado|sum_precos|floatformat:2 }}<br>
+                                <small>{{ mercado.tipo|default:"Mercado" }}</small>
+                            </div>
+                            </div> <!-- fecha .mercado-header -->
+                            <table class="table">
+                                <thead>
+                                    <tr><th>Produto</th><th>Preço</th></tr>
+                                </thead>
+                                <tbody>
+                                    {% for produto in produtos_mercado %}
+                                        <tr>
+                                            <td>{{ produto.produto }}</td>
+                                            <td>R$ {{ produto.preco|floatformat:2 }}</td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr><td colspan="2">Nenhum produto encontrado</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% endwith %}
+                </div>
+            {% endfor %}
+            <div class="summary-container" style="background-color: #d1f0e3; border: 2px solid #168f53; font-weight: bold; font-size: 16px; color: #084c41;">
+                <p>💰 <strong style="font-size: 18px;">Custo Total:</strong> R$ {{ resultado.total_cost|floatformat:2 }}</p>
+                <p>📍 <strong>Distância Total:</strong> {{ resultado.total_distance }} km &nbsp;&nbsp;⏱️ <strong>Tempo:</strong> {{ resultado.execution_time }} segundos</p>
+            </div>
+
+            <div style="margin-top: 20px; display: flex; gap: 10px;">
+                <a href="{% url 'localizacao' %}" class="btn btn-secondary">🔄 Nova Busca</a>
             </div>
         </div>
         <div id="map"></div>
@@ -139,88 +168,95 @@
     {{ resultado.rota|json_script:"rota-data" }}
     {{ node_coords|json_script:"node-coords-data" }}
     {{ mercados_comprados|json_script:"mercados-data" }}
-    {% comment %} {{ resultado.rota_osmnx|json_script:"rota-osmnx-data" }} {% endcomment %}
 
-    {% comment %} <script id="user-location" type="application/json">
-        {
-            "latitude": {{ latitude|default:"-9.648139"|floatformat:"6"|stringformat:"s"|safe|cut:"," }},
-            "longitude": {{ longitude|default:"-35.717239"|floatformat:"6"|stringformat:"s"|safe|cut:"," }}
-        }
-    </script>     {% endcomment %}
-    
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            console.log("📌 Iniciando o carregamento do mapa...");
-        
             var userLat = JSON.parse(document.getElementById("user-latitude").textContent);
             var userLon = JSON.parse(document.getElementById("user-longitude").textContent);
-        
-            console.log("📍 Localização do usuário:", userLat, userLon);
-        
-            var map = L.map('map').setView([userLat, userLon], 14);
-        
+            var map = L.map('map', {
+                zoomControl: true,
+                attributionControl: false
+            }).setView([userLat, userLon], 14);
+
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors',
                 maxZoom: 18
             }).addTo(map);
-        
-            // Ícone para a localização do usuário
-            var userMarker = L.AwesomeMarkers.icon({
-                icon: 'home',
-                markerColor: 'red',
-                prefix: 'fa'
-            });
-        
+
+            var userMarker = L.AwesomeMarkers.icon({ icon: 'home', markerColor: 'red', prefix: 'fa' });
             L.marker([userLat, userLon], { icon: userMarker })
                 .addTo(map)
                 .bindPopup(`<b>Sua Localização</b><br>Lat: ${userLat}<br>Lon: ${userLon}`).openPopup();
-        
-            // Pegando os mercados da página Django
+
             var mercadosData = JSON.parse(document.getElementById("mercados-data").textContent);
-            var mercadoIcon = L.AwesomeMarkers.icon({
-                icon: 'shopping-cart',
-                markerColor: 'green',
-                prefix: 'fa'
-            });
-        
-            var waypoints = [L.latLng(userLat, userLon)]; // Começa com a posição do usuário
-        
+            var mercadoIcon = L.AwesomeMarkers.icon({ icon: 'shopping-cart', markerColor: 'green', prefix: 'fa' });
+            var waypoints = [L.latLng(userLat, userLon)];
+
             mercadosData.forEach(function(mercado) {
                 var lat = parseFloat(mercado.latitude);
                 var lon = parseFloat(mercado.longitude);
-        
                 if (!isNaN(lat) && !isNaN(lon)) {
                     L.marker([lat, lon], { icon: mercadoIcon })
                         .addTo(map)
                         .bindPopup(`<b>${mercado.nome}</b><br>${mercado.endereco}`);
-        
-                    waypoints.push(L.latLng(lat, lon)); // Adiciona mercado à rota
+                    waypoints.push(L.latLng(lat, lon));
                 }
             });
-        
-            // 🔹 Adiciona o retorno ao ponto de partida
+
             waypoints.push(L.latLng(userLat, userLon));
-        
-            if (waypoints.length > 2) { // Garante pelo menos um destino
+            if (waypoints.length > 2) {
                 L.Routing.control({
                     waypoints: waypoints,
-                    routeWhileDragging: true,
+                    routeWhileDragging: false,
                     showAlternatives: false,
                     createMarker: function(i, waypoint, n) {
                         return L.marker(waypoint.latLng, {
                             icon: i === 0 || i === n - 1 ? userMarker : mercadoIcon
-                        }).bindPopup(i === 0 || i === n - 1 ? "📍 Ponto de Partida" : "🛒 Mercado");
+                        });
                     },
                     lineOptions: {
-                        styles: [{ color: 'blue', opacity: 0.7, weight: 6 }] // Modifica a linha
+                        styles: [{ color: 'blue', opacity: 0.7, weight: 6 }]
+                    },
+                    router: L.Routing.osrmv1({
+                        serviceUrl: 'https://router.project-osrm.org/route/v1'
+                    }),
+                    addWaypoints: false,
+                    fitSelectedRoutes: true,
+                    show: false
+                }).on('routeselected', function(e) {
+                    const containers = document.getElementsByClassName('leaflet-routing-container');
+                    for (const container of containers) {
+                        container.style.display = 'none';
                     }
                 }).addTo(map);
-            } else {
-                console.warn("⚠️ Nenhum mercado válido encontrado para criar uma rota.");
             }
-        
-            console.log("✅ Roteamento com retorno ao ponto de partida adicionado ao mapa!");
         });
     </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const spans = document.querySelectorAll(".status-aberto");
+            const now = new Date();
+            const currentHour = now.getHours();
+
+            spans.forEach(span => {
+                const nome = span.dataset.nome;
+                const endereco = span.dataset.endereco;
+
+                const is24h = nome.includes("Especiarya Industria e Comercio Ltda") &&
+                            endereco.includes("Rua Deputado José Lages");
+
+                if (is24h) {
+                    span.textContent = "Aberto 24h";
+                    span.style.backgroundColor = "#0d6efd"; // Azul
+                } else if (currentHour >= 7 && currentHour < 22) {
+                    span.textContent = "Aberto";
+                    span.style.backgroundColor = "#28a745"; // Verde
+                } else {
+                    span.textContent = "Fechado";
+                    span.style.backgroundColor = "#dc3545"; // Vermelho
+                }
+            });
+        });
+    </script>
+
 </body>
 </html>

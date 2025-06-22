@@ -5,6 +5,8 @@ from django.conf.urls.static import static
 from django.views.generic import RedirectView
 from ecanguinha import views
 from ecanguinha.views import processar_combustivel
+from django.http import JsonResponse
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -20,6 +22,7 @@ urlpatterns = [
     path('agradecimento/', views.agradecimento, name='agradecimento'),
     path('favicon.ico', RedirectView.as_view(url='/static/favicon.ico', permanent=True)),
     path('processar_combustivel/', processar_combustivel, name='processar_combustivel'),
+    path('.well-known/appspecific/com.chrome.devtools.json', lambda request: JsonResponse({}, status=204)),
 ]
 
 # Configuração para arquivos estáticos em modo DEBUG

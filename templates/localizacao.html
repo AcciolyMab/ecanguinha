@@ -5,10 +5,15 @@
     <meta charset="UTF-8">
     <title>Canguinha</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         /* Oculta todos os elementos do body, exceto o #progressContainer, quando a classe 'loading' estiver ativa */
         body.loading > *:not(#progressContainer) {
@@ -24,8 +29,17 @@
             text-align: center;
         }
         .checkbox-group {
-            columns: 3;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, auto));
+            gap: 0.5rem 1.5rem;
         }
+
+        .checkbox-group .form-check-label {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         .location-fields {
             display: flex;
             gap: 20px;
@@ -94,476 +108,337 @@
         </div>
     </nav>
 
+        
     <div class="container mt-5">
-        <h1>Canguinha: Localização do Comprador</h1>
+        <h1 class="mb-4">Canguinha: Localização do Comprador</h1>
         <form id="locationForm" action="{% url 'listar_produtos' %}" method="post">
             {% csrf_token %}
-            {% comment %} <div class="mb-3">
-                <label for="nome" class="form-label">Nome do Comprador *</label>
-                <input type="text" class="form-control" id="nome" name="nome" placeholder="Insira o nome do comprador" required>
-            </div> {% endcomment %}
 
-            <div class="mb-3">
-                <input type="checkbox" id="checkEndereco">
-                <label for="checkEndereco">Informar Endereço de Origem</label>
-            </div>
+            <div class="row g-4">
+                <!-- Localização -->
+                <div class="col-md-6">
+                    <div class="p-4 border border-primary rounded shadow-sm bg-light w-100">
+                        <h5 class="text-primary"><i class="bi bi-geo-alt-fill"></i> Localização</h5>
+                        
+                        <div class="form-check mb-2">
+                            <input type="checkbox" id="checkEndereco" class="form-check-input">
+                            <label for="checkEndereco" class="form-check-label">Endereço de Origem(Opcional)</label>
+                        </div>
 
-            <div class="mb-3" id="enderecoGroup" style="display: none;">
-                <label for="endereco" class="form-label">Endereço do Comprador</label>
-                <input type="text" class="form-control" id="endereco" name="endereco" placeholder="Insira o endereço do comprador">
-                <button type="button" class="btn btn-primary mt-2" id="btnObterLocalizacao">Obter Localização</button>
-                <p id="geoStatus" class="text-danger mt-2" style="display: none;"></p>
-            </div>
+                        <div class="mb-2" id="enderecoGroup" style="display: none;">
+                            <label for="endereco" class="form-label">Endereço do Comprador</label>
+                            <input type="text" class="form-control" id="endereco" name="endereco">
+                            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btnObterLocalizacao">Obter Localização</button>
+                            <p id="geoStatus" class="text-danger mt-1" style="display: none;"></p>
+                        </div>
 
-            <div class="location-fields">
-                <div class="location-group">
-                    <label for="latitude" class="form-label">Latitude</label>
-                    <input type="text" class="form-control small-input" id="latitude" name="latitude" readonly>
-                </div>
-                <div class="location-group">
-                    <label for="longitude" class="form-label">Longitude</label>
-                    <input type="text" class="form-control small-input" id="longitude" name="longitude" readonly>
-                </div>
-            </div>
-            <p id="labelLocalizacaoObtida" class="text-success mt-2" style="display: none;">📍 Localização obtida com sucesso!</p>
+                        <div class="row mb-2">
+                            <div class="col">
+                                <label class="form-label">Latitude</label>
+                                <input type="text" id="latitude" name="latitude" class="form-control small-input" readonly>
+                            </div>
+                            <div class="col">
+                                <label class="form-label">Longitude</label>
+                                <input type="text" id="longitude" name="longitude" class="form-control small-input" readonly>
+                            </div>
+                        </div>
+                        <p id="labelLocalizacaoObtida" class="text-success small" style="display: none;">📍 Localização obtida com sucesso!</p>
 
-            <div class="slider-container">
-                <label for="raioSlider">Raio de Busca (km):</label>
-                <input type="range" class="form-range small-input" id="raioSlider" name="raio" min="1" max="15" value="1">
-                <span id="raioValue">1 km</span>
-                <small class="text-muted">Máximo 15Km.</small>
-            </div>
+                        <label for="raioSlider" class="form-label mt-2">Raio de Busca (km):</label>
+                        <input type="range" class="form-range" id="raioSlider" name="raio" min="1" max="15" value="1">
+                        <span id="raioValue" class="small">1 km</span><br>
 
-            <div class="slider-container">
-                <label for="diasSlider">Período de Análise (dias):</label>
-                <input type="range" class="form-range small-input" id="diasSlider" name="dias" min="1" max="10" value="1">
-                <span id="diasValue">1 dia</span>
-                <small class="text-muted">Máximo 10 dias.</small>
-            </div>
-            
-            <div class="mb-3 p-3 border rounded shadow-sm">
-                {% comment %} <h5 class="mb-3">Selecione o Tipo de Combustível *</h5> {% endcomment %}
-                <label class="form-label">Selecione o Tipo de Combustível *</label>
-                <div class="d-flex flex-column gap-2">
-                    <div class="d-flex align-items-center combustivel-item">
-                        <input class="form-check-input" type="radio" name="combustivel" id="gnv" value="GNV" required>
-                        <label class="form-check-label" for="gnv">GNV</label>
-                    </div>
-                    <div class="d-flex align-items-center combustivel-item">
-                        <input class="form-check-input" type="radio" name="combustivel" id="etanol" value="Etanol">
-                        <label class="form-check-label" for="etanol">Etanol</label>
-                    </div>
-                    <div class="d-flex align-items-center combustivel-item">
-                        <input class="form-check-input" type="radio" name="combustivel" id="gasolina" value="Gasolina">
-                        <label class="form-check-label" for="gasolina">Gasolina</label>
-                    </div>
-                    <div class="d-flex align-items-center combustivel-item">
-                        <input class="form-check-input" type="radio" name="combustivel" id="diesel" value="Diesel">
-                        <label class="form-check-label" for="diesel">Diesel</label>
+                        <label for="diasSlider" class="form-label mt-2">Período de Análise (dias):</label>
+                        <input type="range" class="form-range" id="diasSlider" name="dias" min="1" max="10" value="1">
+                        <span id="diasValue" class="small">1 dia</span>
                     </div>
                 </div>
-                <div class="mt-3">
-                    <label for="precoCombustivel" class="form-label">Preço do Combustível (R$)</label>
-                    <input type="text" class="form-control combustivel-input small-input" id="precoCombustivel" name="precoCombustivel" placeholder="0,00" readonly>
-                    <button type="button" class="btn btn-primary" id="btnCalcularMedia">Clique aqui para calcular o valor</button>
-                </div>
-            </div>
 
-            <!-- Seção de seleção de produtos e envio, inicialmente oculta -->
-            <div id="productSection" style="display: none;">
-                <div class="mb-3 p-3 border rounded shadow-sm">
-                    {% comment %} <h3 class="mb-3 text-primary">Selecione os Produtos *</h3> {% endcomment %}
-                    <label class="form-label">Selecionar Produtos *</label>
-                    <div class="form-check mb-3">
-                        <input type="checkbox" class="form-check-input" id="selectAllCheckbox">
-                        <label class="form-check-label" for="selectAllCheckbox">Selecionar Todos</label>
+                <!-- Mapa da Região com Leaflet -->
+                <div class="col-md-6">
+                    <div class="p-4 border border-warning rounded shadow-sm bg-light h-100 w-100">
+                        <h5 class="text-success text-center"><i class="bi bi-map-fill"></i> Mapa da Região</h5>
+                        <div id="map" style="flex: 1; min-height: 350px; border-radius: 10px;"></div>
                     </div>
-                    <div id="categoryCheckboxes" class="checkbox-group"></div>
                 </div>
 
+                <div class="d-flex gap-3 align-items-stretch">
+                    <!-- Combustível -->
+                    <div class="p-4 border border-warning rounded shadow-sm bg-light w-100 flex-fill">
+                        <h5 class="text-warning"><i class="bi bi-fuel-pump-fill"></i> Combustível</h5>
+                        <div class="mb-3">
+                            <label class="form-label">Selecione o Tipo de Combustível *</label>
+                            <div class="form-check"><input class="form-check-input" type="radio" name="combustivel" id="gnv" value="GNV" required><label class="form-check-label" for="gnv">GNV</label></div>
+                            <div class="form-check"><input class="form-check-input" type="radio" name="combustivel" id="etanol" value="Etanol"><label class="form-check-label" for="etanol">Etanol</label></div>
+                            <div class="form-check"><input class="form-check-input" type="radio" name="combustivel" id="gasolina" value="Gasolina"><label class="form-check-label" for="gasolina">Gasolina</label></div>
+                            <div class="form-check"><input class="form-check-input" type="radio" name="combustivel" id="diesel" value="Diesel"><label class="form-check-label" for="diesel">Diesel</label></div>
+                        </div>
+                    </div>
+
+                    <!-- Painel de Preços -->
+                    <div class="p-4 border border-danger rounded shadow-sm bg-light text-center w-100 flex-fill">
+                        <h5 class="text-danger"><i class="bi bi-currency-exchange"></i> Painel de Preços</h5>
+                        <div class="bg-white border rounded p-3 my-2">
+                            <h6 class="text-muted" id="painelCombustivelTipo">GASOLINA</h6>
+                            <h2 class="text-success">R$ <span id="precoPainel">0,00</span></h2>
+                            <div class="small text-muted">
+                                <span class="text-success" id="varSemana">   </span>     <br>
+                                <span class="text-danger" id="varHoje">   </span> 
+                            </div>
+                        </div>
+                        <small class="text-muted">Preço médio na região<br>Atualizado em tempo real</small>
+                    </div>
+                </div>
+
+                <!-- Produtos -->
+                <div class="col-12" id="productSection" style="display: none; width: 100%;">
+                    <div class="p-4 border border-purple rounded shadow-sm bg-light">
+
+                        <h5 class="text-purple"><i class="bi bi-basket-fill"></i> Selecionar Produtos</h5>
+
+                        <div class="form-check mb-3">
+                            <input type="checkbox" class="form-check-input" id="selectAllCheckbox">
+                            <label class="form-check-label" for="selectAllCheckbox">Selecionar Todos</label>
+                        </div>
+
+                        <!--<div id="categoryCheckboxes" class="row row-cols-2 row-cols-md-4 g-2"></div>-->
+                        <div id="categoryCheckboxes" class="checkbox-group"></div>
+                    </div>
+                </div>
+
+                <!-- Campos ocultos -->
                 <input type="hidden" id="hiddenLatitude" name="hiddenLatitude">
                 <input type="hidden" id="hiddenLongitude" name="hiddenLongitude">
                 <input type="hidden" id="item_list" name="item_list">
-                
-                <div class="form-buttons">
-                    <button type="submit" class="btn btn-success">Buscar Ofertas</button>
-                </div>
+            </div>
+
+            <!-- Botão de envio -->
+            <div class="form-buttons mt-4 d-flex justify-content-center">
+                <button type="submit" class="btn btn-success btn-lg"><i class="bi bi-search"></i> Buscar Ofertas</button>
             </div>
         </form>
     </div>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            // Atraso para garantir que a geolocalização preenche os inputs
-            setTimeout(function() {
-                var latInput = document.getElementById("latitude");
-                var lonInput = document.getElementById("longitude");
-                console.log("Valores dos inputs na localizacao.html:");
-                console.log("Latitude:", latInput.value);
-                console.log("Longitude:", lonInput.value);
-            }, 2000); // 2 segundos de atraso
-        });
-    </script>
 
     <script>
-        // Função de validação
-        function validarFormulario() {
-            const latitude = document.getElementById("latitude").value.trim();
-            const longitude = document.getElementById("longitude").value.trim();
-            if (!latitude || !longitude || latitude === "0.0" || longitude === "0.0") {
-                alert("⚠️ Por favor, permita o acesso à sua localização ou insira as coordenadas manualmente.");
-                return false;
-            }
-            return validarCombustivel();
-        }
-        
-        // Validação do combustível
-        window.validarCombustivel = function() {
-            const combustivelSelecionado = document.querySelector('input[name="combustivel"]:checked');
-            if (!combustivelSelecionado) {
-                alert("Por favor, selecione um tipo de combustível antes de continuar.");
-                return false;
-            }
-            return true;
-        };
-
-        // Função para obter a localização automaticamente caso os campos estejam vazios
-        function obterLocalizacao() {
-            if (navigator.geolocation) {
-                console.log("🌍 Obtendo geolocalização...");
-
-                navigator.geolocation.getCurrentPosition(
-                    function(position) {
-                        let latitude = position.coords.latitude.toFixed(6);
-                        let longitude = position.coords.longitude.toFixed(6);
-
-                        document.getElementById("latitude").value = latitude;
-                        document.getElementById("longitude").value = longitude;
-                        document.getElementById("hiddenLatitude").value = latitude;
-                        document.getElementById("hiddenLongitude").value = longitude;
-
-                        console.log("📍 Coordenadas capturadas:", latitude, longitude);
-
-                        //Mostrar o label de sucesso
-                        document.getElementById("labelLocalizacaoObtida").style.display = "block";
-                    },
-                    function(error) {
-                        console.error("❌ Erro ao obter localização:", error.message);
-                        alert("Erro ao obter localização. Verifique as permissões do seu navegador.");
-                    }
-                );
-            } else {
-                console.error("⚠️ Geolocalização não suportada pelo navegador.");
-                alert("Seu navegador não suporta geolocalização. Insira manualmente.");
-            }
-        }
-
-        document.addEventListener("DOMContentLoaded", () => {
-            const checkEndereco = document.getElementById("checkEndereco");
-            const enderecoGroup = document.getElementById("enderecoGroup");
-            const geoStatus = document.getElementById("geoStatus");
-            const latitudeField = document.getElementById("latitude");
-            const longitudeField = document.getElementById("longitude");
-            const raioSlider = document.getElementById("raioSlider");
-            const raioValue = document.getElementById("raioValue");
-            const diasSlider = document.getElementById("diasSlider");
-            const diasValue = document.getElementById("diasValue");
-            const btnObterLocalizacao = document.getElementById("btnObterLocalizacao");
-            const btnCalcularMedia = document.getElementById("btnCalcularMedia");
+        document.addEventListener("DOMContentLoaded", function () {
+            const latitudeInput = document.getElementById("latitude");
+            const longitudeInput = document.getElementById("longitude");
+            const hiddenLatitude = document.getElementById("hiddenLatitude");
+            const hiddenLongitude = document.getElementById("hiddenLongitude");
+            const precoCombustivelInput = document.getElementById("precoCombustivel");
+            const productSection = document.getElementById("productSection");
             const locationForm = document.getElementById("locationForm");
             const progressContainer = document.getElementById("progressContainer");
-            const selectAllCheckbox = document.getElementById("selectAllCheckbox");
-            const checkboxContainer = document.getElementById("categoryCheckboxes");
+            const raioSlider = document.getElementById("raioSlider");
+            const diasSlider = document.getElementById("diasSlider");
+            const painelCombustivelTipo = document.getElementById("painelCombustivelTipo");
+            const precoPainel = document.getElementById("precoPainel");
+            const varSemana = document.getElementById("varSemana");
+            const varHoje = document.getElementById("varHoje");
 
-    
-            // Alterna exibição do campo de endereço
-            checkEndereco.addEventListener("change", () => {
-                enderecoGroup.style.display = checkEndereco.checked ? "block" : "none";
-            });
-    
-            // Atualiza valores dos sliders
-            raioSlider.addEventListener("input", () => {
-                raioValue.textContent = `${raioSlider.value} km`;
-            });
-            diasSlider.addEventListener("input", () => {
-                diasValue.textContent = `${diasSlider.value} dia(s)`;
-            });
-
-            // Executa a função ao carregar a página
-            obterLocalizacao();
-    
-            let latInput = document.getElementById("latitude");
-            let lonInput = document.getElementById("longitude");
-            let hiddenLatInput = document.getElementById("hiddenLatitude");
-            let hiddenLonInput = document.getElementById("hiddenLongitude");
-
-            if (latInput && lonInput) {
-                let latitude = parseFloat(latInput.value.trim());
-                let longitude = parseFloat(lonInput.value.trim());
-
-                // 🛠️ Corrigir valores multiplicados erroneamente
-                if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
-                    console.warn("⚠️ Coordenadas anormais detectadas. Normalizando valores...");
-                    latitude = latitude / 1000000;
-                    longitude = longitude / 1000000;
-                }
-
-                if (latitude && longitude) {
-                    hiddenLatInput.value = latitude.toFixed(6);
-                    hiddenLonInput.value = longitude.toFixed(6);
-                    console.log("📌 Coordenadas corrigidas antes do envio:", latitude, longitude);
-                } else {
-                    obterLocalizacao();
-                }
-            }
-
-            // Captura localização por endereço (quando usuário insere manualmente)
-            btnObterLocalizacao.addEventListener("click", function() {
-                geoStatus.style.display = "none";
-                const endereco = document.getElementById("endereco").value.trim();
-
-                if (!endereco) {
-                    geoStatus.style.display = "block";
-                    geoStatus.textContent = "Por favor, insira um endereço válido.";
+            let map = null;
+            function inicializarMapa(lat, lon) {
+                if (map) {
+                    map.setView([lat, lon], 18);
                     return;
                 }
 
-                console.log("🔍 Buscando localização para o endereço:", endereco);
-                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}`;
+                map = L.map('map').setView([lat, lon], 18);
 
-                fetch(url)
-                    .then(response => response.json())
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 22,
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(map);
+
+                L.marker([lat, lon]).addTo(map)
+                    .bindPopup('Você está aqui!')
+                    .openPopup();
+            }
+
+            function obterLocalizacao() {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        function (position) {
+                            const lat = position.coords.latitude.toFixed(6);
+                            const lon = position.coords.longitude.toFixed(6);
+                            latitudeInput.value = lat;
+                            longitudeInput.value = lon;
+                            hiddenLatitude.value = lat;
+                            hiddenLongitude.value = lon;
+                            document.getElementById("labelLocalizacaoObtida").style.display = "block";
+
+                            inicializarMapa(lat, lon);
+                        },
+                        function (error) {
+                            alert("Erro ao obter localização: " + error.message);
+                        }
+                    );
+                } else {
+                    alert("Seu navegador não suporta geolocalização.");
+                }
+            }
+
+            obterLocalizacao();
+
+            document.getElementById("checkEndereco").addEventListener("change", function () {
+                document.getElementById("enderecoGroup").style.display = this.checked ? "block" : "none";
+            });
+
+            document.getElementById("btnObterLocalizacao").addEventListener("click", function () {
+                const endereco = document.getElementById("endereco").value.trim();
+                if (!endereco) return alert("Por favor, insira um endereço válido.");
+
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}`)
+                    .then(res => res.json())
                     .then(data => {
                         if (data.length > 0) {
-                            const location = data[0];
-                            latitudeField.value = location.lat;
-                            longitudeField.value = location.lon;
-                            hiddenLatitude.value = location.lat;
-                            hiddenLongitude.value = location.lon;
-                            console.log("📍 Endereço convertido em coordenadas:", location.lat, location.lon);
+                            const { lat, lon } = data[0];
+                            latitudeInput.value = lat;
+                            longitudeInput.value = lon;
+                            hiddenLatitude.value = lat;
+                            hiddenLongitude.value = lon;
+
+                            inicializarMapa(lat, lon);
                         } else {
-                            geoStatus.style.display = "block";
-                            geoStatus.textContent = "Endereço não encontrado.";
+                            alert("Endereço não encontrado.");
                         }
                     })
-                    .catch(error => {
-                        console.error("❌ Erro ao buscar localização:", error);
-                        geoStatus.style.display = "block";
-                        geoStatus.textContent = "Erro ao obter localização. Tente novamente.";
-                    });
+                    .catch(() => alert("Erro ao buscar localização."));
             });
 
-            // Validação antes de enviar o formulário
-            locationForm.addEventListener("submit", function(event) {
-                if (!hiddenLatitude.value || !hiddenLongitude.value) {
-                    alert("⚠️ A localização não foi capturada corretamente. Por favor, insira manualmente ou permita o acesso à localização.");
-                    event.preventDefault();
-                }
+            document.getElementById("raioSlider").addEventListener("input", e => {
+                document.getElementById("raioValue").textContent = `${e.target.value} km`;
             });
-    
-            // Cria os checkboxes de produtos
-            function createCheckboxes() {
-                const categories = {
-                    'FEIJAO Kg': ["7896006744115", "7893500007715", "7898383101000", "7898907040969", "7898902735167"],
-                    'ARROZ Kg': ["7896006716112", "7893500024996", "7896012300213", "7898018160082", "7896084700027"],
-                    'MACARRAO 400g': ["7896213005184", "7896532701576", "7896022200879", "7896005030530", "7896016411021"],
-                    'FARINHA MANDIOCA Kg': ["7898994092216", "7898902735099", "7898272919211", "7898272919068", "7898277160021"],
-                    'CAFE 250g': ["7896005800027", "7896224808101", "7896224803069", "7898286200060", "7896005213018"],
-                    'BOLACHA': ["7896213006266", "7896005030356", "7898657832173", "7896003738636", "7891962014982"],
-                    'FLOCAO MILHO 500g': ["7896481130106", "7891091010718", "7898366932973", "7898932426042", "7898366930023"],
-                    'MARGARINA 250g': ["7894904271733", "7893000979932", "7894904929108", "7891152506815", "7891515901066"],
-                    'MANTEIGA 200g': ["7898912485496", "7896596000059", "7896010400885", "7898939253399", "7898043230798"],
-                    'LEITE PO 200g': ["7898215152330", "7896051130079", "7898949565017", "7896259410133", "7898403780918"],
-                    'LEITE UHT Lt': ["7896259412861", "7898118390860", "7898403782394", "7898387120380", "7896085393488"],
-                    'OLEO DE SOJA 900ml': ["7891107101621", "7892300001428", "7898247780075", "7896036090244", "7892300030060"],
-                    'ACUCAR CRISTAL Kg': ["7896065200072", "7896215300591", "7896065200065", "7897261800011", "7897154430103"],
-                    'OVOS 30un': ["7898644760175", "7898903159078", "7897146402064", "7898968933156", "7897146401067"],
-                    'SARDINHA 125g': ["7891167021013", "7891167023017", "7891167023024", "7896009301063", "7891167021075"]
-                };
-                checkboxContainer.innerHTML = "";
-                for (const [categoryName, barcodes] of Object.entries(categories)) {
-                    const checkboxWrapper = document.createElement("div");
-                    checkboxWrapper.classList.add("form-check");
-                    const checkbox = document.createElement("input");
-                    checkbox.type = "checkbox";
-                    checkbox.className = "form-check-input";
-                    checkbox.name = "category";
-                    checkbox.value = JSON.stringify(barcodes);
-                    const label = document.createElement("label");
-                    label.className = "form-check-label";
-                    label.innerText = categoryName;
-                    checkboxWrapper.appendChild(checkbox);
-                    checkboxWrapper.appendChild(label);
-                    checkboxContainer.appendChild(checkboxWrapper);
+            document.getElementById("diasSlider").addEventListener("input", e => {
+                document.getElementById("diasValue").textContent = `${e.target.value} dia(s)`;
+            });
+
+            function verificarPrecoCombustivel() {
+                const precoText = precoPainel?.textContent?.trim().replace(",", ".");
+                const preco = parseFloat(precoText);
+                if (productSection && !isNaN(preco) && preco > 0) {
+                    productSection.style.display = "block";
+                } else if (productSection) {
+                    productSection.style.display = "none";
                 }
             }
-            createCheckboxes();
-    
-            // Selecionar todos os produtos
-            selectAllCheckbox.addEventListener("change", () => {
-                const checkboxes = document.querySelectorAll('input[name="category"]');
-                checkboxes.forEach(checkbox => checkbox.checked = selectAllCheckbox.checked);
-            });
-    
-            // Atualizar o checkbox "Selecionar Todos"
-            function updateSelectAllCheckbox() {
-                const checkboxes = document.querySelectorAll('input[name="category"]');
-                selectAllCheckbox.checked = Array.from(checkboxes).every(checkbox => checkbox.checked);
+
+            if (precoCombustivelInput) {
+                precoCombustivelInput.addEventListener("input", verificarPrecoCombustivel);
+                precoCombustivelInput.addEventListener("change", verificarPrecoCombustivel);
+                setInterval(verificarPrecoCombustivel, 500);
             }
-            document.querySelectorAll('input[name="category"]').forEach(checkbox => {
-                checkbox.addEventListener("change", updateSelectAllCheckbox);
-            });
-    
-            // Processar seleção de produtos e validar o formulário antes do envio
-            locationForm.addEventListener("submit", (event) => {
-                if (!validarFormulario()) {
-                    event.preventDefault();
-                    return;
-                }
-                const selectedItems = [];
-                const checkboxes = document.querySelectorAll('input[name="category"]:checked');
-                if (checkboxes.length === 0) {
-                    alert("Por favor, selecione ao menos um produto.");
-                    event.preventDefault();
-                    return;
-                }
-                checkboxes.forEach(checkbox => {
-                    const barcodes = JSON.parse(checkbox.value);
-                    selectedItems.push(...barcodes);
+
+            document.querySelectorAll('input[name="combustivel"]').forEach(radio => {
+                radio.addEventListener("change", function () {
+                    const descricao = this.value;
+                    const latitude = latitudeInput.value.trim();
+                    const longitude = longitudeInput.value.trim();
+                    const raio = raioSlider.value;
+                    const dias = diasSlider.value;
+
+                    if (!latitude || !longitude || latitude === "0.0" || longitude === "0.0") {
+                        alert("Latitude e longitude são obrigatórias.");
+                        return;
+                    }
+
+                    fetch("{% url 'processar_combustivel' %}", {
+                        method: "POST",
+                        headers: {
+                            "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+                            "Content-Type": "application/x-www-form-urlencoded"
+                        },
+                        body: new URLSearchParams({ descricao, latitude, longitude, raio, dias })
+                    })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.media_preco !== undefined) {
+                                const preco = parseFloat(data.media_preco).toFixed(2);
+                                if (precoCombustivelInput) {
+                                    precoCombustivelInput.value = preco;
+                                    precoCombustivelInput.dispatchEvent(new Event("change"));
+                                }
+                                precoPainel.textContent = preco;
+                                painelCombustivelTipo.textContent = descricao.toUpperCase();
+                                varSemana.innerHTML = '<span class="text-success">  </span>    ';
+                                varHoje.innerHTML = '<span class="text-danger">   </span>   ';
+                                verificarPrecoCombustivel();
+                            } else {
+                                alert("Erro ao calcular a média do combustível.");
+                            }
+                        })
+                        .catch(() => alert("Erro ao buscar preço do combustível."));
                 });
-                document.getElementById("item_list").value = JSON.stringify(selectedItems);
-                // Adiciona a classe "loading" ao body para ocultar os demais elementos
+            });
+
+            locationForm.addEventListener("submit", function (e) {
+                const lat = hiddenLatitude.value;
+                const lon = hiddenLongitude.value;
+                if (!lat || !lon) {
+                    alert("A localização não foi capturada corretamente.");
+                    e.preventDefault();
+                    return;
+                }
+
+                const produtosSelecionados = [...document.querySelectorAll('input[name="category"]:checked')];
+                if (produtosSelecionados.length === 0) {
+                    alert("Por favor, selecione ao menos um produto.");
+                    e.preventDefault();
+                    return;
+                }
+
+                const todosBarcodes = produtosSelecionados.flatMap(cb => JSON.parse(cb.value));
+                document.getElementById("item_list").value = JSON.stringify(todosBarcodes);
                 document.body.classList.add("loading");
                 progressContainer.style.display = "block";
             });
-    
-            btnCalcularMedia.addEventListener("click", () => {
-                const combustivelSelecionado = document.querySelector('input[name="combustivel"]:checked');
-                if (!combustivelSelecionado) {
-                    alert("Por favor, selecione um tipo de combustível.");
-                    return;
-                }
-                const descricao = combustivelSelecionado.value;
-                const latitude = latitudeField.value.trim();
-                const longitude = longitudeField.value.trim();
-                const raio = raioSlider.value;
-                const dias = diasSlider.value;
-                if (!latitude || !longitude || latitude === "0.0" || longitude === "0.0") {
-                    alert("Latitude e longitude são obrigatórias.");
-                    return;
-                }
-                fetch("{% url 'processar_combustivel' %}", {
-                    method: "POST",
-                    headers: {
-                        "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
-                        "Content-Type": "application/x-www-form-urlencoded",
-                    },
-                    body: new URLSearchParams({
-                        "descricao": descricao,
-                        "latitude": latitude,
-                        "longitude": longitude,
-                        "raio": raio,
-                        "dias": dias
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.media_preco !== undefined) {
-                        document.getElementById("precoCombustivel").value = data.media_preco.toFixed(2);
-            
-                        // 🔹 Garante que a seção de produtos seja exibida após preenchimento
-                        verificarPrecoCombustivel();
-                    } else {
-                        alert(data.error || "Erro ao calcular a média do combustível.");
-                    }
-                })
-                .catch(error => console.error("Erro:", error));
-            });            
-        });
-    </script>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            var latInput = document.getElementById("latitude");
-            var lonInput = document.getElementById("longitude");
-            console.log("Valores dos inputs na localizacao.html:");
-            console.log("Latitude:", latInput.value);
-            console.log("Longitude:", lonInput.value);
-        });
-    </script>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const precoCombustivelInput = document.getElementById("precoCombustivel");
-            const productSection = document.getElementById("productSection");
-    
-            function verificarPrecoCombustivel() {
-                if (precoCombustivelInput.value.trim() !== "" && precoCombustivelInput.value.trim() !== "0,00") {
-                    productSection.style.display = "block";  // Exibe a seção
-                } else {
-                    productSection.style.display = "none";   // Oculta a seção novamente
-                }
+
+            const categorias = {
+                'FEIJAO Kg': ["7896006744115", "7893500007715", "7898383101000", "7898907040969", "7898902735167"],
+                'ARROZ Kg': ["7896006716112", "7893500024996", "7896012300213", "7898018160082", "7896084700027"],
+                'MACARRAO 400g': ["7896213005184", "7896532701576", "7896022200879", "7896005030530", "7896016411021"],
+                'FARINHA MANDIOCA Kg': ["7898994092216", "7898902735099", "7898272919211", "7898272919068", "7898277160021"],
+                'CAFE 250g': ["7896005800027", "7896224808101", "7896224803069", "7898286200060", "7896005213018"],
+                'BOLACHA': ["7896213006266", "7896005030356", "7898657832173", "7896003738636", "7891962014982"],
+                'FLOCAO MILHO 500g': ["7896481130106", "7891091010718", "7898366932973", "7898932426042", "7898366930023"],
+                'MARGARINA 250g': ["7894904271733", "7893000979932", "7894904929108", "7891152506815", "7891515901066"],
+                'MANTEIGA 200g': ["7898912485496", "7896596000059", "7896010400885", "7898939253399", "7898043230798"],
+                'LEITE PO 200g': ["7898215152330", "7896051130079", "7898949565017", "7896259410133", "7898403780918"],
+                'LEITE UHT Lt': ["7896259412861", "7898118390860", "7898403782394", "7898387120380", "7896085393488"],
+                'OLEO DE SOJA 900ml': ["7891107101621", "7892300001428", "7898247780075", "7896036090244", "7892300030060"],
+                'ACUCAR CRISTAL Kg': ["7896065200072", "7896215300591", "7896065200065", "7897261800011", "7897154430103"],
+                'OVOS 30un': ["7898644760175", "7898903159078", "7897146402064", "7898968933156", "7897146401067"],
+                'SARDINHA 125g': ["7891167021013", "7891167023017", "7891167023024", "7896009301063", "7891167021075"]
+            };
+
+            const checkboxContainer = document.getElementById("categoryCheckboxes");
+            checkboxContainer.innerHTML = "";
+            for (const [nome, codigos] of Object.entries(categorias)) {
+                const div = document.createElement("div");
+                div.className = "form-check";
+
+                const input = document.createElement("input");
+                input.type = "checkbox";
+                input.className = "form-check-input";
+                input.name = "category";
+                input.value = JSON.stringify(codigos);
+
+                const label = document.createElement("label");
+                label.className = "form-check-label";
+                label.innerText = nome;
+
+                div.appendChild(input);
+                div.appendChild(label);
+                checkboxContainer.appendChild(div);
             }
-    
-            // Dispara a verificação ao digitar ou mudar o valor manualmente
-            precoCombustivelInput.addEventListener("input", verificarPrecoCombustivel);
-            precoCombustivelInput.addEventListener("change", verificarPrecoCombustivel);
-    
-            // Verifica mudanças no campo de entrada de tempos em tempos (corrige alterações via JavaScript)
-            setInterval(verificarPrecoCombustivel, 500);
-    
-            // Garantia de que a função será chamada após o carregamento da página
-            verificarPrecoCombustivel();
-    
-            // Captura o botão "Calcular Média"
-            const btnCalcularMedia = document.getElementById("btnCalcularMedia");
-    
-            btnCalcularMedia.addEventListener("click", () => {
-                const combustivelSelecionado = document.querySelector('input[name="combustivel"]:checked');
-                if (!combustivelSelecionado) {
-                    alert("Por favor, selecione um tipo de combustível.");
-                    return;
-                }
-                const descricao = combustivelSelecionado.value;
-                const latitude = document.getElementById("latitude").value.trim();
-                const longitude = document.getElementById("longitude").value.trim();
-                const raio = document.getElementById("raioSlider").value;
-                const dias = document.getElementById("diasSlider").value;
-    
-                if (!latitude || !longitude || latitude === "0.0" || longitude === "0.0") {
-                    alert("Latitude e longitude são obrigatórias.");
-                    return;
-                }
-    
-                fetch("{% url 'processar_combustivel' %}", {
-                    method: "POST",
-                    headers: {
-                        "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
-                        "Content-Type": "application/x-www-form-urlencoded",
-                    },
-                    body: new URLSearchParams({
-                        "descricao": descricao,
-                        "latitude": latitude,
-                        "longitude": longitude,
-                        "raio": raio,
-                        "dias": dias
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.media_preco !== undefined) {
-                        precoCombustivelInput.value = data.media_preco.toFixed(2);
-                        
-                        // 🔹 Disparar evento manualmente para ativar os listeners
-                        precoCombustivelInput.dispatchEvent(new Event("change"));
-    
-                        // 🔹 Garante que a seção de produtos seja exibida
-                        verificarPrecoCombustivel();
-                    } else {
-                        alert(data.error || "Erro ao calcular a média do combustível.");
-                    }
-                })
-                .catch(error => console.error("Erro:", error));
+
+
+            const selectAllCheckbox = document.getElementById("selectAllCheckbox");
+            selectAllCheckbox.addEventListener("change", () => {
+                document.querySelectorAll('input[name="category"]').forEach(cb => cb.checked = selectAllCheckbox.checked);
             });
         });
-    </script>    
+    </script>
 </body>
 </html>
