@@ -214,7 +214,9 @@
 
             <!-- Botão de envio -->
             <div class="form-buttons mt-4 d-flex justify-content-center">
-                <button type="submit" class="btn btn-success btn-lg"><i class="bi bi-search"></i> Buscar Ofertas</button>
+                <button type="submit" class="btn btn-success btn-lg" id="btnBuscar" disabled>
+                    <i class="bi bi-search"></i> Buscar Ofertas
+                </button>
             </div>
         </form>
     </div>
@@ -438,6 +440,25 @@
             selectAllCheckbox.addEventListener("change", () => {
                 document.querySelectorAll('input[name="category"]').forEach(cb => cb.checked = selectAllCheckbox.checked);
             });
+
+            const btnBuscar = document.getElementById("btnBuscar");
+
+            // Habilita/desabilita botão com base nos produtos selecionados
+            function atualizarBotaoBuscar() {
+                const algumSelecionado = document.querySelectorAll('input[name="category"]:checked').length > 0;
+                btnBuscar.disabled = !algumSelecionado;
+            }
+
+            // Adiciona o listener a cada checkbox individual
+            document.querySelectorAll('input[name="category"]').forEach(cb => {
+                cb.addEventListener("change", atualizarBotaoBuscar);
+            });
+
+            // Listener também para o checkbox "Selecionar Todos"
+            document.getElementById("selectAllCheckbox").addEventListener("change", atualizarBotaoBuscar);
+
+            // Atualiza estado inicial do botão ao carregar os checkboxes
+            atualizarBotaoBuscar();
         });
     </script>
 </body>
