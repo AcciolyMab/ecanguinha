@@ -16,8 +16,5 @@ COPY . .
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Expõe a porta (usada localmente ou por $PORT via CMD)
-EXPOSE 8000
-
 # Comando para iniciar o Gunicorn (usa $PORT se disponível, ou 8000)
 CMD ["gunicorn", "canguinaProject.wsgi:application", "--host", "0.0.0.0", "--port", "8000"]
