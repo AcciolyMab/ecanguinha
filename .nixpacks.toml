@@ -1,2 +1,0 @@
-[start]
-cmd = "exec gunicorn canguinaProject.wsgi:application --bind 0.0.0.0:$PORT --timeout 120 --log-file - --workers 3" 
