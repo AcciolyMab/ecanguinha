@@ -1,8 +1,5 @@
 # Imagem base com Python 3.11.9
-FROM python:3.11.9-slim
-
-# Evita prompts durante instalação de pacotes
-ENV DEBIAN_FRONTEND=noninteractive
+FROM python:3.11-slim
 
 # Diretório de trabalho
 WORKDIR /app
