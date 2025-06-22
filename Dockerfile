@@ -1,5 +1,5 @@
-# Imagem base com Python 3.11.9
-FROM python:3.11-slim
+# Imagem base com Python 3.10
+FROM python:3.10-slim
 
 # Diretório de trabalho
 WORKDIR /app
@@ -20,4 +20,4 @@ ENV PYTHONUNBUFFERED=1
 EXPOSE 8000
 
 # Comando para iniciar o Gunicorn (usa $PORT se disponível, ou 8000)
-CMD ["gunicorn", "canguinaProject.wsgi:application", "--bind", "0.0.0.0:$PORT"]
+CMD ["gunicorn", "canguinaProject.wsgi:application", "--host", "0.0.0.0", "--port", "8000"]
