@@ -23,4 +23,4 @@ ENV PYTHONUNBUFFERED=1
 EXPOSE 8000
 
 # Comando para iniciar o Gunicorn (usa $PORT se disponível, ou 8000)
-CMD gunicorn canguinaProject.wsgi:application --bind 0.0.0.0:${PORT:-8000}
+CMD ["/bin/bash", "-c", "gunicorn canguinaProject.wsgi:application --bind 0.0.0.0:${PORT:-8000}"]
