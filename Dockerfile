@@ -1,19 +1,24 @@
 FROM python:3.11-slim
 
+# Configurações
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV PORT=8080
 
+# Diretório de trabalho
 WORKDIR /app
 
+# Instala dependências
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
+# Copia tudo, incluindo o start.sh criado
 COPY . .
 
-# Dê permissão de execução no container
+# Dá permissão de execução
 RUN chmod +x /app/start.sh
 
+# Exponha uma porta default (Railway sobrescreve com $PORT internamente)
 EXPOSE 8080
 
+# Ponto de entrada
 CMD ["/app/start.sh"]
