@@ -8,6 +8,7 @@ import pandas as pd
 from geopy.distance import geodesic
 import os
 import concurrent.futures
+import multiprocessing
 
 # Configuração de logging
 logging.basicConfig(level=logging.DEBUG)
@@ -133,7 +134,9 @@ def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
     response_list = []
     
     # Ajuste: aumentar o número de workers para aproveitar as 32 vCPU
-    max_workers = 30
+    #max_workers = 30
+    cpu_cores = multiprocessing.cpu_count()
+    max_workers = min(5 * cpu_cores, len(gtin_list))
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_map = {
