@@ -169,7 +169,7 @@ def listar_produtos(request):
 
             # Captura demais parâmetros
             dias = int(request.POST.get('dias', '1').strip())
-            raio = int(request.POST.get('raio', '5').strip())
+            raio = int(request.POST.get('raio', '3').strip())
             preco_combustivel = float(request.POST.get('precoCombustivel', '0').strip())
 
             # Processamento da lista de produtos
