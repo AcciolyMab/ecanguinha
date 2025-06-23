@@ -125,7 +125,7 @@
                                 <i class="fa fa-map-marker"></i> {{ mercado.endereco }}
                             </div>
                             <div class="mercado-meta">
-                                ⭐ {{ mercado.avaliacao|default:4.0 }} &nbsp;&nbsp; 📍 {{ mercado.distancia|default:'1,0' }} km
+                                ⭐ {{ mercado.avaliacao|default:4.0 }} &nbsp;&nbsp; 📍 {{ mercado.distancia|default:'  ' }} 
                             </div>
                         </div>
                        {% with resultado.purchases|dict_get:mercado.nome as produtos_mercado %}
@@ -184,9 +184,20 @@
             }).addTo(map);
 
             var userMarker = L.AwesomeMarkers.icon({ icon: 'home', markerColor: 'green', prefix: 'fa' });
-            L.marker([userLat, userLon], { icon: userMarker })
+            const userPopupContent = `<b>Sua Localização</b><br>Lat: ${userLat}<br>Lon: ${userLon}`;
+            const userMarkerObj = L.marker([userLat, userLon], { icon: userMarker })
                 .addTo(map)
-                .bindPopup(`<b>Sua Localização</b><br>Lat: ${userLat}<br>Lon: ${userLon}`).openPopup();
+                .bindTooltip(userPopupContent, {
+                    direction: 'top',
+                    offset: [0, -10],
+                    opacity: 0.9
+                })
+                .bindPopup(userPopupContent);
+
+
+            /*L.marker([userLat, userLon], { icon: userMarker })
+                .addTo(map)
+                .bindPopup(`<b>Sua Localização</b><br>Lat: ${userLat}<br>Lon: ${userLon}`).openPopup();*/
 
             var mercadosData = JSON.parse(document.getElementById("mercados-data").textContent);
             var mercadoIcon = L.AwesomeMarkers.icon({ icon: 'shopping-cart', markerColor: 'blue', prefix: 'fa' });
@@ -195,13 +206,33 @@
             mercadosData.forEach(function(mercado) {
                 var lat = parseFloat(mercado.latitude);
                 var lon = parseFloat(mercado.longitude);
+
+                if (!isNaN(lat) && !isNaN(lon)) {
+                    const mercadoPopupContent = `<b>${mercado.nome}</b><br>${mercado.endereco}`;
+
+                 const mercadoMarker = L.marker([lat, lon], { icon: mercadoIcon })
+                    .addTo(map)
+                    .bindTooltip(mercadoPopupContent, {
+                        direction: 'top',
+                        offset: [0, -10],
+                        opacity: 0.9
+                    })
+                    .bindPopup(mercadoPopupContent); // ainda permite click
+
+
+                    waypoints.push(L.latLng(lat, lon));
+                }
+            });
+            /*mercadosData.forEach(function(mercado) {
+                var lat = parseFloat(mercado.latitude);
+                var lon = parseFloat(mercado.longitude);
                 if (!isNaN(lat) && !isNaN(lon)) {
                     L.marker([lat, lon], { icon: mercadoIcon })
                         .addTo(map)
                         .bindPopup(`<b>${mercado.nome}</b><br>${mercado.endereco}`);
                     waypoints.push(L.latLng(lat, lon));
                 }
-            });
+            });*/
 
             waypoints.push(L.latLng(userLat, userLon));
             if (waypoints.length > 2) {
@@ -215,7 +246,7 @@
                         });
                     },
                     lineOptions: {
-                        styles: [{ color: 'red', opacity: 0.9, weight: 10 }]
+                        styles: [{ color: 'red', opacity: 0.9, weight: 6 }]
                     },
                     router: L.Routing.osrmv1({
                         serviceUrl: 'https://router.project-osrm.org/route/v1'
