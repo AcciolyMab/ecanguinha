@@ -246,41 +246,98 @@ def consultar_combustivel(descricao, raio, my_lat, my_lon, dias):
         return {"error": f"Erro inesperado ao buscar '{descricao}': {str(e)}"}
 
 # ------------------------------------------------------------------------------
+# def obter_combustiveis(descricao, raio, my_lat, my_lon, dias):
+#     """
+#     Obtém os 3 estabelecimentos mais próximos que vendem o combustível especificado.
+#     """
+#     response = consultar_combustivel(descricao, raio, my_lat, my_lon, dias)
+
+#     if not response or 'conteudo' not in response:
+#         #logger.warning(f"Nenhum dado válido foi retornado para '{descricao}'.")
+#         return pd.DataFrame()
+
+#     estabelecimentos = response.get('conteudo', [])
+#     data_list = []
+#     for item in estabelecimentos:
+#         produto = item.get('produto', {})
+#         estabelecimento = item.get('estabelecimento', {})
+#         endereco = estabelecimento.get('endereco', {})
+#         try:
+#             lat_estab = float(endereco.get('latitude', 0.0))
+#             lon_estab = float(endereco.get('longitude', 0.0))
+#             distancia = geodesic((my_lat, my_lon), (lat_estab, lon_estab)).km
+#             data_entry = {
+#                 'DESCRICAO': produto.get('descricao', 'Desconhecido'),
+#                 'VALOR': produto.get('venda', {}).get('valorVenda', 0.0),
+#                 'CNPJ': estabelecimento.get('cnpj', 'Desconhecido'),
+#                 'MERCADO': estabelecimento.get('razaoSocial', 'Desconhecido'),
+#                 'ENDERECO': endereco.get('nomeLogradouro', 'Desconhecido'),
+#                 'NUMERO': endereco.get('numeroImovel', 'S/N'),
+#                 'BAIRRO': endereco.get('bairro', 'Desconhecido'),
+#                 'LAT': lat_estab,
+#                 'LONG': lon_estab,
+#                 'DISTANCIA_KM': round(distancia, 2)
+#             }
+#             data_list.append(data_entry)
+#         except Exception as e:
+#             logger.error(f"Erro ao processar item '{descricao}': {e}")
+
+#     if not data_list:
+#         logger.warning(f"Nenhum dado processado para '{descricao}'.")
+#         return pd.DataFrame()
+
+#     df = pd.DataFrame(data_list)
+#     df = df.sort_values(by='DISTANCIA_KM').head(3)
+#     return df
+
+from multiprocessing import Pool
+
+def _processar_estabelecimento(args):
+    item, descricao, my_lat, my_lon = args
+    try:
+        produto = item.get('produto', {})
+        estabelecimento = item.get('estabelecimento', {})
+        endereco = estabelecimento.get('endereco', {})
+
+        lat_estab = float(endereco.get('latitude', 0.0))
+        lon_estab = float(endereco.get('longitude', 0.0))
+        distancia = geodesic((my_lat, my_lon), (lat_estab, lon_estab)).km
+
+        return {
+            'DESCRICAO': produto.get('descricao', 'Desconhecido'),
+            'VALOR': produto.get('venda', {}).get('valorVenda', 0.0),
+            'CNPJ': estabelecimento.get('cnpj', 'Desconhecido'),
+            'MERCADO': estabelecimento.get('razaoSocial', 'Desconhecido'),
+            'ENDERECO': endereco.get('nomeLogradouro', 'Desconhecido'),
+            'NUMERO': endereco.get('numeroImovel', 'S/N'),
+            'BAIRRO': endereco.get('bairro', 'Desconhecido'),
+            'LAT': lat_estab,
+            'LONG': lon_estab,
+            'DISTANCIA_KM': round(distancia, 2)
+        }
+    except Exception as e:
+        logger.error(f"Erro ao processar item '{descricao}': {e}")
+        return None
+
 def obter_combustiveis(descricao, raio, my_lat, my_lon, dias):
     """
     Obtém os 3 estabelecimentos mais próximos que vendem o combustível especificado.
+    Agora com multiprocessing aplicado ao processamento dos dados.
     """
     response = consultar_combustivel(descricao, raio, my_lat, my_lon, dias)
 
     if not response or 'conteudo' not in response:
-        #logger.warning(f"Nenhum dado válido foi retornado para '{descricao}'.")
         return pd.DataFrame()
 
     estabelecimentos = response.get('conteudo', [])
-    data_list = []
-    for item in estabelecimentos:
-        produto = item.get('produto', {})
-        estabelecimento = item.get('estabelecimento', {})
-        endereco = estabelecimento.get('endereco', {})
-        try:
-            lat_estab = float(endereco.get('latitude', 0.0))
-            lon_estab = float(endereco.get('longitude', 0.0))
-            distancia = geodesic((my_lat, my_lon), (lat_estab, lon_estab)).km
-            data_entry = {
-                'DESCRICAO': produto.get('descricao', 'Desconhecido'),
-                'VALOR': produto.get('venda', {}).get('valorVenda', 0.0),
-                'CNPJ': estabelecimento.get('cnpj', 'Desconhecido'),
-                'MERCADO': estabelecimento.get('razaoSocial', 'Desconhecido'),
-                'ENDERECO': endereco.get('nomeLogradouro', 'Desconhecido'),
-                'NUMERO': endereco.get('numeroImovel', 'S/N'),
-                'BAIRRO': endereco.get('bairro', 'Desconhecido'),
-                'LAT': lat_estab,
-                'LONG': lon_estab,
-                'DISTANCIA_KM': round(distancia, 2)
-            }
-            data_list.append(data_entry)
-        except Exception as e:
-            logger.error(f"Erro ao processar item '{descricao}': {e}")
+
+    args = [(item, descricao, my_lat, my_lon) for item in estabelecimentos]
+
+    # Usa multiprocessing para processar os estabelecimentos
+    with Pool(processes=min(multiprocessing.cpu_count(), 8)) as pool:
+        resultados = pool.map(_processar_estabelecimento, args)
+
+    data_list = [r for r in resultados if r is not None]
 
     if not data_list:
         logger.warning(f"Nenhum dado processado para '{descricao}'.")
@@ -289,3 +346,4 @@ def obter_combustiveis(descricao, raio, my_lat, my_lon, dias):
     df = pd.DataFrame(data_list)
     df = df.sort_values(by='DISTANCIA_KM').head(3)
     return df
+
