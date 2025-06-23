@@ -12,9 +12,15 @@ RUN pip install --upgrade pip && \
 # Copia o restante da aplicação
 COPY . .
 
+# Coleta arquivos estáticos para a pasta `staticfiles/`
+RUN python manage.py collectstatic --noinput
+
 # Variável de ambiente padrão para Django
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+
+# Expõe a porta 8000 (usada pelo Gunicorn)
+EXPOSE 8000
 
 # Comando para iniciar o Gunicorn (usa $PORT se disponível, ou 8000)
 CMD ["gunicorn", "canguinaProject.wsgi:application", "--host", "0.0.0.0", "--port", "8000"]
