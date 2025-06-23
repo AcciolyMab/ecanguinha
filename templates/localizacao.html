@@ -212,6 +212,7 @@
                 <input type="hidden" id="hiddenLongitude" name="hiddenLongitude">
                 <input type="hidden" id="item_list" name="item_list">
             </div>
+            <input type="hidden" id="precoCombustivel" name="precoCombustivel" value="0.00">
 
             <!-- Botão de envio -->
             <div class="form-buttons mt-4 d-flex justify-content-center">
@@ -328,10 +329,12 @@
             }
 
             if (precoCombustivelInput) {
-                precoCombustivelInput.addEventListener("input", verificarPrecoCombustivel);
-                precoCombustivelInput.addEventListener("change", verificarPrecoCombustivel);
-                setInterval(verificarPrecoCombustivel, 500);
+                ["input", "change"].forEach(evt =>
+                    precoCombustivelInput.addEventListener(evt, verificarPrecoCombustivel)
+                );
+                verificarPrecoCombustivel();  // checa já no início
             }
+
 
             document.querySelectorAll('input[name="combustivel"]').forEach(radio => {
                 radio.addEventListener("change", function () {
@@ -371,7 +374,10 @@
                                 alert("Erro ao calcular a média do combustível.");
                             }
                         })
-                        .catch(() => alert("Erro ao buscar preço do combustível."));
+                        .catch((err) => {
+                            console.error("Erro ao buscar combustível:", err);
+                            alert("Erro ao buscar preço do combustível. Tente novamente.");
+                        });
                 });
             });
 
