@@ -74,8 +74,8 @@ SEFAZ_SESSION = requests.Session()
 
 # Configura o adaptador HTTP com controle de pool e retry
 adapter = HTTPAdapter(
-    pool_connections=100,
-    pool_maxsize=100,
+    pool_connections=30,
+    pool_maxsize=30,
     max_retries=Retry(
         total=3,                # Tenta 3 vezes em caso de erro
         backoff_factor=0.3,     # Atraso progressivo entre tentativas
@@ -254,7 +254,7 @@ def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
     response_list = []
 
     # ✅ Número fixo de workers sem uso de multiprocessing
-    max_workers = min(20, len(gtin_list))  # define limite seguro para ambientes limitados
+    max_workers = min(2, len(gtin_list))  # define limite seguro para ambientes limitados
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_map = {
@@ -547,7 +547,7 @@ def consultar_combustivel(descricao, raio, my_lat, my_lon, dias):
         },
         "dias": int(dias),
         "pagina": 1,
-        "registrosPorPagina": 300
+        "registrosPorPagina": 50
     }
 
     try:
