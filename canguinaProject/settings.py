@@ -22,7 +22,8 @@ except Exception as e:
 
 # Base Directory
 BASE_DIR = Path(__file__).resolve().parent.parent
-print("DEBUG - REDIS_URL_PROD:", os.getenv("REDIS_URL_PROD"))
+print("DEBUG - REDIS_URL:", os.getenv("REDIS_URL"))
+
 # Chave Secreta
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-o!f&%cc+m5r#4atn@28$b%dve1477nvc((4k^%3uxyde)w1+_5')
 
@@ -89,36 +90,31 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'canguinaProject.wsgi.application'
 
-# Configuração de Cache com Django-Redis
-if DEBUG:  # Ambiente local
-    # Configuração de Cache com Django-Redis
-    CACHES = {
-        'default': {
-            'BACKEND': 'django_redis.cache.RedisCache',
-            'LOCATION': config('REDIS_URL', default='redis://127.0.0.1:6379/1'),
-            'OPTIONS': {
-                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-                'SERIALIZER': 'django_redis.serializers.pickle.PickleSerializer',
-                'IGNORE_EXCEPTIONS': DEBUG,
-                'CONNECTION_POOL_KWARGS': {
-                    'max_connections': 100,
-                    'socket_timeout': 20
-                }
+# REDIS_URL da variável de ambiente, com fallback local
+REDIS_URL = config('REDIS_URL', default='redis://127.0.0.1:6379/1')
+
+logger.warning(f"🛠️ Ambiente: {'PRODUÇÃO' if not DEBUG else 'DESENVOLVIMENTO'} | Redis em uso: {REDIS_URL}")
+
+# Configuração unificada do cache Redis
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': REDIS_URL,
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'SERIALIZER': (
+                'django_redis.serializers.pickle.PickleSerializer' if DEBUG
+                else 'django_redis.serializers.json.JSONSerializer'
+            ),
+            'IGNORE_EXCEPTIONS': DEBUG,
+            'CONNECTION_POOL_KWARGS': {
+                'max_connections': 100,
+                'socket_timeout': 20
             }
         }
     }
-else:  # Ambiente de Produção
-    CACHES = {
-        'default': {
-            'BACKEND': 'django_redis.cache.RedisCache',
-            'LOCATION': config('REDIS_URL_PROD', default='redis://127.0.0.1:6379/1'),
-            'OPTIONS': {
-                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-                'SERIALIZER': 'django_redis.serializers.json.JSONSerializer',
-                'IGNORE_EXCEPTIONS': True,
-            }
-        }
-    }
+}
+
 
 # Configuração para usar o Redis como backend de sessão
 SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
@@ -165,6 +161,8 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Configurações adicionais
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+logger.warning(f"🚀 Cache Redis configurado com: {REDIS_URL}")
 
 
 LOGGING = {
