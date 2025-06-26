@@ -313,7 +313,7 @@ def consultar_combustivel(descricao, raio, my_lat, my_lon, dias, max_attempts=3)
             logger.error(f"🚫 Todas as tentativas falharam para o combustível: {descricao}")
             return {"error": f"Todas as tentativas falharam para o combustível: {descricao}"}
 
-        time.sleep(1.5 * attempt) # Backoff exponencial
+        time.sleep(0.5 * attempt) # Backoff exponencial
 
     return {"error": "Falha desconhecida na consulta de combustível"}
 
