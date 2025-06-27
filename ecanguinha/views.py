@@ -127,7 +127,6 @@ def obter_rota(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-
 def listar_produtos(request):
     if request.method == 'POST':
         try:

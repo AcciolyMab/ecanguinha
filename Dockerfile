@@ -27,4 +27,5 @@ HEALTHCHECK --interval=30s --timeout=10s \
 EXPOSE 8000
 
 # Comando para iniciar o Gunicorn (usa $PORT se disponível, ou 8000)
-CMD ["gunicorn", "canguinaProject.wsgi:application", "--bind", "0.0.0.0:${PORT:-8000}", "--timeout", "600", "--keep-alive", "120"]
+# CMD ["gunicorn", "canguinaProject.wsgi:application", "--bind", "0.0.0.0:${PORT:-8000}", "--timeout", "600", "--keep-alive", "120"]
+CMD sh -c "gunicorn canguinaProject.wsgi:application --bind 0.0.0.0:${PORT:-8000} --timeout 300 --keep-alive 65 --log-level debug"
