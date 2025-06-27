@@ -217,22 +217,6 @@ def listar_produtos(request):
                 'item_list': gtin_list
             }
 
-            # context = {
-            #     'resultado': {
-            #         'rota': rota,
-            #         'purchases': processed_purchases,
-            #         'total_cost': total_cost,
-            #         'total_distance': total_distance,
-            #         'execution_time': execution_time
-            #     },
-            #     'mercados_comprados': mercados_comprados,
-            #     'node_coords': [(float(mercado.get('latitude')), float(mercado.get('longitude'))) for mercado in mercados_comprados],
-            #     'user_lat': avg_lat,  # Agora enviamos a latitude do usuário
-            #     'user_lon': avg_lon,  # Agora enviamos a longitude do usuário
-            #     'dias': int(dias),
-            #     'raio': int(raio),
-            #     'item_list': gtin_list
-            # }
             logger.warning(f"🧭 Coordenadas médias: avg_lat={avg_lat}, avg_lon={avg_lon}")
 
             return render(request, 'lista.html', context)
@@ -251,60 +235,6 @@ def calcular_distancia(lat1, lon1, lat2, lon2):
     """
     return geodesic((lat1, lon1), (lat2, lon2)).km
 
-
-# def processar_combustivel(request):
-#     """
-#     View para processar a busca de combustíveis, calcular a média de preços e retornar o posto mais próximo.
-#     """
-#     descricao = request.POST.get('descricao')
-#     latitude = request.POST.get('latitude')
-#     longitude = request.POST.get('longitude')
-#     dias = request.POST.get('dias')
-#     raio = request.POST.get('raio')
-
-#     if not descricao:
-#         return JsonResponse({"error": "A descrição do combustível é obrigatória"}, status=400)
-
-#     if latitude == "0.0" or longitude == "0.0":
-#         return JsonResponse({"error": "Latitude e Longitude são obrigatórios"}, status=400)
-
-#     # Obter os estabelecimentos mais próximos via API SEFAZ
-#     data = consultar_combustivel(descricao, int(raio), float(latitude), float(longitude), int(dias))
-
-#     # Verifica se a resposta da API é válida
-#     if not data or "conteudo" not in data:
-#         return JsonResponse({"error": "Nenhum dado encontrado para o combustível especificado."}, status=404)
-
-#     # Converter a resposta para DataFrame do Pandas
-#     df = pd.DataFrame(data["conteudo"])
-
-#     # Se não houver dados, retorna erro
-#     if df.empty:
-#         return JsonResponse({"error": "Nenhum dado encontrado para o combustível especificado."}, status=404)
-
-#     # Extrair preços dos combustíveis corretamente
-#     df["VALOR"] = df["produto"].apply(lambda x: x["venda"]["valorVenda"])
-
-#     # Selecionar os 3 menores valores de venda e calcular a média
-#     media_preco = df.nsmallest(3, "VALOR")["VALOR"].mean()
-
-#     # Adicionar a distância calculada para cada estabelecimento
-#     df["DISTANCIA_KM"] = df["estabelecimento"].apply(
-#         lambda x: calcular_distancia(
-#             float(latitude), 
-#             float(longitude), 
-#             x["endereco"]["latitude"], 
-#             x["endereco"]["longitude"]))
-
-#     # Selecionar o posto mais próximo
-#     estabelecimento_mais_proximo = df.loc[df["DISTANCIA_KM"].idxmin()]["estabelecimento"]
-
-#     # Montar resposta JSON
-#     resposta = {
-#         "descricao": descricao,
-#         "media_preco": round(media_preco, 2),
-#         "posto_mais_proximo": estabelecimento_mais_proximo
-#     }
 
 #     return JsonResponse(resposta, safe=False)
 def consultar_worker(queue, descricao, raio, lat, lon, dias):

@@ -130,7 +130,7 @@ def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias, max_attempts=3):
     for attempt in range(1, max_attempts + 1):
         try:
             # Adiciona timeout explícito para evitar workers presos 
-            response = requests.post(url, json=data, headers=headers, timeout=70)
+            response = requests.post(url, json=data, headers=headers)
             response.raise_for_status()
             return response.json(), gtin
 
