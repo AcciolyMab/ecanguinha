@@ -13,6 +13,8 @@ from algorithms.sefaz_api import consultar_combustivel, obter_produtos, obter_co
 from algorithms.tpplib_data import create_tpplib_data
 from geopy.distance import geodesic  # Importação correta
 from django.shortcuts import render, redirect
+from django.views.decorators.csrf import csrf_exempt
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as ThreadTimeoutError
 
 # Configuração de log para facilitar o debug
 logger = logging.getLogger(__name__)
@@ -258,58 +260,132 @@ def calcular_distancia(lat1, lon1, lat2, lon2):
     return geodesic((lat1, lon1), (lat2, lon2)).km
 
 
+# def processar_combustivel(request):
+#     """
+#     View para processar a busca de combustíveis, calcular a média de preços e retornar o posto mais próximo.
+#     """
+#     descricao = request.POST.get('descricao')
+#     latitude = request.POST.get('latitude')
+#     longitude = request.POST.get('longitude')
+#     dias = request.POST.get('dias')
+#     raio = request.POST.get('raio')
+
+#     if not descricao:
+#         return JsonResponse({"error": "A descrição do combustível é obrigatória"}, status=400)
+
+#     if latitude == "0.0" or longitude == "0.0":
+#         return JsonResponse({"error": "Latitude e Longitude são obrigatórios"}, status=400)
+
+#     # Obter os estabelecimentos mais próximos via API SEFAZ
+#     data = consultar_combustivel(descricao, int(raio), float(latitude), float(longitude), int(dias))
+
+#     # Verifica se a resposta da API é válida
+#     if not data or "conteudo" not in data:
+#         return JsonResponse({"error": "Nenhum dado encontrado para o combustível especificado."}, status=404)
+
+#     # Converter a resposta para DataFrame do Pandas
+#     df = pd.DataFrame(data["conteudo"])
+
+#     # Se não houver dados, retorna erro
+#     if df.empty:
+#         return JsonResponse({"error": "Nenhum dado encontrado para o combustível especificado."}, status=404)
+
+#     # Extrair preços dos combustíveis corretamente
+#     df["VALOR"] = df["produto"].apply(lambda x: x["venda"]["valorVenda"])
+
+#     # Selecionar os 3 menores valores de venda e calcular a média
+#     media_preco = df.nsmallest(3, "VALOR")["VALOR"].mean()
+
+#     # Adicionar a distância calculada para cada estabelecimento
+#     df["DISTANCIA_KM"] = df["estabelecimento"].apply(
+#         lambda x: calcular_distancia(
+#             float(latitude), 
+#             float(longitude), 
+#             x["endereco"]["latitude"], 
+#             x["endereco"]["longitude"]))
+
+#     # Selecionar o posto mais próximo
+#     estabelecimento_mais_proximo = df.loc[df["DISTANCIA_KM"].idxmin()]["estabelecimento"]
+
+#     # Montar resposta JSON
+#     resposta = {
+#         "descricao": descricao,
+#         "media_preco": round(media_preco, 2),
+#         "posto_mais_proximo": estabelecimento_mais_proximo
+#     }
+
+#     return JsonResponse(resposta, safe=False)
+
+@csrf_exempt
 def processar_combustivel(request):
     """
     View para processar a busca de combustíveis, calcular a média de preços e retornar o posto mais próximo.
+    Protegida contra travamentos e falhas graves da API SEFAZ.
     """
-    descricao = request.POST.get('descricao')
-    latitude = request.POST.get('latitude')
-    longitude = request.POST.get('longitude')
-    dias = request.POST.get('dias')
-    raio = request.POST.get('raio')
+    try:
+        descricao = request.POST.get('descricao')
+        latitude = request.POST.get('latitude')
+        longitude = request.POST.get('longitude')
+        dias = request.POST.get('dias')
+        raio = request.POST.get('raio')
 
-    if not descricao:
-        return JsonResponse({"error": "A descrição do combustível é obrigatória"}, status=400)
+        if not descricao:
+            return JsonResponse({"error": "A descrição do combustível é obrigatória"}, status=400)
 
-    if latitude == "0.0" or longitude == "0.0":
-        return JsonResponse({"error": "Latitude e Longitude são obrigatórios"}, status=400)
+        if latitude == "0.0" or longitude == "0.0":
+            return JsonResponse({"error": "Latitude e Longitude são obrigatórios"}, status=400)
 
-    # Obter os estabelecimentos mais próximos via API SEFAZ
-    data = consultar_combustivel(descricao, int(raio), float(latitude), float(longitude), int(dias))
+        # ⚠️ Executa consulta em thread isolada com timeout controlado
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(
+                consultar_combustivel, descricao, int(raio), float(latitude), float(longitude), int(dias)
+            )
+            try:
+                data = future.result(timeout=20)  # Timeout total da função
+            except ThreadTimeoutError:
+                logger.critical("⏱️ Timeout total excedido na consulta à SEFAZ.")
+                return JsonResponse({"error": "Tempo excedido ao consultar dados do combustível."}, status=504)
 
-    # Verifica se a resposta da API é válida
-    if not data or "conteudo" not in data:
-        return JsonResponse({"error": "Nenhum dado encontrado para o combustível especificado."}, status=404)
+        # Verifica se a resposta da API é válida
+        if not data or "conteudo" not in data or not data["conteudo"]:
+            return JsonResponse({"error": "Nenhum dado encontrado para o combustível especificado."}, status=404)
 
-    # Converter a resposta para DataFrame do Pandas
-    df = pd.DataFrame(data["conteudo"])
+        # Converter a resposta para DataFrame do Pandas
+        df = pd.DataFrame(data["conteudo"])
+        if df.empty:
+            return JsonResponse({"error": "Nenhum dado encontrado para o combustível especificado."}, status=404)
 
-    # Se não houver dados, retorna erro
-    if df.empty:
-        return JsonResponse({"error": "Nenhum dado encontrado para o combustível especificado."}, status=404)
+        # Extrair preços dos combustíveis corretamente
+        df["VALOR"] = df["produto"].apply(lambda x: x["venda"]["valorVenda"])
 
-    # Extrair preços dos combustíveis corretamente
-    df["VALOR"] = df["produto"].apply(lambda x: x["venda"]["valorVenda"])
+        # Calcular a média dos 3 menores preços
+        media_preco = df.nsmallest(3, "VALOR")["VALOR"].mean()
 
-    # Selecionar os 3 menores valores de venda e calcular a média
-    media_preco = df.nsmallest(3, "VALOR")["VALOR"].mean()
+        # Calcular a distância de cada posto
+        df["DISTANCIA_KM"] = df["estabelecimento"].apply(
+            lambda x: calcular_distancia(
+                float(latitude),
+                float(longitude),
+                x["endereco"]["latitude"],
+                x["endereco"]["longitude"]
+            )
+        )
 
-    # Adicionar a distância calculada para cada estabelecimento
-    df["DISTANCIA_KM"] = df["estabelecimento"].apply(
-        lambda x: calcular_distancia(
-            float(latitude), 
-            float(longitude), 
-            x["endereco"]["latitude"], 
-            x["endereco"]["longitude"]))
+        # Selecionar o posto mais próximo
+        estabelecimento_mais_proximo = df.loc[df["DISTANCIA_KM"].idxmin()]["estabelecimento"]
 
-    # Selecionar o posto mais próximo
-    estabelecimento_mais_proximo = df.loc[df["DISTANCIA_KM"].idxmin()]["estabelecimento"]
+        resposta = {
+            "descricao": descricao,
+            "media_preco": round(media_preco, 2),
+            "posto_mais_proximo": estabelecimento_mais_proximo
+        }
 
-    # Montar resposta JSON
-    resposta = {
-        "descricao": descricao,
-        "media_preco": round(media_preco, 2),
-        "posto_mais_proximo": estabelecimento_mais_proximo
-    }
+        return JsonResponse(resposta, safe=False)
 
-    return JsonResponse(resposta, safe=False)
+    except SystemExit:
+        logger.critical("🚨 SystemExit capturado! Worker encerrando indevidamente.")
+        return JsonResponse({"error": "Erro crítico na requisição. Tente novamente."}, status=500)
+
+    except Exception as e:
+        logger.exception(f"❌ Erro inesperado em processar_combustivel: {e}")
+        return JsonResponse({"error": "Erro interno no servidor."}, status=500)
