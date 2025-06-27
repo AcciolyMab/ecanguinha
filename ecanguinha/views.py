@@ -15,6 +15,7 @@ from geopy.distance import geodesic  # Importação correta
 from django.shortcuts import render, redirect
 from django.views.decorators.csrf import csrf_exempt
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as ThreadTimeoutError
+from multiprocessing import Process, Queue
 
 # Configuração de log para facilitar o debug
 logger = logging.getLogger(__name__)
@@ -315,6 +316,25 @@ def calcular_distancia(lat1, lon1, lat2, lon2):
 #     }
 
 #     return JsonResponse(resposta, safe=False)
+def consultar_worker(queue, descricao, raio, lat, lon, dias):
+    from algorithms.sefaz_api import consultar_combustivel  # importa dentro do processo
+    try:
+        result = consultar_combustivel(descricao, raio, lat, lon, dias)
+        queue.put(result)
+    except Exception as e:
+        queue.put({"error": str(e)})
+
+def safe_consultar_combustivel(descricao, raio, lat, lon, dias, timeout=20):
+    queue = Queue()
+    p = Process(target=consultar_worker, args=(queue, descricao, raio, lat, lon, dias))
+    p.start()
+    p.join(timeout)
+    if p.is_alive():
+        p.terminate()
+        p.join()
+        logger.critical("⏱️ Processo da SEFAZ excedeu timeout total e foi encerrado.")
+        return {"error": "Tempo limite atingido para a consulta à SEFAZ."}
+    return queue.get() if not queue.empty() else {"error": "Falha na consulta à SEFAZ."}
 
 @csrf_exempt
 def processar_combustivel(request):
@@ -338,7 +358,9 @@ def processar_combustivel(request):
         # ⚠️ Executa consulta em thread isolada com timeout controlado
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(
-                consultar_combustivel, descricao, int(raio), float(latitude), float(longitude), int(dias)
+                # consultar_combustivel, descricao, int(raio), float(latitude), float(longitude), int(dias)
+                data = safe_consultar_combustivel(descricao, int(raio), float(latitude), float(longitude), int(dias), timeout=20)
+
             )
             try:
                 data = future.result(timeout=20)  # Timeout total da função
