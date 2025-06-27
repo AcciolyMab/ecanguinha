@@ -359,11 +359,11 @@ def processar_combustivel(request):
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(
                 safe_consultar_combustivel,
-                int(tipo_combustivel), int(raio), float(latitude), float(longitude), int(dias), 120
+                int(tipo_combustivel), int(raio), float(latitude), float(longitude), int(dias), 65
             )
 
             try:
-                data = future.result(timeout=1200)
+                data = future.result(timeout=120)
             except ThreadTimeoutError:
                 logger.critical("⏱️ Timeout total excedido na consulta à SEFAZ.")
                 return JsonResponse({"error": "Tempo excedido ao consultar dados do combustível."}, status=504)
