@@ -14,11 +14,15 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
 
     <style>
         /* Oculta todos os elementos do body, exceto o #progressContainer, quando a classe 'loading' estiver ativa */
-        body.loading > *:not(#progressContainer) {
+         body.loading #containerGeral {
             display: none;
+        }
+        body {
+            background-color:#feeed2 !important;
         }
         /* Centraliza a barra de progresso */
         #progressContainer {
@@ -74,183 +78,192 @@
     </style>
 </head>
 <body>
-    <!-- Barra de Progresso (inicialmente oculta) -->
-    <div id="progressContainer" style="display: none;">
-        <svg viewBox="0 0 100 100" width="100" height="100">
-            <circle cx="50" cy="50" r="40" stroke="#007bff" stroke-width="10" fill="none" stroke-linecap="round"
-                    stroke-dasharray="251.2" stroke-dashoffset="251.2"></circle>
-        </svg>
-        <p>Aguarde, estamos pechinchando para você Canguinha...</p>
-    </div>
-
-    <nav class="navbar navbar-expand-lg">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">Canguinha Alagoas</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
-                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-                <ul class="navbar-nav">
-                    {% comment %} <li class="nav-item">
-                        <a class="nav-link active" aria-current="page" href="{% url 'home' %}">Home</a>
-                    </li> {% endcomment %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'localizacao' %}">Localização</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'about' %}">Sobre</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'contact' %}">Contato</a>
-                    </li>
-                </ul>
+    <!-- Progresso Caipira -->
+    <div id="progressContainer" class="caipira-barra" style="display: none;">
+        <div class="caipira-wrapper">
+            <div class="caipira-caminho">
+                <img id="caipiraIcon" src="{% static 'ecanguinha/img/canguinha_animado.gif' %}" class="emoji-caipira" alt="Caipira Andando" />
             </div>
+            <div class="caipira-progresso-externo">
+                <div id="barraProgressoInterna" class="caipira-progresso-interno"></div>
+            </div>
+            <p id="textoProgresso" class="texto-status">0% - Buscando ofertas...</p>
         </div>
-    </nav>
-
-    <div class="container mt-5">
-        <h1 class="mb-4">Canguinha: Localização do Comprador</h1>
-        <form id="locationForm" action="{% url 'listar_produtos' %}" method="post">
-            {% csrf_token %}
-
-            <div class="row g-4">
-                <!-- Localização -->
-                <div class="col-md-6">
-                    <div class="p-4 border border-primary rounded shadow-sm bg-light w-100">
-                        <h5 class="text-primary"><i class="bi bi-geo-alt-fill"></i> Localização</h5>
-                        
-                        <div class="form-check mb-2">
-                            <input type="checkbox" id="checkEndereco" class="form-check-input">
-                            <label for="checkEndereco" class="form-check-label">Endereço de Origem(Opcional)</label>
-                        </div>
-
-                        <div class="mb-2" id="enderecoGroup" style="display: none;">
-                            <label for="endereco" class="form-label">Endereço do Comprador</label>
-                            <input type="text" class="form-control" id="endereco" name="endereco">
-                            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btnObterLocalizacao">Obter Localização</button>
-                            <p id="geoStatus" class="text-danger mt-1" style="display: none;"></p>
-                        </div>
-
-                        <div class="row mb-2">
-                            <div class="col">
-                                <label class="form-label">Latitude</label>
-                                <input type="text" id="latitude" name="latitude" class="form-control small-input" readonly>
-                            </div>
-                            <div class="col">
-                                <label class="form-label">Longitude</label>
-                                <input type="text" id="longitude" name="longitude" class="form-control small-input" readonly>
-                            </div>
-                        </div>
-                        <p id="labelLocalizacaoObtida" class="text-success small" style="display: none;">📍 Localização obtida com sucesso!</p>
-
-                        <label for="raioSlider" class="form-label mt-2">Raio de Busca (km):</label>
-                        <input type="range" class="form-range" id="raioSlider" name="raio" min="1" max="15" value="1">
-                        <span id="raioValue" class="small">1 km</span><br>
-
-                        <label for="diasSlider" class="form-label mt-2">Período de Análise (dias):</label>
-                        <input type="range" class="form-range" id="diasSlider" name="dias" min="1" max="10" value="1">
-                        <span id="diasValue" class="small">1 dia</span>
-                    </div>
-                </div>
-
-                <!-- Mapa da Região com Leaflet -->
-                <div class="col-md-6">
-                    <div class="p-4 border border-warning rounded shadow-sm bg-light h-100 w-100">
-                        <h5 class="text-success text-center"><i class="bi bi-map-fill"></i> Mapa da Região</h5>
-                        <div id="map" style="flex: 1; min-height: 350px; border-radius: 10px;"></div>
-                    </div>
-                </div>
-
-                <div class="d-flex gap-3 align-items-stretch">
-                    <!-- Combustível -->
-                    <div class="p-4 border border-warning rounded shadow-sm bg-light w-100 flex-fill">
-                        <h5 class="text-warning">
-                        <i class="bi bi-fuel-pump-fill"></i> Combustível
-                        </h5>
-                        <div class="mb-3">
-                        <label class="form-label">Selecione o Tipo de Combustível *</label>
-
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="combustivel" id="gasolina-comum" value="1" required>
-                            <label class="form-check-label" for="gasolina-comum">Gasolina Comum</label>
-                        </div>
-
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="combustivel" id="gasolina-aditivada" value="2">
-                            <label class="form-check-label" for="gasolina-aditivada">Gasolina Aditivada</label>
-                        </div>
-
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="combustivel" id="alcool" value="3">
-                            <label class="form-check-label" for="alcool">Álcool</label>
-                        </div>
-
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="combustivel" id="diesel-comum" value="4">
-                            <label class="form-check-label" for="diesel-comum">Diesel Comum</label>
-                        </div>
-
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="combustivel" id="diesel-aditivado" value="5">
-                            <label class="form-check-label" for="diesel-aditivado">Diesel Aditivado (S10)</label>
-                        </div>
-
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="combustivel" id="gnv" value="6">
-                            <label class="form-check-label" for="gnv">GNV</label>
-                        </div>
-                        
-                        </div>
-                    </div>
-                    </div>
-
-                    <!-- Painel de Preços -->
-                    <div class="p-4 border border-danger rounded shadow-sm bg-light text-center w-100 flex-fill">
-                        <h5 class="text-danger"><i class="bi bi-currency-exchange"></i> Painel de Preços</h5>
-                        <div class="bg-white border rounded p-3 my-2">
-                            <h6 class="text-muted" id="painelCombustivelTipo">GASOLINA</h6>
-                            <h2 class="text-success">R$ <span id="precoPainel">0,00</span></h2>
-                            <div class="small text-muted">
-                                <span class="text-success" id="varSemana">   </span>     <br>
-                                <span class="text-danger" id="varHoje">   </span> 
-                            </div>
-                        </div>
-                        <small class="text-muted">Preço médio na região<br>Atualizado em tempo real</small>
-                    </div>
-                </div>
-
-                <!-- Produtos -->
-                <div class="col-12" id="productSection" style="display: none; width: 100%;">
-                    <div class="p-4 border border-purple rounded shadow-sm bg-light">
-
-                        <h5 class="text-purple"><i class="bi bi-basket-fill"></i> Selecionar Produtos</h5>
-
-                        <div class="form-check mb-3">
-                            <input type="checkbox" class="form-check-input" id="selectAllCheckbox">
-                            <label class="form-check-label" for="selectAllCheckbox">Selecionar Todos</label>
-                        </div>
-
-                        <!--<div id="categoryCheckboxes" class="row row-cols-2 row-cols-md-4 g-2"></div>-->
-                        <div id="categoryCheckboxes" class="checkbox-group"></div>
-                    </div>
-                </div>
-
-                <!-- Campos ocultos -->
-                <input type="hidden" id="hiddenLatitude" name="hiddenLatitude">
-                <input type="hidden" id="hiddenLongitude" name="hiddenLongitude">
-                <input type="hidden" id="item_list" name="item_list">
-            </div>
-            <input type="hidden" id="precoCombustivel" name="precoCombustivel" value="0.00">
-
-            <!-- Botão de envio -->
-            <div class="form-buttons mt-4 d-flex justify-content-center">
-                <button type="submit" class="btn btn-success btn-lg" id="btnBuscar" disabled>
-                    <i class="bi bi-search"></i> Buscar Ofertas
-                </button>
-            </div>
-        </form>
     </div>
+
+    <div id="containerGeral">
+        <nav class="navbar navbar-expand-lg">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">Canguinha Alagoas</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
+                        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+                    <ul class="navbar-nav">
+                        {% comment %} <li class="nav-item">
+                            <a class="nav-link active" aria-current="page" href="{% url 'home' %}">Home</a>
+                        </li> {% endcomment %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'localizacao' %}">Localização</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'about' %}">Sobre</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'contact' %}">Contato</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+            
+    <div class="container mt-5">
+            <h1 class="mb-4">Canguinha: Localização do Comprador</h1>
+            <form id="locationForm" action="{% url 'listar_produtos' %}" method="post">
+                {% csrf_token %}
+                <div class="row g-4">
+                    <!-- Localização -->
+                    <div class="col-md-6">
+                        <div class="p-4 border border-primary rounded shadow-sm bg-light w-100">
+                            <h5 class="text-primary"><i class="bi bi-geo-alt-fill"></i> Localização</h5>
+
+                            <div class="form-check mb-2">
+                                <input type="checkbox" id="checkEndereco" class="form-check-input">
+                                <label for="checkEndereco" class="form-check-label">Endereço de Origem(Opcional)</label>
+                            </div>
+
+                            <div class="mb-2" id="enderecoGroup" style="display: none;">
+                                <label for="endereco" class="form-label">Endereço do Comprador</label>
+                                <input type="text" class="form-control" id="endereco" name="endereco">
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btnObterLocalizacao">Obter Localização</button>
+                                <p id="geoStatus" class="text-danger mt-1" style="display: none;"></p>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col">
+                                    <label class="form-label">Latitude</label>
+                                    <input type="text" id="latitude" name="latitude" class="form-control small-input" readonly>
+                                </div>
+                                <div class="col">
+                                    <label class="form-label">Longitude</label>
+                                    <input type="text" id="longitude" name="longitude" class="form-control small-input" readonly>
+                                </div>
+                            </div>
+                            <p id="labelLocalizacaoObtida" class="text-success small" style="display: none;">📍 Localização obtida com sucesso!</p>
+
+                            <label for="raioSlider" class="form-label mt-2">Raio de Busca (km):</label>
+                            <input type="range" class="form-range" id="raioSlider" name="raio" min="1" max="15" value="1">
+                            <span id="raioValue" class="small">1 km</span><br>
+
+                            <label for="diasSlider" class="form-label mt-2">Período de Análise (dias):</label>
+                            <input type="range" class="form-range" id="diasSlider" name="dias" min="1" max="10" value="1">
+                            <span id="diasValue" class="small">1 dia</span>
+                        </div>
+                    </div>
+
+                    <!-- Mapa da Região com Leaflet -->
+                    <div class="col-md-6">
+                        <div class="p-4 border border-warning rounded shadow-sm bg-light h-100 w-100">
+                            <h5 class="text-success text-center"><i class="bi bi-map-fill"></i> Mapa da Região</h5>
+                            <div id="map" style="flex: 1; min-height: 350px; border-radius: 10px;"></div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-3 align-items-stretch">
+                        <!-- Combustível -->
+                        <div class="p-4 border border-warning rounded shadow-sm bg-light w-100 flex-fill">
+                            <h5 class="text-warning">
+                            <i class="bi bi-fuel-pump-fill"></i> Combustível
+                            </h5>
+                            <div class="mb-3">
+                            <label class="form-label">Selecione o Tipo de Combustível *</label>
+
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="combustivel" id="gasolina-comum" value="1" required>
+                                <label class="form-check-label" for="gasolina-comum">Gasolina Comum</label>
+                            </div>
+
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="combustivel" id="gasolina-aditivada" value="2">
+                                <label class="form-check-label" for="gasolina-aditivada">Gasolina Aditivada</label>
+                            </div>
+
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="combustivel" id="alcool" value="3">
+                                <label class="form-check-label" for="alcool">Álcool</label>
+                            </div>
+
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="combustivel" id="diesel-comum" value="4">
+                                <label class="form-check-label" for="diesel-comum">Diesel Comum</label>
+                            </div>
+
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="combustivel" id="diesel-aditivado" value="5">
+                                <label class="form-check-label" for="diesel-aditivado">Diesel Aditivado (S10)</label>
+                            </div>
+
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="combustivel" id="gnv" value="6">
+                                <label class="form-check-label" for="gnv">GNV</label>
+                            </div>
+                            
+                            </div>
+                        </div>
+                        </div>
+
+                        <!-- Painel de Preços -->
+                        <div class="p-4 border border-danger rounded shadow-sm bg-light text-center w-100 flex-fill">
+                            <h5 class="text-danger"><i class="bi bi-currency-exchange"></i> Painel de Preços</h5>
+                            <div class="bg-white border rounded p-3 my-2">
+                                <h6 class="text-muted" id="painelCombustivelTipo">GASOLINA</h6>
+                                <h2 class="text-success">R$ <span id="precoPainel">0,00</span></h2>
+                                <div class="small text-muted">
+                                    <span class="text-success" id="varSemana">   </span>     <br>
+                                    <span class="text-danger" id="varHoje">   </span> 
+                                </div>
+                            </div>
+                            <small class="text-muted">Preço médio na região<br>Atualizado em tempo real</small>
+                        </div>
+                    </div>
+
+                    <!-- Produtos -->
+                    <div class="col-12" id="productSection" style="display: none; width: 100%;">
+                        <div class="p-4 border border-purple rounded shadow-sm bg-light">
+
+                            <h5 class="text-purple"><i class="bi bi-basket-fill"></i> Selecionar Produtos</h5>
+
+                            <div class="form-check mb-3">
+                                <input type="checkbox" class="form-check-input" id="selectAllCheckbox">
+                                <label class="form-check-label" for="selectAllCheckbox">Selecionar Todos</label>
+                            </div>
+
+                            <!--<div id="categoryCheckboxes" class="row row-cols-2 row-cols-md-4 g-2"></div>-->
+                            <div id="categoryCheckboxes" class="checkbox-group"></div>
+                        </div>
+                    </div>
+
+                    <!-- Campos ocultos -->
+                    <input type="hidden" id="hiddenLatitude" name="hiddenLatitude">
+                    <input type="hidden" id="hiddenLongitude" name="hiddenLongitude">
+                    <input type="hidden" id="item_list" name="item_list">
+                </div>
+                <input type="hidden" id="precoCombustivel" name="precoCombustivel" value="0.00">
+
+                <!-- Botão de envio -->
+                <div class="form-buttons mt-4 d-flex justify-content-center">
+                    <button type="submit" class="btn btn-success btn-lg" id="btnBuscar" disabled>
+                        <i class="bi bi-search"></i> Buscar Ofertas
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    const urlProcessar = "{% url 'processar_combustivel' %}";
+    </script>
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
@@ -419,7 +432,7 @@
                 });
             });
 
-            locationForm.addEventListener("submit", function (e) {
+            {% comment %} locationForm.addEventListener("submit", function (e) {
                 const lat = hiddenLatitude.value;
                 const lon = hiddenLongitude.value;
                 if (!lat || !lon) {
@@ -439,6 +452,53 @@
                 document.getElementById("item_list").value = JSON.stringify(todosBarcodes);
                 document.body.classList.add("loading");
                 progressContainer.style.display = "block";
+            }); {% endcomment %}
+
+            locationForm.addEventListener("submit", function (e) {
+                const lat = hiddenLatitude.value;
+                const lon = hiddenLongitude.value;
+                if (!lat || !lon) {
+                    alert("A localização não foi capturada corretamente.");
+                    e.preventDefault();
+                    return;
+                }
+
+                const produtosSelecionados = [...document.querySelectorAll('input[name="category"]:checked')];
+                if (produtosSelecionados.length === 0) {
+                    alert("Por favor, selecione ao menos um produto.");
+                    e.preventDefault();
+                    return;
+                }
+
+                const todosBarcodes = produtosSelecionados.flatMap(cb => JSON.parse(cb.value));
+                document.getElementById("item_list").value = JSON.stringify(todosBarcodes);
+
+                // Ativa o progresso animado estilo Caipira
+                document.body.classList.add("loading");
+                progressContainer.style.display = "block";
+                iniciarProgresso(); 
+
+                // Inicia animação visual
+                const progressoCaipira = document.getElementById("progressoCaipira");
+                const mensagem = document.getElementById("caipiraMensagem");
+                let progresso = 0;
+                const interval = setInterval(() => {
+                    progresso += 2;
+                    progressoCaipira.style.width = `${progresso}%`;
+                    document.getElementById("textoProgresso").textContent = `${progresso}% - Buscando ofertas...`;
+
+
+                    if (progresso >= 100) {
+                        clearInterval(interval);
+                        mensagem.textContent = "🛒 Chegou ao mercado!";
+                    } else if (progresso >= 70) {
+                        mensagem.textContent = "🏃‍♂️💨 Correndo para o mercado...";
+                    } else if (progresso >= 40) {
+                        mensagem.textContent = "🌳 Passando pelas árvores...";
+                    } else {
+                        mensagem.textContent = "🚶‍♂️ Saindo de casa...";
+                    }
+                }, 100);
             });
 
             const categorias = {
@@ -505,6 +565,80 @@
             // Atualiza estado inicial do botão ao carregar os checkboxes
             atualizarBotaoBuscar();
         });
+
+        function iniciarProgresso() {
+            const barra = document.getElementById("barraProgressoInterna");
+            const texto = document.getElementById("textoProgresso");
+            const caipira = document.getElementById("caipiraIcon");
+            const caminho = document.querySelector(".caipira-caminho");
+
+            // Adiciona classe de animação
+            caipira.classList.add("andando");
+
+            let progresso = 0;
+            const duracao = 10000; // 10 segundos
+            const intervalo = 100; // Atualiza a cada 100ms
+            const incremento = 100 / (duracao / intervalo);
+
+            // Mensagens contextuais
+            const mensagens = {
+                0: "🏠 Saindo de casa...",
+                10: "🚶‍♂️ Caminhando pela estrada...",
+                25: "🌳 Passando pelas árvores...",
+                40: "🏃‍♂️ Acelerando o passo...",
+                60: "🏃‍♂️💨 Quase chegando...",
+                80: "🛒 Avistando o mercado...",
+                95: "🎉 Chegando ao destino...",
+                100: "✅ Chegou ao mercado! Ofertas encontradas!"
+            };
+
+            const timer = setInterval(() => {
+                progresso += incremento;
+                if (progresso >= 100) {
+                    progresso = 100;
+                    clearInterval(timer);
+                    // Remove animação quando parar
+                    caipira.classList.remove("andando");
+                }
+
+                // Atualiza barra
+                barra.style.width = `${progresso}%`;
+
+                // Atualiza mensagem baseada no progresso
+                let mensagemAtual = "🔍 Buscando ofertas...";
+                for (let porcentagem in mensagens) {
+                    if (progresso >= parseInt(porcentagem)) {
+                        mensagemAtual = mensagens[porcentagem];
+                    }
+                }
+                texto.textContent = `${Math.round(progresso)}% - ${mensagemAtual}`;
+
+                // Move o caipira da direita para a esquerda
+                const deslocamento = 100 - (progresso * 0.90); // 90% → 10%
+                caipira.style.right = `${deslocamento}%`;
+
+                // Adiciona pegadas ocasionalmente (efeito extra)
+                if (progresso > 0 && progresso < 100 && Math.random() < 0.3) {
+                    criarPegada(caminho, deslocamento);
+                }
+
+            }, intervalo);
+        }
+
+        // Função para criar efeito de pegadas (opcional)
+        function criarPegada(container, posicao) {
+            const pegada = document.createElement('div');
+            pegada.className = 'pegadas';
+            pegada.style.right = `${posicao + 5}%`;
+            container.appendChild(pegada);
+            
+            // Remove a pegada após a animação
+            setTimeout(() => {
+                if (pegada.parentNode) {
+                    pegada.parentNode.removeChild(pegada);
+                }
+            }, 2000);
+        }
     </script>
 </body>
 </html>

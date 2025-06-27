@@ -17,6 +17,9 @@
     <!-- CSS  -->
     <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}">
     <style>
+          body.loading {
+            all: unset;
+        }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f2f4f5;
@@ -164,16 +167,111 @@
         <div id="map"></div>
     </div>
 
-    {{ user_latitude|json_script:"user-latitude" }}
-    {{ user_longitude|json_script:"user-longitude" }}
+    {{ user_lat|json_script:"user-latitude" }}
+    {{ user_lon|json_script:"user-longitude" }}
     {{ resultado.rota|json_script:"rota-data" }}
     {{ node_coords|json_script:"node-coords-data" }}
     {{ mercados_comprados|json_script:"mercados-data" }}
 
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
+        document.addEventListener("DOMContentLoaded", function () {
+        const userLat = JSON.parse(document.getElementById("user-latitude").textContent);
+        const userLon = JSON.parse(document.getElementById("user-longitude").textContent);
+
+        // ✅ Validação: se coordenadas inválidas, avisa e interrompe
+        if (!userLat || !userLon || userLat === 0 || userLon === 0) {
+            alert("❌ Coordenadas inválidas do usuário. Verifique se a localização foi corretamente capturada.");
+            console.warn("🛑 userLat ou userLon inválidos:", userLat, userLon);
+            return;
+        }
+
+        const map = L.map('map', {
+            zoomControl: true,
+            attributionControl: false
+        }).setView([userLat, userLon], 14);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18
+        }).addTo(map);
+
+        const userMarker = L.AwesomeMarkers.icon({ icon: 'home', markerColor: 'green', prefix: 'fa' });
+        const userPopupContent = `<b>Sua Localização</b><br>Lat: ${userLat}<br>Lon: ${userLon}`;
+        const userMarkerObj = L.marker([userLat, userLon], { icon: userMarker })
+            .addTo(map)
+            .bindTooltip(userPopupContent, {
+                direction: 'top',
+                offset: [0, -10],
+                opacity: 0.9
+            })
+            .bindPopup(userPopupContent);
+
+        const mercadosData = JSON.parse(document.getElementById("mercados-data").textContent);
+        const mercadoIcon = L.AwesomeMarkers.icon({ icon: 'shopping-cart', markerColor: 'blue', prefix: 'fa' });
+        const waypoints = [L.latLng(userLat, userLon)];
+
+        mercadosData.forEach(function (mercado) {
+            const lat = parseFloat(mercado.latitude);
+            const lon = parseFloat(mercado.longitude);
+
+            if (!isNaN(lat) && !isNaN(lon)) {
+                const mercadoPopupContent = `<b>${mercado.nome}</b><br>${mercado.endereco}`;
+
+                const mercadoMarker = L.marker([lat, lon], { icon: mercadoIcon })
+                    .addTo(map)
+                    .bindTooltip(mercadoPopupContent, {
+                        direction: 'top',
+                        offset: [0, -10],
+                        opacity: 0.9
+                    })
+                    .bindPopup(mercadoPopupContent);
+
+                waypoints.push(L.latLng(lat, lon));
+            }
+        });
+
+        waypoints.push(L.latLng(userLat, userLon));  // retorno ao início
+
+        // ✅ Só cria a rota se houver pelo menos 2 mercados + usuário
+        if (waypoints.length > 2) {
+            L.Routing.control({
+                waypoints: waypoints,
+                routeWhileDragging: false,
+                showAlternatives: false,
+                createMarker: function (i, waypoint, n) {
+                    return L.marker(waypoint.latLng, {
+                        icon: i === 0 || i === n - 1 ? userMarker : mercadoIcon
+                    });
+                },
+                lineOptions: {
+                    styles: [{ color: 'red', opacity: 0.9, weight: 6 }]
+                },
+                router: L.Routing.osrmv1({
+                    serviceUrl: 'https://router.project-osrm.org/route/v1'
+                }),
+                addWaypoints: false,
+                fitSelectedRoutes: true,
+                show: false
+            }).on('routeselected', function (e) {
+                const containers = document.getElementsByClassName('leaflet-routing-container');
+                for (const container of containers) {
+                    container.style.display = 'none';
+                }
+            }).addTo(map);
+        } else {
+            console.warn("🚫 Roteamento cancelado: número de pontos insuficiente.");
+        }
+    });
+
+        {% comment %} document.addEventListener("DOMContentLoaded", function() {
             var userLat = JSON.parse(document.getElementById("user-latitude").textContent);
             var userLon = JSON.parse(document.getElementById("user-longitude").textContent);
+
+            // ✅ Validação: se coordenadas inválidas, avisa e interrompe
+            if (!userLat || !userLon || userLat === 0 || userLon === 0) {
+                alert("❌ Coordenadas inválidas do usuário. Verifique se a localização foi corretamente capturada.");
+                console.warn("🛑 userLat ou userLon inválidos:", userLat, userLon);
+                return;
+            }
             var map = L.map('map', {
                 zoomControl: true,
                 attributionControl: false
@@ -261,8 +359,7 @@
                     }
                 }).addTo(map);
             }
-        });
-
+        }); {% endcomment %}
         const spans = document.querySelectorAll(".status-aberto");
             const now = new Date();
             const currentHour = now.getHours();

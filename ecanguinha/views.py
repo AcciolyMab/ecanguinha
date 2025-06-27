@@ -132,86 +132,54 @@ def obter_rota(request):
 
 def listar_produtos(request):
     if request.method == 'POST':
+        latitude = request.POST.get('latitude')
+        longitude = request.POST.get('longitude')
+
+        # Se latitude e longitude forem inválidas, definir valores padrão (Maceió)
+        if not latitude or not longitude or latitude == "0.0" or longitude == "0.0":
+            latitude = -9.6658  # Maceió
+            longitude = -35.7350
+
+        dias = request.POST.get('dias')
+        raio = request.POST.get('raio')
+        item_list = request.POST.get('item_list')
+
+        if not item_list:
+            messages.error(request, "Nenhum produto selecionado.")
+            return render(request, 'lista.html', {'resultado': None})
+
         try:
-            print("🔎 Dados recebidos no POST:", request.POST)
+            item_list = json.loads(item_list) if isinstance(item_list, str) else item_list
+            gtin_list = [int(gtin) for gtin in item_list]
+        except Exception as e:
+            logger.error("Erro ao processar item_list: %s", e)
+            messages.error(request, "Erro ao processar a lista de produtos.")
+            return render(request, 'lista.html', {'resultado': None})
 
-            # 🔹 Captura Latitude e Longitude e remove espaços
-            latitude_str = request.POST.get("hiddenLatitude", "").strip()
-            longitude_str = request.POST.get("hiddenLongitude", "").strip()
+        try:
+            df = obter_produtos(request, gtin_list, int(raio), float(latitude), float(longitude), int(dias))
 
-            #print(f"📌 Coordenadas recebidas: Latitude={latitude_str}, Longitude={longitude_str}")  
-
-            # 🔹 Garante que latitude e longitude estão no formato correto
-            try:
-                # Substitui vírgula por ponto caso venha com formato errado
-                # latitude_str = latitude_str.replace(',', '.')
-                # longitude_str = longitude_str.replace(',', '.')
-
-                latitude = float(latitude_str)
-                longitude = float(longitude_str)
-
-                #print(f"SEM TRATAR recebidas: Latitude={latitude_str}, Longitude={longitude_str}")  
-
-
-                #Validação de coordenadas.
-                if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
-                  print("Coordenadas fora do Range")
-                  return JsonResponse({"error": "Coordenadas fora do range"}, status=400)
-
-            except ValueError:
-                print("Erro: Latitude ou Longitude não são números válidos.")
-                return JsonResponse({"error": "Latitude ou Longitude inválidas"}, status=400)
-
-            except TypeError:
-              print("Erro de tipo, verifique se a latitude e longitude foram recebidas corretamente")
-              return JsonResponse({"error": "Erro de tipo"}, status=400)
-
-
-            #logger.debug(f"📍 Coordenadas processadas: Latitude {latitude}, Longitude {longitude}")
-
-            # Captura demais parâmetros
-            dias = int(request.POST.get('dias', '1').strip())
-            raio = int(request.POST.get('raio', '1').strip())
-            preco_combustivel = float(request.POST.get('precoCombustivel', '0').strip())
-
-            # Processamento da lista de produtos
-            item_list = request.POST.get('item_list', '[]').strip()
-            if not item_list or item_list == "[]":
-                messages.error(request, "Nenhum produto selecionado.")
-                return render(request, 'lista.html', {'resultado': None})
-
-            try:
-                gtin_list = json.loads(item_list)
-                gtin_list = [int(gtin) for gtin in gtin_list if str(gtin).isdigit()]
-            except json.JSONDecodeError:
-                raise ValueError("Erro ao decodificar item_list")
-
-            #logger.debug(f"🛒 Lista de produtos GTIN: {gtin_list}")
-
-            # 🔥 🔹 Obtém os produtos com base nos parâmetros
-            df = obter_produtos(request, gtin_list, raio, latitude, longitude, dias)
             if df.empty:
                 messages.warning(request, "Nenhum dado foi retornado pela API.")
                 return render(request, 'lista.html', {'resultado': None})
 
-            # 🔥 🔹 Processa os dados do solver
-            tpplib_data = create_tpplib_data(df, latitude, longitude, media_preco=preco_combustivel)
-            resultado_solver = alns_solve_tpp(tpplib_data, 60000, 100)
+            avg_lat = df["LAT"].mean() if "LAT" in df.columns else float(latitude)
+            avg_lon = df["LONG"].mean() if "LONG" in df.columns else float(longitude)
+
+            tpplib_data = create_tpplib_data(df, avg_lat, avg_lon, media_preco=float(request.POST.get('precoCombustivel', 0)))
+
+            resultado_solver = alns_solve_tpp(tpplib_data, 10000, 100)
 
             if not resultado_solver:
                 messages.error(request, "Não foi possível encontrar uma solução viável.")
                 return render(request, 'lista.html', {'resultado': None})
 
-            mercados_comprados = resultado_solver.get('mercados_comprados', [])
+            rota = [idx for idx in resultado_solver.get('route', []) if 1 <= idx <= len(resultado_solver.get('mercados_comprados', []))]
             purchases = resultado_solver.get('purchases', {})
             total_cost = resultado_solver.get('total_cost', 0.0)
             total_distance = resultado_solver.get('total_distance', 0.0)
             execution_time = resultado_solver.get('execution_time', 0.0)
-
-            rota = [
-                idx for idx in resultado_solver.get('route', [])
-                if 1 <= idx <= len(mercados_comprados)
-            ]
+            mercados_comprados = resultado_solver.get('mercados_comprados', [])
 
             node_coords = {
                 str(idx): [float(mercado.get('latitude')), float(mercado.get('longitude'))]
@@ -219,37 +187,60 @@ def listar_produtos(request):
                 if mercado.get('latitude') and mercado.get('longitude')
             }
 
-            processed_purchases = {
-                key.replace('Produtos comprados no ', ''): value for key, value in purchases.items()
-            }
+            processed_purchases = {key.replace('Produtos comprados no ', ''): value for key, value in purchases.items()}
 
             context = {
                 'resultado': {
                     'rota': rota,
                     'purchases': processed_purchases,
-                    'total_cost': total_cost,
-                    'total_distance': total_distance,
-                    'execution_time': execution_time
+                    'total_cost': float(total_cost),
+                    'total_distance': float(total_distance),
+                    'execution_time': float(execution_time)
                 },
-                'mercados_comprados': mercados_comprados,
-                'node_coords': node_coords,
-                'user_latitude': latitude,  # Corrigido: Envia latitude correta para o template
-                'user_longitude': longitude,
-                'dias': dias,
-                'raio': raio,
+                'mercados_comprados': [
+                    {
+                        'nome': m['nome'],
+                        'endereco': m['endereco'],
+                        'latitude': float(m['latitude']),
+                        'longitude': float(m['longitude']),
+                        'valor_total': float(m.get('valor_total', 0.0))
+                    }
+                    for m in mercados_comprados
+                ],
+                'node_coords': [
+                    (float(m['latitude']), float(m['longitude'])) for m in mercados_comprados
+                ],
+                'user_lat': float(avg_lat),
+                'user_lon': float(avg_lon),
+                'dias': int(dias),
+                'raio': int(raio),
                 'item_list': gtin_list
             }
 
-            print(f"Contexto enviado para lista.html: user_lat={latitude}, user_lon={longitude}")  
-            #logger.debug(f"Contexto enviado para lista.html: {context}")
+            # context = {
+            #     'resultado': {
+            #         'rota': rota,
+            #         'purchases': processed_purchases,
+            #         'total_cost': total_cost,
+            #         'total_distance': total_distance,
+            #         'execution_time': execution_time
+            #     },
+            #     'mercados_comprados': mercados_comprados,
+            #     'node_coords': [(float(mercado.get('latitude')), float(mercado.get('longitude'))) for mercado in mercados_comprados],
+            #     'user_lat': avg_lat,  # Agora enviamos a latitude do usuário
+            #     'user_lon': avg_lon,  # Agora enviamos a longitude do usuário
+            #     'dias': int(dias),
+            #     'raio': int(raio),
+            #     'item_list': gtin_list
+            # }
+            logger.warning(f"🧭 Coordenadas médias: avg_lat={avg_lat}, avg_lon={avg_lon}")
+
             return render(request, 'lista.html', context)
 
-        except ValueError as ve:
-            #logger.error(f" Erro nos dados de entrada: {ve}")
-            messages.error(request, str(ve))
         except Exception as e:
-            #logger.exception(" Erro inesperado ao processar a solicitação")
-            messages.error(request, "Erro interno ao processar a solicitação. Tente novamente.")
+            logger.error("Erro ao processar a solicitação: %s", e)
+            messages.error(request, "Erro ao processar a solicitação.")
+            return render(request, 'lista.html', {'resultado': None})
 
     return redirect('localizacao')
 

@@ -4,6 +4,7 @@ venv/
 *.venv
 env/
 *.envrc
+.DS_Store
 
 # Banco de Dados
 *.sqlite3
