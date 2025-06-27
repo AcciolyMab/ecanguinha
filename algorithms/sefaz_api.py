@@ -130,7 +130,7 @@ def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias, max_attempts=3):
     for attempt in range(1, max_attempts + 1):
         try:
             # Adiciona timeout explícito para evitar workers presos 
-            response = requests.post(url, json=data, headers=headers, timeout=120)
+            response = requests.post(url, json=data, headers=headers, timeout=600)
             response.raise_for_status()
             return response.json(), gtin
 
@@ -154,76 +154,6 @@ def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias, max_attempts=3):
             logger.error(f"❌ Erro inesperado para GTIN {gtin}: {e}")
             return None, gtin
 #------------------------------------------------------------------------------
-
-# def consultar_combustivel(descricao, raio, my_lat, my_lon, dias, max_attempts=3, timeout_exec=20):
-#     """
-#     Executa a chamada à API da SEFAZ de forma segura em thread, com timeout externo à requests.
-#     """
-
-#     def executar_requisicao():
-#         lat = round(float(my_lat), 3)
-#         lon = round(float(my_lon), 3)
-
-#         cache_key = f"combustivel:{descricao}:{raio}:{lat}:{lon}:{dias}"
-#         cached_data = cache.get(cache_key)
-#         if cached_data:
-#             logger.info(f"✅ Cache HIT: {cache_key}")
-#             return cached_data
-
-#         logger.warning(f"⚠️ Cache MISS: {cache_key}")
-
-#         url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/produto/pesquisa'
-#         payload = {
-#             "produto": {"descricao": descricao},
-#             "estabelecimento": {
-#                 "geolocalizacao": {
-#                     "latitude": lat,
-#                     "longitude": lon,
-#                     "raio": int(raio)
-#                 }
-#             },
-#             "dias": int(dias),
-#             "pagina": 1,
-#             "registrosPorPagina": 50
-#         }
-
-#         for attempt in range(1, max_attempts + 1):
-#             try:
-#                 logger.info(f"🔁 Tentativa {attempt} - consultando combustível: {descricao}")
-#                 response = SEFAZ_SESSION.post(url, json=payload, timeout=10)  # Timeout menor por tentativa
-#                 response.raise_for_status()
-#                 data = response.json()
-
-#                 if not data or "conteudo" not in data or not data["conteudo"]:
-#                     logger.warning(f"⚠️ Resposta sem dados válidos para {descricao}")
-#                     return {"error": "Resposta sem dados válidos"}
-
-#                 cache.set(cache_key, data, timeout=60 * 60 * 2)
-#                 logger.info(f"📦 Resposta armazenada em cache: {cache_key}")
-#                 return data
-
-#             except requests.exceptions.Timeout:
-#                 logger.warning(f"⏱️ Timeout na tentativa {attempt} para '{descricao}'")
-#             except requests.exceptions.ConnectionError:
-#                 logger.warning(f"🚫 Erro de conexão na tentativa {attempt} para '{descricao}'")
-#             except requests.exceptions.HTTPError as err:
-#                 logger.error(f"❌ Erro HTTP na tentativa {attempt} para '{descricao}': {err}")
-#             except Exception as e:
-#                 logger.error(f"❌ Erro inesperado na tentativa {attempt} para '{descricao}': {e}")
-
-#             time.sleep(0.5 * attempt)
-
-#         logger.error(f"🚫 Todas as tentativas falharam para o combustível: {descricao}")
-#         return {"error": f"Todas as tentativas falharam para o combustível: {descricao}"}
-
-#     # Executa a lógica protegida por timeout global
-#     with ThreadPoolExecutor(max_workers=1) as executor:
-#         future = executor.submit(executar_requisicao)
-#         try:
-#             return future.result(timeout=timeout_exec)  # Timeout total para toda a função
-#         except ThreadTimeoutError:
-#             logger.critical(f"🔥 Timeout total excedido ({timeout_exec}s) para consulta de '{descricao}'")
-#             return {"error": f"Timeout total excedido para '{descricao}'"}
 
 def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
     """
@@ -382,74 +312,6 @@ def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
     logger.info(f"📊 Uso de memória após criar DataFrame: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
 
     return df
-
-# ------------------------------------------------------------------------------
-# Implementação da função auxiliar consultar_combustivel com cache e retries:
-# def consultar_combustivel(descricao, raio, my_lat, my_lon, dias, max_attempts=3):
-#     """
-#     Consulta resiliente à API da SEFAZ para combustíveis, com tentativas, timeout e cache.
-#     """
-#     # Arredonda coordenadas para evitar fragmentação de cache e para corresponder ao manual 
-#     lat = round(float(my_lat), 3)
-#     lon = round(float(my_lon), 3)
-
-#     cache_key = f"combustivel:{descricao}:{raio}:{lat}:{lon}:{dias}"
-#     cached_data = cache.get(cache_key)
-
-#     if cached_data:
-#         logger.info(f"✅ Cache HIT: {cache_key}")
-#         return cached_data
-
-#     logger.warning(f"⚠️ Cache MISS: {cache_key}")
-
-#     url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/produto/pesquisa' # O manual indica o mesmo endpoint para produtos e combustíveis para pesquisa 
-#     payload = {
-#         "produto": {"descricao": descricao}, # O manual mostra 'descricao' para pesquisa de combustíveis também 
-#         "estabelecimento": {
-#             "geolocalizacao": {
-#                 "latitude": lat,
-#                 "longitude": lon,
-#                 "raio": int(raio)
-#             }
-#         },
-#         "dias": int(dias),
-#         "pagina": 1,
-#         "registrosPorPagina": 50 # Manual permite até 5.000, mas 50 é conservador 
-#     }
-
-#     for attempt in range(1, max_attempts + 1):
-#         try:
-#             logger.info(f"🔁 Tentativa {attempt} - consultando combustível: {descricao}")
-#             # Adiciona timeout explícito 
-#             response = SEFAZ_SESSION.post(url, json=payload, timeout=30)
-#             response.raise_for_status()
-#             data = response.json()
-
-#             if not data or "conteudo" not in data:
-#                 logger.warning(f"⚠️ Resposta sem dados válidos para {descricao}")
-#                 return {"error": "Resposta sem dados válidos"}
-
-#             cache.set(cache_key, data, timeout=60 * 60 * 2) # Cache por 2 horas 
-#             logger.info(f"📦 Resposta armazenada em cache: {cache_key}")
-#             return data
-
-#         except requests.exceptions.Timeout:
-#             logger.warning(f"⏱️ Timeout na tentativa {attempt} para '{descricao}'")
-#         except requests.exceptions.ConnectionError:
-#             logger.warning(f"🚫 Erro de conexão na tentativa {attempt} para '{descricao}'")
-#         except requests.exceptions.HTTPError as err:
-#             logger.error(f"❌ Erro HTTP na tentativa {attempt} para '{descricao}': {err}")
-#         except Exception as e:
-#             logger.error(f"❌ Erro inesperado na tentativa {attempt} para '{descricao}': {e}")
-
-#         if attempt == max_attempts:
-#             logger.error(f"🚫 Todas as tentativas falharam para o combustível: {descricao}")
-#             return {"error": f"Todas as tentativas falharam para o combustível: {descricao}"}
-
-#         time.sleep(0.5 * attempt) # Backoff exponencial
-
-#     return {"error": "Falha desconhecida na consulta de combustível"}
-
 
 # ------------------------------------------------------------------------------
 def obter_combustiveis(descricao, raio, my_lat, my_lon, dias):
