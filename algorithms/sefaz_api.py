@@ -16,6 +16,7 @@ from math import ceil
 import gc  # opcional se quiser forçar liberação de memória
 import time
 import psutil # Para monitoramento de memória, útil em debug
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as ThreadTimeoutError
 
 
 from django.contrib import messages
@@ -87,67 +88,137 @@ SEFAZ_SESSION.headers.update({
 
 # ------------------------------------------------------------------------------
 # Implementação da função auxiliar síncrona com cache e retries:
-def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias, max_attempts=3):
+# def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias, max_attempts=3):
+#     """
+#     Função auxiliar que faz a requisição para a API SEFAZ usando a sessão global.
+#     Inclui cache, timeouts e retries com backoff exponencial.
+#     Retorna (response_json, gtin) ou lança exceção em caso de falha persistente.
+#     """
+#     # Arredonda coordenadas para evitar fragmentação de cache e para corresponder ao manual 
+#     lat = round(float(my_lat), 3)
+#     lon = round(float(my_lon), 3)
+
+#     # Cria chave única para o cache
+#     cache_key = f"gtin:{gtin}:{raio}:{lat}:{lon}:{dias}"
+#     cached = cache.get(cache_key)
+#     if cached:
+#         logger.info(f"✅ GTIN Cache HIT: {cache_key}")
+#         return cached, gtin
+
+#     logger.warning(f"⚠️ GTIN Cache MISS: {cache_key}")
+
+#     url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/produto/pesquisa'
+#     data = {
+#         "produto": {"gtin": str(gtin)},
+#         "estabelecimento": {
+#             "geolocalizacao": {
+#                 "latitude": lat,
+#                 "longitude": lon,
+#                 "raio": int(raio)
+#             }
+#         },
+#         "dias": int(dias),
+#         "pagina": 1,
+#         "registrosPorPagina": 50 # Manual permite até 5.000, mas 50 é conservador para memória.
+#     }
+
+#     for attempt in range(1, max_attempts + 1):
+#         try:
+#             # Adiciona timeout explícito para evitar workers presos 
+#             resp = SEFAZ_SESSION.post(url, json=data, timeout=30)
+#             resp.raise_for_status() # Lança HTTPError para respostas 4xx/5xx
+#             response_json = resp.json()
+
+#             # Salva no cache por 2 horas (7200 segundos) 
+#             cache.set(cache_key, response_json, timeout=60 * 60 * 2)
+#             return response_json, gtin
+
+#         except (requests.exceptions.Timeout,
+#                 requests.exceptions.ConnectionError,
+#                 requests.exceptions.HTTPError) as e:
+#             logger.warning(f"⚠️ Erro ao consultar GTIN {gtin}, tentativa {attempt}: {e}")
+
+#             if attempt == max_attempts:
+#                 logger.error(f"❌ Todas as tentativas falharam para GTIN {gtin}")
+#                 # Retorna None para que o chamador possa lidar com isso graciosamente
+#                 return None, gtin
+
+#             time.sleep(0.5 * attempt) # Backoff exponencial
+
+#         except Exception as e:
+#             logger.error(f"❌ Erro inesperado para GTIN {gtin}: {e}")
+#             return None, gtin
+# ------------------------------------------------------------------------------
+
+def consultar_combustivel(descricao, raio, my_lat, my_lon, dias, max_attempts=3, timeout_exec=20):
     """
-    Função auxiliar que faz a requisição para a API SEFAZ usando a sessão global.
-    Inclui cache, timeouts e retries com backoff exponencial.
-    Retorna (response_json, gtin) ou lança exceção em caso de falha persistente.
+    Executa a chamada à API da SEFAZ de forma segura em thread, com timeout externo à requests.
     """
-    # Arredonda coordenadas para evitar fragmentação de cache e para corresponder ao manual 
-    lat = round(float(my_lat), 3)
-    lon = round(float(my_lon), 3)
 
-    # Cria chave única para o cache
-    cache_key = f"gtin:{gtin}:{raio}:{lat}:{lon}:{dias}"
-    cached = cache.get(cache_key)
-    if cached:
-        logger.info(f"✅ GTIN Cache HIT: {cache_key}")
-        return cached, gtin
+    def executar_requisicao():
+        lat = round(float(my_lat), 3)
+        lon = round(float(my_lon), 3)
 
-    logger.warning(f"⚠️ GTIN Cache MISS: {cache_key}")
+        cache_key = f"combustivel:{descricao}:{raio}:{lat}:{lon}:{dias}"
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            logger.info(f"✅ Cache HIT: {cache_key}")
+            return cached_data
 
-    url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/produto/pesquisa'
-    data = {
-        "produto": {"gtin": str(gtin)},
-        "estabelecimento": {
-            "geolocalizacao": {
-                "latitude": lat,
-                "longitude": lon,
-                "raio": int(raio)
-            }
-        },
-        "dias": int(dias),
-        "pagina": 1,
-        "registrosPorPagina": 50 # Manual permite até 5.000, mas 50 é conservador para memória.
-    }
+        logger.warning(f"⚠️ Cache MISS: {cache_key}")
 
-    for attempt in range(1, max_attempts + 1):
+        url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/produto/pesquisa'
+        payload = {
+            "produto": {"descricao": descricao},
+            "estabelecimento": {
+                "geolocalizacao": {
+                    "latitude": lat,
+                    "longitude": lon,
+                    "raio": int(raio)
+                }
+            },
+            "dias": int(dias),
+            "pagina": 1,
+            "registrosPorPagina": 50
+        }
+
+        for attempt in range(1, max_attempts + 1):
+            try:
+                logger.info(f"🔁 Tentativa {attempt} - consultando combustível: {descricao}")
+                response = SEFAZ_SESSION.post(url, json=payload, timeout=10)  # Timeout menor por tentativa
+                response.raise_for_status()
+                data = response.json()
+
+                if not data or "conteudo" not in data or not data["conteudo"]:
+                    logger.warning(f"⚠️ Resposta sem dados válidos para {descricao}")
+                    return {"error": "Resposta sem dados válidos"}
+
+                cache.set(cache_key, data, timeout=60 * 60 * 2)
+                logger.info(f"📦 Resposta armazenada em cache: {cache_key}")
+                return data
+
+            except requests.exceptions.Timeout:
+                logger.warning(f"⏱️ Timeout na tentativa {attempt} para '{descricao}'")
+            except requests.exceptions.ConnectionError:
+                logger.warning(f"🚫 Erro de conexão na tentativa {attempt} para '{descricao}'")
+            except requests.exceptions.HTTPError as err:
+                logger.error(f"❌ Erro HTTP na tentativa {attempt} para '{descricao}': {err}")
+            except Exception as e:
+                logger.error(f"❌ Erro inesperado na tentativa {attempt} para '{descricao}': {e}")
+
+            time.sleep(0.5 * attempt)
+
+        logger.error(f"🚫 Todas as tentativas falharam para o combustível: {descricao}")
+        return {"error": f"Todas as tentativas falharam para o combustível: {descricao}"}
+
+    # Executa a lógica protegida por timeout global
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(executar_requisicao)
         try:
-            # Adiciona timeout explícito para evitar workers presos 
-            resp = SEFAZ_SESSION.post(url, json=data, timeout=30)
-            resp.raise_for_status() # Lança HTTPError para respostas 4xx/5xx
-            response_json = resp.json()
-
-            # Salva no cache por 2 horas (7200 segundos) 
-            cache.set(cache_key, response_json, timeout=60 * 60 * 2)
-            return response_json, gtin
-
-        except (requests.exceptions.Timeout,
-                requests.exceptions.ConnectionError,
-                requests.exceptions.HTTPError) as e:
-            logger.warning(f"⚠️ Erro ao consultar GTIN {gtin}, tentativa {attempt}: {e}")
-
-            if attempt == max_attempts:
-                logger.error(f"❌ Todas as tentativas falharam para GTIN {gtin}")
-                # Retorna None para que o chamador possa lidar com isso graciosamente
-                return None, gtin
-
-            time.sleep(0.5 * attempt) # Backoff exponencial
-
-        except Exception as e:
-            logger.error(f"❌ Erro inesperado para GTIN {gtin}: {e}")
-            return None, gtin
-
+            return future.result(timeout=timeout_exec)  # Timeout total para toda a função
+        except ThreadTimeoutError:
+            logger.critical(f"🔥 Timeout total excedido ({timeout_exec}s) para consulta de '{descricao}'")
+            return {"error": f"Timeout total excedido para '{descricao}'"}
 
 # ------------------------------------------------------------------------------
 def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
