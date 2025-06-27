@@ -109,7 +109,6 @@
         </div>
     </nav>
 
-        
     <div class="container mt-5">
         <h1 class="mb-4">Canguinha: Localização do Comprador</h1>
         <form id="locationForm" action="{% url 'listar_produtos' %}" method="post">
@@ -166,14 +165,44 @@
                 <div class="d-flex gap-3 align-items-stretch">
                     <!-- Combustível -->
                     <div class="p-4 border border-warning rounded shadow-sm bg-light w-100 flex-fill">
-                        <h5 class="text-warning"><i class="bi bi-fuel-pump-fill"></i> Combustível</h5>
+                        <h5 class="text-warning">
+                        <i class="bi bi-fuel-pump-fill"></i> Combustível
+                        </h5>
                         <div class="mb-3">
-                            <label class="form-label">Selecione o Tipo de Combustível *</label>
-                            <div class="form-check"><input class="form-check-input" type="radio" name="combustivel" id="gnv" value="GNV" required><label class="form-check-label" for="gnv">GNV</label></div>
-                            <div class="form-check"><input class="form-check-input" type="radio" name="combustivel" id="etanol" value="Etanol"><label class="form-check-label" for="etanol">Etanol</label></div>
-                            <div class="form-check"><input class="form-check-input" type="radio" name="combustivel" id="gasolina" value="Gasolina"><label class="form-check-label" for="gasolina">Gasolina</label></div>
-                            <div class="form-check"><input class="form-check-input" type="radio" name="combustivel" id="diesel" value="Diesel"><label class="form-check-label" for="diesel">Diesel</label></div>
+                        <label class="form-label">Selecione o Tipo de Combustível *</label>
+
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="combustivel" id="gasolina-comum" value="1" required>
+                            <label class="form-check-label" for="gasolina-comum">Gasolina Comum</label>
                         </div>
+
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="combustivel" id="gasolina-aditivada" value="2">
+                            <label class="form-check-label" for="gasolina-aditivada">Gasolina Aditivada</label>
+                        </div>
+
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="combustivel" id="alcool" value="3">
+                            <label class="form-check-label" for="alcool">Álcool</label>
+                        </div>
+
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="combustivel" id="diesel-comum" value="4">
+                            <label class="form-check-label" for="diesel-comum">Diesel Comum</label>
+                        </div>
+
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="combustivel" id="diesel-aditivado" value="5">
+                            <label class="form-check-label" for="diesel-aditivado">Diesel Aditivado (S10)</label>
+                        </div>
+
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="combustivel" id="gnv" value="6">
+                            <label class="form-check-label" for="gnv">GNV</label>
+                        </div>
+                        
+                        </div>
+                    </div>
                     </div>
 
                     <!-- Painel de Preços -->
@@ -222,7 +251,6 @@
             </div>
         </form>
     </div>
-
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
@@ -366,7 +394,17 @@
                                     precoCombustivelInput.dispatchEvent(new Event("change"));
                                 }
                                 precoPainel.textContent = preco;
-                                painelCombustivelTipo.textContent = descricao.toUpperCase();
+                                const tipoCombustivelTexto = {
+                                    "1": "Gasolina Comum",
+                                    "2": "Gasolina Aditivada",
+                                    "3": "Álcool",
+                                    "4": "Diesel Comum",
+                                    "5": "Diesel Aditivado (S10)",
+                                    "6": "GNV"
+                                };
+
+                                painelCombustivelTipo.textContent = tipoCombustivelTexto[descricao] || "Desconhecido";
+
                                 varSemana.innerHTML = '<span class="text-success">  </span>    ';
                                 varHoje.innerHTML = '<span class="text-danger">   </span>   ';
                                 verificarPrecoCombustivel();

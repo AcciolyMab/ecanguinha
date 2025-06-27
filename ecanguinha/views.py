@@ -343,47 +343,41 @@ def processar_combustivel(request):
     Protegida contra travamentos e falhas graves da API SEFAZ.
     """
     try:
-        descricao = request.POST.get('descricao')
+        tipo_combustivel = request.POST.get('descricao')  # ⚠️ Agora recebe o tipo (1 a 6)
         latitude = request.POST.get('latitude')
         longitude = request.POST.get('longitude')
         dias = request.POST.get('dias')
         raio = request.POST.get('raio')
 
-        if not descricao:
-            return JsonResponse({"error": "A descrição do combustível é obrigatória"}, status=400)
+        if not tipo_combustivel or tipo_combustivel not in ["1", "2", "3", "4", "5", "6"]:
+            return JsonResponse({"error": "Tipo de combustível inválido"}, status=400)
 
         if latitude == "0.0" or longitude == "0.0":
             return JsonResponse({"error": "Latitude e Longitude são obrigatórios"}, status=400)
 
-        # ⚠️ Executa consulta em thread isolada com timeout controlado
+        # Executa consulta com timeout controlado
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(
-                # consultar_combustivel, descricao, int(raio), float(latitude), float(longitude), int(dias)
-                data = safe_consultar_combustivel(descricao, int(raio), float(latitude), float(longitude), int(dias), timeout=20)
-
+                safe_consultar_combustivel,
+                int(tipo_combustivel), int(raio), float(latitude), float(longitude), int(dias), 120
             )
+
             try:
-                data = future.result(timeout=20)  # Timeout total da função
+                data = future.result(timeout=1200)
             except ThreadTimeoutError:
                 logger.critical("⏱️ Timeout total excedido na consulta à SEFAZ.")
                 return JsonResponse({"error": "Tempo excedido ao consultar dados do combustível."}, status=504)
 
-        # Verifica se a resposta da API é válida
         if not data or "conteudo" not in data or not data["conteudo"]:
             return JsonResponse({"error": "Nenhum dado encontrado para o combustível especificado."}, status=404)
 
-        # Converter a resposta para DataFrame do Pandas
         df = pd.DataFrame(data["conteudo"])
         if df.empty:
-            return JsonResponse({"error": "Nenhum dado encontrado para o combustível especificado."}, status=404)
+            return JsonResponse({"error": "Nenhum dado encontrado."}, status=404)
 
-        # Extrair preços dos combustíveis corretamente
         df["VALOR"] = df["produto"].apply(lambda x: x["venda"]["valorVenda"])
-
-        # Calcular a média dos 3 menores preços
         media_preco = df.nsmallest(3, "VALOR")["VALOR"].mean()
 
-        # Calcular a distância de cada posto
         df["DISTANCIA_KM"] = df["estabelecimento"].apply(
             lambda x: calcular_distancia(
                 float(latitude),
@@ -393,16 +387,25 @@ def processar_combustivel(request):
             )
         )
 
-        # Selecionar o posto mais próximo
         estabelecimento_mais_proximo = df.loc[df["DISTANCIA_KM"].idxmin()]["estabelecimento"]
 
+        # Dicionário para exibir o nome legível do combustível
+        mapa_nomes = {
+            "1": "Gasolina Comum",
+            "2": "Gasolina Aditivada",
+            "3": "Álcool",
+            "4": "Diesel Comum",
+            "5": "Diesel Aditivado (S10)",
+            "6": "GNV"
+        }
+
         resposta = {
-            "descricao": descricao,
+            "descricao": mapa_nomes.get(tipo_combustivel, "Desconhecido"),
             "media_preco": round(media_preco, 2),
             "posto_mais_proximo": estabelecimento_mais_proximo
         }
 
-        return JsonResponse(resposta, safe=False)
+        return JsonResponse(resposta)
 
     except SystemExit:
         logger.critical("🚨 SystemExit capturado! Worker encerrando indevidamente.")
