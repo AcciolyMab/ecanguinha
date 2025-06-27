@@ -130,7 +130,7 @@ def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias, max_attempts=3):
     for attempt in range(1, max_attempts + 1):
         try:
             # Adiciona timeout explícito para evitar workers presos 
-            response = requests.post(url, json=data, headers=headers)
+            response = requests.post(url, json=data, headers=headers, timeout=120)
             response.raise_for_status()
             return response.json(), gtin
 
@@ -262,7 +262,7 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
     }
 
     try:
-        response = SEFAZ_SESSION.post(url, json=payload, headers=headers)
+        response = SEFAZ_SESSION.post(url, json=payload, headers=headers, timeout=120)  # Timeout de 120 segundos
         response.raise_for_status()
         data = response.json()
 
