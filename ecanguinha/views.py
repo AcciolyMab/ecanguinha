@@ -255,7 +255,7 @@ def consultar_worker(queue, descricao, raio, lat, lon, dias):
     except Exception as e:
         queue.put({"error": str(e)})
 
-def safe_consultar_combustivel(descricao, raio, lat, lon, dias, timeout=20):
+def safe_consultar_combustivel(descricao, raio, lat, lon, dias, timeout=120):
     queue = Queue()
     p = Process(target=consultar_worker, args=(queue, descricao, raio, lat, lon, dias))
     p.start()
@@ -279,6 +279,8 @@ def processar_combustivel(request):
         longitude = request.POST.get('longitude')
         dias = request.POST.get('dias')
         raio = request.POST.get('raio')
+
+        logger.info(f"🔍 Parâmetros recebidos: tipo_combustivel={tipo_combustivel}, latitude={latitude}, longitude={longitude}, dias={dias}, raio={raio}")
 
         if not tipo_combustivel or tipo_combustivel not in ["1", "2", "3", "4", "5", "6"]:
             return JsonResponse({"error": "Tipo de combustível inválido"}, status=400)

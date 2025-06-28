@@ -180,10 +180,10 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
             "geolocalizacao": {
                 "latitude": lat,
                 "longitude": lon,
-                "raio": int(raio)
+                "raio": 3
             }
         },
-        "dias": int(dias),
+        "dias": 3,
         "pagina": 1,
         "registrosPorPagina": 100
     }
