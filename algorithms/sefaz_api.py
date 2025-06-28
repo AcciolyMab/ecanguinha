@@ -17,6 +17,7 @@ import gc  # opcional se quiser forçar liberação de memória
 import time
 import psutil # Para monitoramento de memória, útil em debug
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as ThreadTimeoutError
+from django.core.cache import cache
 
 
 from django.contrib import messages
@@ -130,12 +131,13 @@ def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias, max_attempts=3):
     for attempt in range(1, max_attempts + 1):
         try:
             # Adiciona timeout explícito para evitar workers presos 
-            response = requests.post(url, json=data, headers=headers, timeout=600)
+            response = requests.post(url, json=data, headers=headers, timeout=120)
             response.raise_for_status()
             return response.json(), gtin
 
-            # Salva no cache por 2 horas (7200 segundos) 
-            cache.set(cache_key, response_json, timeout=60 * 60 * 2)
+            # Salva no cache por 2 dias (172800 segundos)
+            cache.set(cache_key, response_json, timeout=60 * 60 * 24 * 2)
+            logger.info(f"🔁 Progresso atualizado: {progresso}% para sessão {session_key}")
             return response_json, gtin
 
         except (requests.exceptions.Timeout,
@@ -199,7 +201,7 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
         if "conteudo" not in data or not data["conteudo"]:
             return {"error": "Nenhum dado encontrado"}
 
-        cache.set(cache_key, data, timeout=60 * 60 * 2)
+        cache.set(cache_key, data, timeout=60 * 60 * 24 * 2)
         return data
 
     except requests.exceptions.Timeout:
@@ -213,36 +215,145 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
 
 
 # ------------------------------------------------------------------------------
+# def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
+#     """
+#     Faz consultas concorrentes à API SEFAZ para cada GTIN em gtin_list e
+#     retorna um DataFrame com os dados consolidados.
+#     Implementa processamento eficiente para menor uso de memória.
+#     """
+#     #parametro progressbar
+#     resultados = []
+#     total = len(gtin_list)
+
+#     if not gtin_list:
+#         logger.warning("Lista de GTIN está vazia.")
+#         messages.warning(request, "Lista de GTIN está vazia.")
+#         return pd.DataFrame()
+
+#     data_list = [] # Acumulará dicionários para o DataFrame
+
+#     # O número de workers pode ser ajustado com base nos recursos do servidor e testes.
+#     # 2 workers é um valor conservador e seguro.
+#     max_workers = min(2, len(gtin_list))
+
+#     logger.info(f"📊 Uso de memória antes das requisições: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
+
+#     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+#         future_map = {
+#             executor.submit(_request_produto_sefaz, gtin, raio, my_lat, my_lon, dias): gtin
+#             for gtin in gtin_list
+#         }
+#         for future in concurrent.futures.as_completed(future_map):
+#             gtin = future_map[future]
+#             try:
+#                 resp_json, used_gtin = future.result()
+#                 if resp_json and 'conteudo' in resp_json and resp_json['conteudo']:
+#                     # Processa o conteúdo diretamente para evitar acumular JSONs grandes
+#                     for item in resp_json.get('conteudo', []):
+#                         produto = item.get('produto', {})
+#                         estabelecimento = item.get('estabelecimento', {})
+#                         endereco = estabelecimento.get('endereco', {})
+#                         item_gtin = produto.get('gtin')
+#                         if not item_gtin:
+#                             logger.warning(f"GTIN ausente em um item da resposta para GTIN {gtin}.")
+#                             continue
+#                         try:
+#                             data_entry = {
+#                                 'CODIGO_BARRAS': int(item_gtin),
+#                                 'CATEGORIA': gtin_to_category.get(int(item_gtin), "OUTROS"),
+#                                 'PRODUTO': gtin_to_product_name.get(int(item_gtin), "OUTROS"),
+#                                 'VALOR': produto.get('venda', {}).get('valorVenda', 0.0),
+#                                 'CNPJ': estabelecimento.get('cnpj', 'Desconhecido'),
+#                                 'MERCADO': estabelecimento.get('razaoSocial', 'Desconhecido'),
+#                                 'ENDERECO': endereco.get('nomeLogradouro', 'Desconhecido'),
+#                                 'NUMERO': endereco.get('numeroImovel', 'S/N'),
+#                                 'BAIRRO': endereco.get('bairro', 'Desconhecido'),
+#                                 'LAT': endereco.get('latitude', 0.0),
+#                                 'LONG': endereco.get('longitude', 0.0)
+#                             }
+#                             data_list.append(data_entry)
+#                         except Exception as e:
+#                             logger.error(f"Erro ao processar item com GTIN {item_gtin} da resposta para GTIN {gtin}: {e}")
+#                             messages.error(request, f"Erro ao processar item com GTIN {item_gtin}: {e}")
+#                     # Força a liberação do objeto JSON grande após processar [opcional]
+#                     del resp_json
+#                     gc.collect()
+
+#                 else:
+#                     messages.warning(request, f"Nenhum conteúdo encontrado ou resposta inválida para o GTIN {gtin}.")
+#             except requests.exceptions.HTTPError as http_err:
+#                 messages.error(request, f"Erro HTTP ao consultar o GTIN {gtin}.")
+#             except requests.exceptions.ConnectionError as conn_err:
+#                 messages.error(request, f"Erro de conexão ao consultar o GTIN {gtin}.")
+#             except requests.exceptions.Timeout as timeout_err:
+#                 messages.error(request, f"Tempo limite excedido ao consultar o GTIN {gtin}.")
+#             except Exception as e:
+#                 messages.error(request, f"Erro inesperado ao consultar o GTIN {gtin}.")
+
+#     logger.info(f"📊 Uso de memória após obter produtos e antes do DataFrame: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
+
+#     if not data_list:
+#         messages.warning(request, "Nenhum dado válido foi retornado pela API ou processado.")
+#         return pd.DataFrame()
+
+#     # Cria o DataFrame e otimiza tipos de dados para reduzir consumo de memória
+#     df = pd.DataFrame(data_list)
+
+#     # Downcast numérico
+#     for col in ['CODIGO_BARRAS', 'NUMERO']: # Adicione colunas de int se aplicável
+#         if col in df.columns:
+#             # Converte para string primeiro para lidar com 'S/N' ou outros não-numéricos, depois para numérico
+#             # e então downcast, se puder.
+#             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype('int32')
+
+#     for col in ['VALOR', 'LAT', 'LONG']: # Adicione colunas de float se aplicável
+#         if col in df.columns:
+#             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0).astype('float32')
+
+#     # Converte strings repetitivas para tipo 'category'
+#     for col in ['CATEGORIA', 'PRODUTO', 'CNPJ', 'MERCADO', 'ENDERECO', 'BAIRRO']:
+#         if col in df.columns:
+#             df[col] = df[col].astype('category')
+
+#     logger.info(f"📊 Uso de memória após criar DataFrame: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
+
+#     return df
+
 def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
-    """
-    Faz consultas concorrentes à API SEFAZ para cada GTIN em gtin_list e
-    retorna um DataFrame com os dados consolidados.
-    Implementa processamento eficiente para menor uso de memória.
-    """
+    if not request.session.session_key:
+        request.session.save()
+    resultados = []
+    total = len(gtin_list)
+    session_key = f"progresso_{request.session.session_key}"
+    
+    logger.warning(f"🔑 Chave da sessão: {request.session.session_key}")
+    logger.warning(f"📦 Progresso será salvo em: {session_key}")
+
     if not gtin_list:
         logger.warning("Lista de GTIN está vazia.")
         messages.warning(request, "Lista de GTIN está vazia.")
         return pd.DataFrame()
 
-    data_list = [] # Acumulará dicionários para o DataFrame
-
-    # O número de workers pode ser ajustado com base nos recursos do servidor e testes.
-    # 2 workers é um valor conservador e seguro.
+    data_list = []
     max_workers = min(2, len(gtin_list))
 
     logger.info(f"📊 Uso de memória antes das requisições: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
+
+    # Inicializa progresso no cache
+    cache.set(session_key, 0, timeout=300)
+    concluídos = 0
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_map = {
             executor.submit(_request_produto_sefaz, gtin, raio, my_lat, my_lon, dias): gtin
             for gtin in gtin_list
         }
+
         for future in concurrent.futures.as_completed(future_map):
             gtin = future_map[future]
             try:
                 resp_json, used_gtin = future.result()
                 if resp_json and 'conteudo' in resp_json and resp_json['conteudo']:
-                    # Processa o conteúdo diretamente para evitar acumular JSONs grandes
                     for item in resp_json.get('conteudo', []):
                         produto = item.get('produto', {})
                         estabelecimento = item.get('estabelecimento', {})
@@ -269,20 +380,18 @@ def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
                         except Exception as e:
                             logger.error(f"Erro ao processar item com GTIN {item_gtin} da resposta para GTIN {gtin}: {e}")
                             messages.error(request, f"Erro ao processar item com GTIN {item_gtin}: {e}")
-                    # Força a liberação do objeto JSON grande após processar [opcional]
                     del resp_json
                     gc.collect()
-
                 else:
                     messages.warning(request, f"Nenhum conteúdo encontrado ou resposta inválida para o GTIN {gtin}.")
-            except requests.exceptions.HTTPError as http_err:
-                messages.error(request, f"Erro HTTP ao consultar o GTIN {gtin}.")
-            except requests.exceptions.ConnectionError as conn_err:
-                messages.error(request, f"Erro de conexão ao consultar o GTIN {gtin}.")
-            except requests.exceptions.Timeout as timeout_err:
-                messages.error(request, f"Tempo limite excedido ao consultar o GTIN {gtin}.")
             except Exception as e:
-                messages.error(request, f"Erro inesperado ao consultar o GTIN {gtin}.")
+                messages.error(request, f"Erro ao consultar o GTIN {gtin}: {e}")
+
+            # Atualiza o progresso após processar este GTIN
+            concluídos += 1
+            progresso = int((concluídos / total) * 100)
+            cache.set(session_key, progresso, timeout=300)
+            logger.warning(f"📊 Progresso atualizado: {progresso}% (GTIN: {gtin})")
 
     logger.info(f"📊 Uso de memória após obter produtos e antes do DataFrame: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
 
@@ -290,21 +399,16 @@ def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
         messages.warning(request, "Nenhum dado válido foi retornado pela API ou processado.")
         return pd.DataFrame()
 
-    # Cria o DataFrame e otimiza tipos de dados para reduzir consumo de memória
     df = pd.DataFrame(data_list)
 
-    # Downcast numérico
-    for col in ['CODIGO_BARRAS', 'NUMERO']: # Adicione colunas de int se aplicável
+    for col in ['CODIGO_BARRAS', 'NUMERO']:
         if col in df.columns:
-            # Converte para string primeiro para lidar com 'S/N' ou outros não-numéricos, depois para numérico
-            # e então downcast, se puder.
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype('int32')
 
-    for col in ['VALOR', 'LAT', 'LONG']: # Adicione colunas de float se aplicável
+    for col in ['VALOR', 'LAT', 'LONG']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0).astype('float32')
 
-    # Converte strings repetitivas para tipo 'category'
     for col in ['CATEGORIA', 'PRODUTO', 'CNPJ', 'MERCADO', 'ENDERECO', 'BAIRRO']:
         if col in df.columns:
             df[col] = df[col].astype('category')

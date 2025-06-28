@@ -153,12 +153,12 @@
                             <p id="labelLocalizacaoObtida" class="text-success small" style="display: none;">📍 Localização obtida com sucesso!</p>
 
                             <label for="raioSlider" class="form-label mt-2">Raio de Busca (km):</label>
-                            <input type="range" class="form-range" id="raioSlider" name="raio" min="1" max="15" value="1">
+                            <input type="range" class="form-range" id="raioSlider" name="raio" min="1" max="5" value="1">
                             <span id="raioValue" class="small">1 km</span><br>
 
                             <label for="diasSlider" class="form-label mt-2">Período de Análise (dias):</label>
-                            <input type="range" class="form-range" id="diasSlider" name="dias" min="1" max="10" value="1">
-                            <span id="diasValue" class="small">1 dia</span>
+                            <input type="range" class="form-range" id="diasSlider" name="dias" min="3" max="3" value="1">
+                            <span id="diasValue" class="small">3 dias</span>
                         </div>
                     </div>
 
@@ -432,28 +432,6 @@
                 });
             });
 
-            {% comment %} locationForm.addEventListener("submit", function (e) {
-                const lat = hiddenLatitude.value;
-                const lon = hiddenLongitude.value;
-                if (!lat || !lon) {
-                    alert("A localização não foi capturada corretamente.");
-                    e.preventDefault();
-                    return;
-                }
-
-                const produtosSelecionados = [...document.querySelectorAll('input[name="category"]:checked')];
-                if (produtosSelecionados.length === 0) {
-                    alert("Por favor, selecione ao menos um produto.");
-                    e.preventDefault();
-                    return;
-                }
-
-                const todosBarcodes = produtosSelecionados.flatMap(cb => JSON.parse(cb.value));
-                document.getElementById("item_list").value = JSON.stringify(todosBarcodes);
-                document.body.classList.add("loading");
-                progressContainer.style.display = "block";
-            }); {% endcomment %}
-
             locationForm.addEventListener("submit", function (e) {
                 const lat = hiddenLatitude.value;
                 const lon = hiddenLongitude.value;
@@ -476,7 +454,7 @@
                 // Ativa o progresso animado estilo Caipira
                 document.body.classList.add("loading");
                 progressContainer.style.display = "block";
-                iniciarProgresso(); 
+                iniciarProgressoReal(); 
 
                 // Inicia animação visual
                 const progressoCaipira = document.getElementById("progressoCaipira");
@@ -566,63 +544,61 @@
             atualizarBotaoBuscar();
         });
 
-        function iniciarProgresso() {
+        function iniciarProgressoReal() {
             const barra = document.getElementById("barraProgressoInterna");
             const texto = document.getElementById("textoProgresso");
             const caipira = document.getElementById("caipiraIcon");
             const caminho = document.querySelector(".caipira-caminho");
 
-            // Adiciona classe de animação
+            // Mostrar a barra de progresso
+            document.getElementById("progressContainer").style.display = "block";
             caipira.classList.add("andando");
 
-            let progresso = 0;
-            const duracao = 10000; // 10 segundos
-            const intervalo = 100; // Atualiza a cada 100ms
-            const incremento = 100 / (duracao / intervalo);
-
-            // Mensagens contextuais
             const mensagens = {
-                0: "🏠 Saindo de casa...",
-                10: "🚶‍♂️ Caminhando pela estrada...",
+                0: "🏠 To Pesquisando aqui...",
+                10: "🚶‍♂️ To achando procurando as ruas...",
                 25: "🌳 Passando pelas árvores...",
                 40: "🏃‍♂️ Acelerando o passo...",
                 60: "🏃‍♂️💨 Quase chegando...",
-                80: "🛒 Avistando o mercado...",
-                95: "🎉 Chegando ao destino...",
-                100: "✅ Chegou ao mercado! Ofertas encontradas!"
+                80: "🛒 Avistando os mercados...",
+                95: "🎉 Desenhando a sua rota...",
+                100: "✅ Pronto canguinha! Caminho da pexincha encontrado!"
             };
 
-            const timer = setInterval(() => {
-                progresso += incremento;
-                if (progresso >= 100) {
-                    progresso = 100;
-                    clearInterval(timer);
-                    // Remove animação quando parar
-                    caipira.classList.remove("andando");
-                }
+            const interval = setInterval(() => {
+                fetch("/progresso-status/")
+                    .then(res => res.json())
+                    .then(data => {
+                        const progresso = Math.min(data.porcentagem || 0, 100);
+                        console.log("🎯 Progresso recebido do backend:", progresso);
 
-                // Atualiza barra
-                barra.style.width = `${progresso}%`;
+                        barra.style.width = `${progresso}%`;
 
-                // Atualiza mensagem baseada no progresso
-                let mensagemAtual = "🔍 Buscando ofertas...";
-                for (let porcentagem in mensagens) {
-                    if (progresso >= parseInt(porcentagem)) {
-                        mensagemAtual = mensagens[porcentagem];
-                    }
-                }
-                texto.textContent = `${Math.round(progresso)}% - ${mensagemAtual}`;
+                        let mensagemAtual = "🔍 Buscando ofertas...";
+                        for (let p in mensagens) {
+                            if (progresso >= parseInt(p)) {
+                                mensagemAtual = mensagens[p];
+                            }
+                        }
 
-                // Move o caipira da direita para a esquerda
-                const deslocamento = 100 - (progresso * 0.90); // 90% → 10%
-                caipira.style.right = `${deslocamento}%`;
+                        texto.textContent = `${Math.round(progresso)}% - ${mensagemAtual}`;
 
-                // Adiciona pegadas ocasionalmente (efeito extra)
-                if (progresso > 0 && progresso < 100 && Math.random() < 0.3) {
-                    criarPegada(caminho, deslocamento);
-                }
+                        const deslocamento = 100 - (progresso * 0.90);
+                        caipira.style.right = `${deslocamento}%`;
 
-            }, intervalo);
+                        if (progresso > 0 && progresso < 100 && Math.random() < 0.3) {
+                            criarPegada(caminho, deslocamento);
+                        }
+
+                        if (progresso >= 100) {
+                            clearInterval(interval);
+                            caipira.classList.remove("andando");
+                        }
+                    })
+                    .catch((err) => {
+                        console.error("Erro ao consultar progresso:", err);
+                    });
+            }, 500);
         }
 
         // Função para criar efeito de pegadas (opcional)

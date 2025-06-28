@@ -118,6 +118,14 @@ def submit_feedback(request):
 def agradecimento(request):
     return render(request, 'agradecimento.html')
 
+def progresso_status(request):
+    if not request.session.session_key:
+        request.session.save()  # Garante que a sessão exista
+    session_key = f"progresso_{request.session.session_key}"
+    progresso = cache.get(session_key, 0)
+    logger.warning(f"🔍 Sessão: {request.session.session_key}, Progresso: {progresso}")
+    return JsonResponse({"porcentagem": progresso})
+
 def obter_rota(request):
     """
     View para retornar a rota detalhada gerada pelo OSMnx.
@@ -132,6 +140,8 @@ def obter_rota(request):
 
 def listar_produtos(request):
     if request.method == 'POST':
+        if not request.session.session_key:
+            request.session.save()
         latitude = request.POST.get('latitude')
         longitude = request.POST.get('longitude')
 
