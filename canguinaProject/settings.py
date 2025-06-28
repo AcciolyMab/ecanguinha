@@ -204,11 +204,11 @@ LOGGING = {
     },
     'root': {
         'handlers': ['console'],
-        'level': 'WARNING',  # Log global
+        'level': 'DEBUG',  # Log global
     },
     'django': {
         'handlers': ['console'],
-        'level': 'WARNING',  # Suprime INFO/DEBUG
+        'level': 'DEBUG',  # Suprime INFO/DEBUG
         'propagate': True,
     },
     'urllib3': {

@@ -8,6 +8,9 @@ from urllib3.util.retry import Retry
 from django.core.cache import cache # Certifique-se de que o Django e o Redis estão configurados
 import urllib3
 import pandas as pd
+import numpy as np
+from django.http import JsonResponse
+from django.conf import settings
 from geopy.distance import geodesic
 import os
 import concurrent.futures
@@ -161,6 +164,7 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
     """
     Consulta a API da SEFAZ Alagoas para buscar preços de combustíveis com base no tipo (1 a 6).
     """
+    logger.debug(f"🛠️ [consultar_combustivel] tipo_combustivel={tipo_combustivel} | type={type(tipo_combustivel)}, raio={raio}, lat={my_lat}, lon={my_lon}, dias={dias}")
 
     lat = round(float(my_lat), 3)
     lon = round(float(my_lon), 3)
@@ -180,7 +184,7 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
             "geolocalizacao": {
                 "latitude": lat,
                 "longitude": lon,
-                "raio": 6
+                "raio": 5
             }
         },
         "dias": 3,
@@ -211,113 +215,7 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
 
     return {"error": f"Falha na requisição para tipo {tipo_combustivel}"}
 
-
-
-
 # ------------------------------------------------------------------------------
-# def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
-#     """
-#     Faz consultas concorrentes à API SEFAZ para cada GTIN em gtin_list e
-#     retorna um DataFrame com os dados consolidados.
-#     Implementa processamento eficiente para menor uso de memória.
-#     """
-#     #parametro progressbar
-#     resultados = []
-#     total = len(gtin_list)
-
-#     if not gtin_list:
-#         logger.warning("Lista de GTIN está vazia.")
-#         messages.warning(request, "Lista de GTIN está vazia.")
-#         return pd.DataFrame()
-
-#     data_list = [] # Acumulará dicionários para o DataFrame
-
-#     # O número de workers pode ser ajustado com base nos recursos do servidor e testes.
-#     # 2 workers é um valor conservador e seguro.
-#     max_workers = min(2, len(gtin_list))
-
-#     logger.info(f"📊 Uso de memória antes das requisições: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
-
-#     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-#         future_map = {
-#             executor.submit(_request_produto_sefaz, gtin, raio, my_lat, my_lon, dias): gtin
-#             for gtin in gtin_list
-#         }
-#         for future in concurrent.futures.as_completed(future_map):
-#             gtin = future_map[future]
-#             try:
-#                 resp_json, used_gtin = future.result()
-#                 if resp_json and 'conteudo' in resp_json and resp_json['conteudo']:
-#                     # Processa o conteúdo diretamente para evitar acumular JSONs grandes
-#                     for item in resp_json.get('conteudo', []):
-#                         produto = item.get('produto', {})
-#                         estabelecimento = item.get('estabelecimento', {})
-#                         endereco = estabelecimento.get('endereco', {})
-#                         item_gtin = produto.get('gtin')
-#                         if not item_gtin:
-#                             logger.warning(f"GTIN ausente em um item da resposta para GTIN {gtin}.")
-#                             continue
-#                         try:
-#                             data_entry = {
-#                                 'CODIGO_BARRAS': int(item_gtin),
-#                                 'CATEGORIA': gtin_to_category.get(int(item_gtin), "OUTROS"),
-#                                 'PRODUTO': gtin_to_product_name.get(int(item_gtin), "OUTROS"),
-#                                 'VALOR': produto.get('venda', {}).get('valorVenda', 0.0),
-#                                 'CNPJ': estabelecimento.get('cnpj', 'Desconhecido'),
-#                                 'MERCADO': estabelecimento.get('razaoSocial', 'Desconhecido'),
-#                                 'ENDERECO': endereco.get('nomeLogradouro', 'Desconhecido'),
-#                                 'NUMERO': endereco.get('numeroImovel', 'S/N'),
-#                                 'BAIRRO': endereco.get('bairro', 'Desconhecido'),
-#                                 'LAT': endereco.get('latitude', 0.0),
-#                                 'LONG': endereco.get('longitude', 0.0)
-#                             }
-#                             data_list.append(data_entry)
-#                         except Exception as e:
-#                             logger.error(f"Erro ao processar item com GTIN {item_gtin} da resposta para GTIN {gtin}: {e}")
-#                             messages.error(request, f"Erro ao processar item com GTIN {item_gtin}: {e}")
-#                     # Força a liberação do objeto JSON grande após processar [opcional]
-#                     del resp_json
-#                     gc.collect()
-
-#                 else:
-#                     messages.warning(request, f"Nenhum conteúdo encontrado ou resposta inválida para o GTIN {gtin}.")
-#             except requests.exceptions.HTTPError as http_err:
-#                 messages.error(request, f"Erro HTTP ao consultar o GTIN {gtin}.")
-#             except requests.exceptions.ConnectionError as conn_err:
-#                 messages.error(request, f"Erro de conexão ao consultar o GTIN {gtin}.")
-#             except requests.exceptions.Timeout as timeout_err:
-#                 messages.error(request, f"Tempo limite excedido ao consultar o GTIN {gtin}.")
-#             except Exception as e:
-#                 messages.error(request, f"Erro inesperado ao consultar o GTIN {gtin}.")
-
-#     logger.info(f"📊 Uso de memória após obter produtos e antes do DataFrame: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
-
-#     if not data_list:
-#         messages.warning(request, "Nenhum dado válido foi retornado pela API ou processado.")
-#         return pd.DataFrame()
-
-#     # Cria o DataFrame e otimiza tipos de dados para reduzir consumo de memória
-#     df = pd.DataFrame(data_list)
-
-#     # Downcast numérico
-#     for col in ['CODIGO_BARRAS', 'NUMERO']: # Adicione colunas de int se aplicável
-#         if col in df.columns:
-#             # Converte para string primeiro para lidar com 'S/N' ou outros não-numéricos, depois para numérico
-#             # e então downcast, se puder.
-#             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype('int32')
-
-#     for col in ['VALOR', 'LAT', 'LONG']: # Adicione colunas de float se aplicável
-#         if col in df.columns:
-#             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0).astype('float32')
-
-#     # Converte strings repetitivas para tipo 'category'
-#     for col in ['CATEGORIA', 'PRODUTO', 'CNPJ', 'MERCADO', 'ENDERECO', 'BAIRRO']:
-#         if col in df.columns:
-#             df[col] = df[col].astype('category')
-
-#     logger.info(f"📊 Uso de memória após criar DataFrame: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
-
-#     return df
 
 def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
     if not request.session.session_key:
@@ -422,6 +320,8 @@ def obter_combustiveis(descricao, raio, my_lat, my_lon, dias):
     """
     Obtém os 3 estabelecimentos mais próximos que vendem o combustível especificado.
     """
+    logger.debug(f"🚦 [obter_combustiveis] descricao={descricao} | type={type(descricao)} | raio={raio} | lat={my_lat} | lon={my_lon} | dias={dias}")
+
     response = consultar_combustivel(descricao, raio, my_lat, my_lon, dias)
 
     if not response or 'conteudo' not in response or 'error' in response:
