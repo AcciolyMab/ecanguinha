@@ -180,32 +180,32 @@
                             <label class="form-label">Selecione o Tipo de Combustível *</label>
 
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="combustivel" id="gasolina-comum" value="1" required>
+                                <input class="form-check-input" type="radio" name="descricao" id="gasolina-comum" value="1" required>
                                 <label class="form-check-label" for="gasolina-comum">Gasolina Comum</label>
                             </div>
 
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="combustivel" id="gasolina-aditivada" value="2">
+                                <input class="form-check-input" type="radio" name="descricao" id="gasolina-aditivada" value="2">
                                 <label class="form-check-label" for="gasolina-aditivada">Gasolina Aditivada</label>
                             </div>
 
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="combustivel" id="alcool" value="3">
+                                <input class="form-check-input" type="radio" name="descricao" id="alcool" value="3">
                                 <label class="form-check-label" for="alcool">Álcool</label>
                             </div>
 
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="combustivel" id="diesel-comum" value="4">
+                                <input class="form-check-input" type="radio" name="descricao" id="diesel-comum" value="4">
                                 <label class="form-check-label" for="diesel-comum">Diesel Comum</label>
                             </div>
 
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="combustivel" id="diesel-aditivado" value="5">
+                                <input class="form-check-input" type="radio" name="descricao" id="diesel-aditivado" value="5">
                                 <label class="form-check-label" for="diesel-aditivado">Diesel Aditivado (S10)</label>
                             </div>
 
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="combustivel" id="gnv" value="6">
+                                <input class="form-check-input" type="radio" name="descricao" id="gnv" value="6">
                                 <label class="form-check-label" for="gnv">GNV</label>
                             </div>
                             
@@ -262,10 +262,8 @@
     </div>
 
     <script>
-    const urlProcessar = "{% url 'processar_combustivel' %}";
-    </script>
+        const urlProcessar = "{% url 'processar_combustivel' %}";
 
-    <script>
         document.addEventListener("DOMContentLoaded", function () {
             const latitudeInput = document.getElementById("latitude");
             const longitudeInput = document.getElementById("longitude");
@@ -281,6 +279,7 @@
             const precoPainel = document.getElementById("precoPainel");
             const varSemana = document.getElementById("varSemana");
             const varHoje = document.getElementById("varHoje");
+            const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
 
             let map = null;
             function inicializarMapa(lat, lon) {
@@ -377,7 +376,7 @@
             }
 
 
-            document.querySelectorAll('input[name="combustivel"]').forEach(radio => {
+            document.querySelectorAll('input[name="descricao"]').forEach(radio => {
                 radio.addEventListener("change", function () {
                     const descricao = this.value;
                     const latitude = latitudeInput.value.trim();
@@ -390,7 +389,7 @@
                         return;
                     }
 
-                    fetch("{% url 'processar_combustivel' %}", {
+                    fetch("/processar_combustivel/", {
                         method: "POST",
                         headers: {
                             "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
@@ -398,37 +397,37 @@
                         },
                         body: new URLSearchParams({ descricao, latitude, longitude, raio, dias })
                     })
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.media_preco !== undefined) {
-                                const preco = parseFloat(data.media_preco).toFixed(2);
-                                if (precoCombustivelInput) {
-                                    precoCombustivelInput.value = preco;
-                                    precoCombustivelInput.dispatchEvent(new Event("change"));
-                                }
-                                precoPainel.textContent = preco;
-                                const tipoCombustivelTexto = {
-                                    "1": "Gasolina Comum",
-                                    "2": "Gasolina Aditivada",
-                                    "3": "Álcool",
-                                    "4": "Diesel Comum",
-                                    "5": "Diesel Aditivado (S10)",
-                                    "6": "GNV"
-                                };
-
-                                painelCombustivelTipo.textContent = tipoCombustivelTexto[descricao] || "Desconhecido";
-
-                                varSemana.innerHTML = '<span class="text-success">  </span>    ';
-                                varHoje.innerHTML = '<span class="text-danger">   </span>   ';
-                                verificarPrecoCombustivel();
-                            } else {
-                                alert("Erro ao calcular a média do combustível.");
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.media_preco !== undefined) {
+                            const preco = parseFloat(data.media_preco).toFixed(2);
+                            if (precoCombustivelInput) {
+                                precoCombustivelInput.value = preco;
+                                precoCombustivelInput.dispatchEvent(new Event("change"));
                             }
-                        })
-                        .catch((err) => {
-                            console.error("Erro ao buscar combustível:", err);
-                            alert("Erro ao buscar preço do combustível. Tente novamente.");
-                        });
+                            precoPainel.textContent = preco;
+                            const tipoCombustivelTexto = {
+                                "1": "Gasolina Comum",
+                                "2": "Gasolina Aditivada",
+                                "3": "Álcool",
+                                "4": "Diesel Comum",
+                                "5": "Diesel Aditivado (S10)",
+                                "6": "GNV"
+                            };
+
+                            painelCombustivelTipo.textContent = tipoCombustivelTexto[descricao] || "Desconhecido";
+
+                            varSemana.innerHTML = '<span class="text-success">  </span>    ';
+                            varHoje.innerHTML = '<span class="text-danger">   </span>   ';
+                            verificarPrecoCombustivel();
+                        } else {
+                            alert("Erro ao calcular a média do combustível.");
+                        }
+                    })
+                    .catch((err) => {
+                        console.error("Erro ao buscar combustível:", err);
+                        alert("Erro ao buscar preço do combustível. Tente novamente.");
+                    });
                 });
             });
 

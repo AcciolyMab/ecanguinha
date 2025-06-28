@@ -22,7 +22,7 @@ urlpatterns = [
     path('submit/', views.submit_feedback, name='submit_feedback'),
     path('agradecimento/', views.agradecimento, name='agradecimento'),
     path('favicon.ico', RedirectView.as_view(url='/static/favicon.ico', permanent=True)),
-    path('processar_combustivel/', processar_combustivel, name='processar_combustivel'),
+    path('processar_combustivel/', views.processar_combustivel, name='processar_combustivel'),
     path('.well-known/appspecific/com.chrome.devtools.json', lambda request: JsonResponse({}, status=204)),
 ]
 
