@@ -240,7 +240,7 @@ def consultar_combustivel(descricao, raio, my_lat, my_lon, dias):
         },
         "dias": 3,  #int(dias),  # ✅ Corrigido
         "pagina": 1,
-        "registrosPorPagina": 100
+        "registrosPorPagina": 50
     }
 
     headers = {

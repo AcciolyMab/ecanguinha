@@ -390,6 +390,8 @@
                         return;
                     }
 
+                    console.log({ descricao, latitude, longitude, raio, dias });
+
                     fetch(urlProcessar, {
                         method: "POST",
                         headers: {
