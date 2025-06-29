@@ -174,17 +174,23 @@ def consultar_combustivel(descricao, raio, my_lat, my_lon, dias):
 
     logger.warning(f"⚠️ Cache MISS: {cache_key}")
 
+    tipo_combustivel = int(descricao)
+    latitude = round(float(lat), 6)
+    longitude = round(float(lon), 6)
+    raio = int(raio)
+    dias = int(dias)
+
     url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/combustivel/pesquisa'
     data = {
-        "produto": {"tipoCombustivel": int(descricao)},
+        "produto": {"tipoCombustivel": tipo_combustivel},
         "estabelecimento": {
             "geolocalizacao": {
-                "latitude": lat,
-                "longitude": lon,
-                "raio": 5 #int(raio)  # ✅ Corrigido
+                "latitude": latitude,
+                "longitude": longitude,
+                "raio": raio,
             }
         },
-        "dias": 3,  #int(dias),  # ✅ Corrigido
+        "dias": dias,
         "pagina": 1,
         "registrosPorPagina": 50
     }
