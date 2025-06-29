@@ -370,7 +370,5 @@ def obter_combustiveis(tipo_combustivel, raio, my_lat, my_lon, dias):
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0).astype('float32')
     for col in ['DESCRICAO', 'CNPJ', 'MERCADO', 'ENDERECO', 'NUMERO', 'BAIRRO']:
         if col in df.columns:
-            df[col] = df[col].astype('category')
-
-    df = df.sort_values(by='DISTANCIA_KM').head(3)
+            df[col] = df[col].astype('category')     
     return df
