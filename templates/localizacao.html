@@ -403,12 +403,7 @@
                     .then(res => res.json())
                     .then(data => {
                         if (data.media_preco !== undefined) {
-                            const preco = parseFloat(data.media_preco).toFixed(2);
-                            if (precoCombustivelInput) {
-                                precoCombustivelInput.value = preco;
-                                precoCombustivelInput.dispatchEvent(new Event("change"));
-                            }
-                            precoPainel.textContent = preco.replace('.', ',');
+                            const preco = parseFloat(data.media_preco).toFixed(2).replace('.', ',');
                             const tipoCombustivelTexto = {
                                 "1": "Gasolina Comum",
                                 "2": "Gasolina Aditivada",
@@ -418,22 +413,23 @@
                                 "6": "GNV"
                             };
 
-                            const tipoTexto = tipoCombustivelTexto[descricao] || "Desconhecido";
-                            painelCombustivelTipo.textContent = tipoTexto;
+                            const tipo = tipoCombustivelTexto[descricao] || "Desconhecido";
 
-                            // ALERTA PARA PRD
-                            alert(`⛽ Tipo: ${tipoTexto}\n💵 Valor médio: R$ ${preco.replace('.', ',')}`);
+                            alert(`⛽ Tipo: ${tipo}\n🪙 Valor médio: R$ ${preco}`);
 
-                            varSemana.innerHTML = '<span class="text-success">  </span>    ';
-                            varHoje.innerHTML = '<span class="text-danger">   </span>   ';
-                            verificarPrecoCombustivel();
+                            // Atualiza painel normalmente
+                            painelCombustivelTipo.textContent = tipo;
+                            precoPainel.textContent = preco;
+                            if (precoCombustivelInput) {
+                                precoCombustivelInput.value = preco;
+                                precoCombustivelInput.dispatchEvent(new Event("change"));
+                            }
+
                         } else {
-                            painelCombustivelTipo.textContent = "Indefinido";
-                            precoPainel.textContent = "0,00";
-
-                            alert("Erro ao calcular a média do combustível.");
+                            alert("⚠️ Erro ao calcular a média do combustível.");
                         }
                     })
+
                     .catch((err) => {
                         console.error("Erro ao buscar combustível:", err);
                         painelCombustivelTipo.textContent = "Erro ao consultar";

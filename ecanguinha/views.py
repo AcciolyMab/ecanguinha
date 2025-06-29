@@ -269,6 +269,8 @@ def processar_combustivel(request):
     View para processar a busca de combustíveis, calcular a média de preços e retornar o posto mais próximo.
     Protegida contra travamentos e falhas graves da API SEFAZ.
     """
+    print("🔧 Dados recebidos:", request.POST.dict())
+
     try:
         tipo_combustivel = request.POST.get('descricao')
         latitude = request.POST.get('latitude')
