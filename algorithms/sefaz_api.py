@@ -160,13 +160,13 @@ def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias, max_attempts=3):
             return None, gtin
 #------------------------------------------------------------------------------
 
-def consultar_combustivel(descricao, raio, my_lat, my_lon, dias):
-    logger.debug(f"🛠️ [consultar_combustivel] tipo_combustivel={descricao}, raio={raio}, lat={my_lat}, lon={my_lon}, dias={dias}")
+def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
+    logger.debug(f"🛠️ [consultar_combustivel] tipo_combustivel={tipo_combustivel}, raio={raio}, lat={my_lat}, lon={my_lon}, dias={dias}")
 
     lat = round(float(my_lat), 3)
     lon = round(float(my_lon), 3)
 
-    cache_key = f"combustivel:{descricao}:{raio}:{lat}:{lon}:{dias}"
+    cache_key = f"combustivel:{tipo_combustivel}:{raio}:{lat}:{lon}:{dias}"
     cached_data = cache.get(cache_key)
     if cached_data:
         logger.info(f"✅ Cache HIT: {cache_key}")
@@ -174,7 +174,7 @@ def consultar_combustivel(descricao, raio, my_lat, my_lon, dias):
 
     logger.warning(f"⚠️ Cache MISS: {cache_key}")
 
-    tipo_combustivel = int(descricao)
+    tipo_combustivel = int(tipo_combustivel)
     latitude = round(float(lat), 6)
     longitude = round(float(lon), 6)
     raio = int(raio)
@@ -321,16 +321,16 @@ def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
     return df
 
 # ------------------------------------------------------------------------------
-def obter_combustiveis(descricao, raio, my_lat, my_lon, dias):
+def obter_combustiveis(tipo_combustivel, raio, my_lat, my_lon, dias):
     """
     Obtém os 3 estabelecimentos mais próximos que vendem o combustível especificado.
     """
-    logger.debug(f"🚦 [obter_combustiveis] descricao={descricao} | type={type(descricao)} | raio={raio} | lat={my_lat} | lon={my_lon} | dias={dias}")
+    logger.debug(f"🚦 [obter_combustiveis] tipo_combustivel={tipo_combustivel} | type={type(tipo_combustivel)} | raio={raio} | lat={my_lat} | lon={my_lon} | dias={dias}")
 
-    response = consultar_combustivel(descricao, raio, my_lat, my_lon, dias)
+    response = consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias)
 
     if not isinstance(response, dict) or 'conteudo' not in response or 'error' in response:
-        logger.warning(f"Nenhum dado válido foi retornado para '{descricao}'. Erro: {response.get('error', 'Desconhecido')}")
+        logger.warning(f"Nenhum dado válido foi retornado para '{tipo_combustivel}'. Erro: {response.get('error', 'Desconhecido')}")
         return pd.DataFrame()
 
     estabelecimentos = response.get('conteudo', [])
@@ -357,10 +357,10 @@ def obter_combustiveis(descricao, raio, my_lat, my_lon, dias):
             }
             data_list.append(data_entry)
         except Exception as e:
-            logger.error(f"Erro ao processar item para '{descricao}': {e}")
+            logger.error(f"Erro ao processar item para '{tipo_combustivel}': {e}")
 
     if not data_list:
-        logger.warning(f"Nenhum dado processado para '{descricao}'. Total de registros recebidos: {len(estabelecimentos)}")
+        logger.warning(f"Nenhum dado processado para '{tipo_combustivel}'. Total de registros recebidos: {len(estabelecimentos)}")
         return pd.DataFrame()
 
     df = pd.DataFrame(data_list)

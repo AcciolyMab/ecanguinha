@@ -251,52 +251,52 @@ def safe_consultar_combustivel(tipo_combustivel, raio, lat, lon, dias, timeout=1
         return {"error": "Tempo limite atingido para a consulta à SEFAZ."}
     return result.get("result", {"error": "Falha na consulta à SEFAZ."})
 
+# 
+
+@csrf_exempt
 def processar_combustivel(request):
     """
-    View para processar a busca de combustíveis, calcular a média de preços e retornar o posto mais próximo.
-    Protegida contra travamentos e falhas graves da API SEFAZ.
+    View para processar a busca de combustíveis, calcular a média de preços e retornar o tipo.
+    Protegida contra travamentos e falhas da API SEFAZ.
     """
     print("🔧 Dados recebidos:", request.POST.dict())
 
     try:
+        # Coleta e validação dos parâmetros
         tipo_combustivel = request.POST.get('tipoCombustivel')
         latitude = request.POST.get('latitude')
         longitude = request.POST.get('longitude')
         dias = request.POST.get('dias')
         raio = request.POST.get('raio')
 
-        # Validação como inteiro (com fallback e tratamento de erro)
         try:
-            tipo_combustivel = int(request.POST.get('tipoCombustivel'))
+            tipo_combustivel = int(tipo_combustivel)
+            latitude = float(latitude)
+            longitude = float(longitude)
+            dias = int(dias)
+            raio = int(raio)
         except (ValueError, TypeError):
-            return JsonResponse({"error": "Tipo de combustível inválido"}, status=400)
+            return JsonResponse({"error": "Parâmetros inválidos."}, status=400)
 
+        # Consulta segura à SEFAZ com timeout
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(
                 safe_consultar_combustivel,
-                int(tipo_combustivel), int(raio), float(latitude), float(longitude), int(dias), 120
+                tipo_combustivel, raio, latitude, longitude, dias, 120
             )
-
             try:
                 data = future.result(timeout=120)
-            except ThreadTimeoutError:
+            except TimeoutError:
                 logger.critical("⏱️ Timeout total excedido na consulta à SEFAZ.")
                 return JsonResponse({"error": "Tempo excedido ao consultar dados do combustível."}, status=504)
 
-        if data is None or not isinstance(data, pd.DataFrame) or data.empty:
+        # Verificação e cálculo
+        if data is None or not isinstance(data, pd.DataFrame) or data.empty or 'VALOR' not in data.columns:
             return JsonResponse({"error": "Nenhum dado encontrado para o combustível especificado."}, status=404)
 
-        df = data.copy()
-        media_preco = round(float(df["VALOR"].mean()), 2)
-        
-        mapa_nomes = {
-            "1": "Gasolina Comum",
-            "2": "Gasolina Aditivada",
-            "3": "Álcool",
-            "4": "Diesel Comum",
-            "5": "Diesel Aditivado (S10)",
-            "6": "GNV"
-        }
+        # Converte para float64 e calcula a média
+        media_preco = float(data["VALOR"].astype("float64").mean())
+        media_preco = round(media_preco, 2)
 
         return JsonResponse({
             "media_preco": media_preco,
