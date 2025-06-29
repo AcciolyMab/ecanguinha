@@ -115,6 +115,22 @@ WSGI_APPLICATION = 'canguinaProject.wsgi.application'
 # REDIS_URL: pode ser ajustado via .env ou fallback local
 REDIS_URL = config('REDIS_URL', default='redis://127.0.0.1:6379/1')
 
+# Logger dedicado para Redis
+redis_logger = logging.getLogger("redis")
+
+# Validação e teste de conexão Redis
+try:
+    from django.core.cache import cache
+    cache.set('verifica_redis', 'ok', timeout=10)
+    test_val = cache.get('verifica_redis')
+    if test_val == 'ok':
+        redis_logger.info(f"✅ Redis conectado com sucesso: {REDIS_URL}")
+    else:
+        redis_logger.warning(f"⚠️ Redis está acessível, mas não respondeu corretamente.")
+except Exception as e:
+    redis_logger.error(f"❌ Erro ao testar Redis: {e}")
+
+
 # Log do ambiente e Redis configurado
 logger.warning(
     f"🛠️ Ambiente: {'PRODUÇÃO' if not DEBUG else 'DESENVOLVIMENTO'} | Redis em uso: {REDIS_URL}"
@@ -148,6 +164,18 @@ CACHES = {
         }
     }
 }
+
+if DEBUG:
+    redis_url = os.getenv("REDIS_URL", "NÃO DEFINIDO")
+    print(f"DEBUG - REDIS_URL: {redis_url}")  # ❌ Remova em produção
+
+    try:
+        from django.core.cache import cache
+        cache.set('teste_log', 'valor_log', timeout=60)
+        valor = cache.get('teste_log')
+        print(f"🧪 Cache testado com sucesso: {valor}")  # ❌ Remova também
+    except Exception as e:
+        print(f"❌ Erro ao testar Redis: {e}")  # ❌
 
 
 # Sessão via Redis (mais rápido e escalável que DB ou arquivos)
@@ -211,49 +239,46 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Confirmação de Redis configurado
-logger.warning(f"🚀 Cache Redis configurado com: {REDIS_URL}")
+logger.info(f"🔧 Cache Redis configurado com: {REDIS_URL}")
 
 if DEBUG:
     INSTALLED_APPS += ['django_extensions']
-    
-if DEBUG:
-    redis_url = os.getenv("REDIS_URL", "NÃO DEFINIDO")
-    print(f"DEBUG - REDIS_URL: {redis_url}")  # ❌ Remova em produção
 
-    try:
-        from django.core.cache import cache
-        cache.set('teste_log', 'valor_log', timeout=60)
-        valor = cache.get('teste_log')
-        print(f"🧪 Cache testado com sucesso: {valor}")  # ❌ Remova também
-    except Exception as e:
-        print(f"❌ Erro ao testar Redis: {e}")  # ❌
-
-# Logging estruturado e ajustado ao Railway
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
         },
     },
+
     'root': {
         'handlers': ['console'],
-        'level': 'DEBUG',  # Log global
+        'level': 'DEBUG',
     },
-    'django': {
-        'handlers': ['console'],
-        'level': 'DEBUG',  # Suprime INFO/DEBUG
-        'propagate': True,
-    },
-    'urllib3': {
-        'handlers': ['console'],
-        'level': 'ERROR',  # Menos ruído de conexão externa
-        'propagate': False,
-    },
-    'requests': {
-        'handlers': ['console'],
-        'level': 'ERROR',
-        'propagate': False,
-    },
+
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'urllib3': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'requests': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'redis': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'ERROR',
+            'propagate': False,
+        },
+    }
 }
