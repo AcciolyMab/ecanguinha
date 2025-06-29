@@ -2,6 +2,7 @@ import json
 import logging
 import re
 import threading
+import math
 import requests
 from django.core.cache import cache
 from django.http import JsonResponse
@@ -204,7 +205,10 @@ def listar_produtos(request):
                         'endereco': m['endereco'],
                         'latitude': float(m['latitude']),
                         'longitude': float(m['longitude']),
-                        'valor_total': float(m.get('valor_total', 0.0))
+                        'valor_total': float(m.get('valor_total', 0.0)),
+                        'distancia': calcular_distancia(avg_lat, avg_lon, float(m['latitude']), float(m['longitude'])),
+                        'tipo': m.get('tipo', 'Supermercado'),  # Pega o tipo de 'm' ou usa 'Supermercado' como padrão
+                        'avaliacao': m.get('avaliacao', 0)
                     }
                     for m in mercados_comprados
                 ],
@@ -234,6 +238,18 @@ def calcular_distancia(lat1, lon1, lat2, lon2):
     """
     Calcula a distância entre dois pontos geográficos (latitude, longitude) usando a fórmula de Haversine.
     """
+    R = 6371  # Raio da Terra em quilômetros
+    
+    dLat = math.radians(lat2 - lat1)
+    dLon = math.radians(lon2 - lon1)
+    lat1 = math.radians(lat1)
+    lat2 = math.radians(lat2)
+    
+    a = math.sin(dLat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dLon / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    
+    distance = R * c
+    return round(distance, 2)  # Retorna a distância arredondada para 2 casas decimais
     return geodesic((lat1, lon1), (lat2, lon2)).km
 
 
