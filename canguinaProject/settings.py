@@ -69,6 +69,7 @@ INSTALLED_APPS = [
 
     # Sua app principal
     'ecanguinha.apps.EcanguinhaConfig',
+    'django_extensions',
 ]
 
 # Middleware da aplicação
