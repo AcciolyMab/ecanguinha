@@ -293,6 +293,8 @@ def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
             # Atualiza o progresso após processar este GTIN
             concluídos += 1
             progresso = int((concluídos / total) * 100)
+            # Crie a chave com o prefixo, igual você faz na leitura
+            session_key = f"progresso_{request.session.session_key}"
             cache.set(session_key, progresso, timeout=300)
             logger.warning(f"📊 Progresso atualizado: {progresso}% (GTIN: {gtin})")
 
