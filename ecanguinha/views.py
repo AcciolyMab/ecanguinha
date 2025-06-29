@@ -264,7 +264,6 @@ def safe_consultar_combustivel(descricao, raio, lat, lon, dias, timeout=120):
         return {"error": "Tempo limite atingido para a consulta à SEFAZ."}
     return result.get("result", {"error": "Falha na consulta à SEFAZ."})
 
-@csrf_exempt
 def processar_combustivel(request):
     """
     View para processar a busca de combustíveis, calcular a média de preços e retornar o posto mais próximo.
