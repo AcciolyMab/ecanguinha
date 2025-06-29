@@ -235,15 +235,15 @@ def calcular_distancia(lat1, lon1, lat2, lon2):
     return geodesic((lat1, lon1), (lat2, lon2)).km
 
 
-def consultar_worker_thread(descricao, raio, lat, lon, dias, result_container):
+def consultar_worker_thread(tipo_combustivel, raio, lat, lon, dias, result_container):
     try:
-        result_container["result"] = obter_combustiveis(descricao, raio, lat, lon, dias)
+        result_container["result"] = obter_combustiveis(tipo_combustivel, raio, lat, lon, dias)
     except Exception as e:
         result_container["result"] = {"error": str(e)}
 
-def safe_consultar_combustivel(descricao, raio, lat, lon, dias, timeout=120):
+def safe_consultar_combustivel(tipo_combustivel, raio, lat, lon, dias, timeout=120):
     result = {}
-    t = threading.Thread(target=consultar_worker_thread, args=(descricao, raio, lat, lon, dias, result))
+    t = threading.Thread(target=consultar_worker_thread, args=(tipo_combustivel, raio, lat, lon, dias, result))
     t.start()
     t.join(timeout)
     if t.is_alive():
@@ -259,7 +259,7 @@ def processar_combustivel(request):
     print("🔧 Dados recebidos:", request.POST.dict())
 
     try:
-        tipo_combustivel = request.POST.get('descricao')
+        tipo_combustivel = request.POST.get('tipoCombustivel')
         latitude = request.POST.get('latitude')
         longitude = request.POST.get('longitude')
         dias = request.POST.get('dias')
@@ -267,7 +267,7 @@ def processar_combustivel(request):
 
         # Validação como inteiro (com fallback e tratamento de erro)
         try:
-            tipo_combustivel = int(request.POST.get('descricao'))
+            tipo_combustivel = int(request.POST.get('tipoCombustivel'))
         except (ValueError, TypeError):
             return JsonResponse({"error": "Tipo de combustível inválido"}, status=400)
 
@@ -287,16 +287,8 @@ def processar_combustivel(request):
             return JsonResponse({"error": "Nenhum dado encontrado para o combustível especificado."}, status=404)
 
         df = data.copy()
-        media_preco = round(df["VALOR"].mean(), 2)
-
-        estabelecimento_mais_proximo = df.loc[df["DISTANCIA_KM"].idxmin()].to_dict()
-
-        # Converter valores para tipos nativos do Python
-        estabelecimento_convertido = {
-            k: (float(v) if isinstance(v, (np.float32, np.float64)) else str(v))
-            for k, v in estabelecimento_mais_proximo.items()
-        }
-
+        media_preco = round(float(df["VALOR"].mean()), 2)
+        
         mapa_nomes = {
             "1": "Gasolina Comum",
             "2": "Gasolina Aditivada",
@@ -306,13 +298,10 @@ def processar_combustivel(request):
             "6": "GNV"
         }
 
-        resposta = {
-            "descricao": mapa_nomes.get(tipo_combustivel, "Desconhecido"),
-            "media_preco": round(media_preco, 2),
-            "posto_mais_proximo": estabelecimento_convertido
-        }
-
-        return JsonResponse(resposta)
+        return JsonResponse({
+            "media_preco": media_preco,
+            "tipo_combustivel": tipo_combustivel
+        })
 
     except SystemExit:
         logger.critical("🚨 SystemExit capturado! Worker encerrando indevidamente.")
