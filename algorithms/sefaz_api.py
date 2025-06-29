@@ -229,7 +229,7 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
     logger.warning(f"⚠️ Cache MISS: {cache_key}")
 
     url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/combustivel/pesquisa'
-    payload = {
+    data = {
         "produto": {"tipoCombustivel": int(tipo_combustivel)},
         "estabelecimento": {
             "geolocalizacao": {
@@ -250,7 +250,7 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
 
     try:
         session = requests.Session()
-        response = session.post(url, json=payload, headers=headers, timeout=120)
+        response = session.post(url, json=data, headers=headers, timeout=120)
         response.raise_for_status()
         data = response.json()
 
