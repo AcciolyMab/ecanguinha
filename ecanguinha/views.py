@@ -253,13 +253,15 @@ def safe_consultar_combustivel(tipo_combustivel, raio, lat, lon, dias, timeout=1
         return {"error": "Tempo limite atingido para a consulta à SEFAZ."}
     return result.get("result", {"error": "Falha na consulta à SEFAZ."})
 #----------------------------------------------------------------------------------------------------------------------#
+@csrf_exempt
 def processar_combustivel(request):
     if request.method != "POST":
         return JsonResponse({"erro": "Método não permitido"}, status=405)
 
     try:
-        # ✅ Leia o corpo diretamente e apenas uma vez
+        # ✅ NÃO use request.POST, use apenas request.body
         data = json.loads(request.body.decode("utf-8"))
+        logger.debug(f"🔧 Payload recebido: {data}")
 
         tipo_combustivel = int(data.get("tipoCombustivel"))
         latitude = float(data.get("latitude"))
@@ -271,14 +273,18 @@ def processar_combustivel(request):
         media = calcular_media_combustivel(df)
 
         return JsonResponse({
-            "media_preco": media,
+            "media_preco": round(media, 2),
             "tipo_combustivel": tipo_combustivel
         })
 
     except json.JSONDecodeError:
+        logger.error("❌ JSON inválido recebido")
         return JsonResponse({"erro": "JSON inválido"}, status=400)
+
     except Exception as e:
+        logger.exception(f"❌ Erro interno ao processar combustível: {e}")
         return JsonResponse({"erro": f"Erro interno: {str(e)}"}, status=500)
+    
 # def processar_combustivel(request):
 #     if request.method != "POST":
 #         return JsonResponse({"erro": "Método não permitido"}, status=405)
