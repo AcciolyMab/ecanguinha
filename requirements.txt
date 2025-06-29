@@ -24,6 +24,7 @@ django-redis>=5.4.0
 redis>=5.2.0
 aiohttp==3.9.3
 async-timeout<5.0
+django-extensions==4.1
 
 # Segurança
 passlib[bcrypt]
