@@ -78,6 +78,7 @@
     </style>
 </head>
 <body>
+    <input type="hidden" id="csrfTokenGlobal" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
     <!-- Progresso Caipira -->
     <div id="progressContainer" class="caipira-barra" style="display: none;">
         <div class="caipira-wrapper">
@@ -392,7 +393,7 @@
                     fetch(urlProcessar, {
                         method: "POST",
                         headers: {
-                            "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
+                            "X-CSRFToken": document.getElementById("csrfTokenGlobal").value,
                             "Content-Type": "application/x-www-form-urlencoded"
                         },
                         body: new URLSearchParams({ descricao, latitude, longitude, raio, dias })

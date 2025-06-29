@@ -52,7 +52,7 @@ if DEBUG:
         print(f"❌ Erro ao testar Redis: {e}")
 
 # Impede Django de adicionar automaticamente uma barra ao final das URLs
-# APPEND_SLASH = False
+APPEND_SLASH = True
 
 # Aplicações instaladas
 INSTALLED_APPS = [
