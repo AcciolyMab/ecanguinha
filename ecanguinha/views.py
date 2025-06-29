@@ -1,7 +1,7 @@
 import json
 import logging
 import re
-
+import threading
 import requests
 from django.core.cache import cache
 from django.http import JsonResponse
@@ -127,17 +127,17 @@ def progresso_status(request):
     logger.warning(f"🔍 Sessão: {request.session.session_key}, Progresso: {progresso}")
     return JsonResponse({"porcentagem": progresso})
 
-def obter_rota(request):
-    """
-    View para retornar a rota detalhada gerada pelo OSMnx.
-    """
-    try:
-        # Aqui, você deve garantir que `mercados_df` tenha os dados necessários.
-        data = create_tpplib_data(mercados_df, buyer_lat, buyer_lon, media_preco=5.5, raio_busca=5.0)
-        return JsonResponse({'rota': data['rota_osmnx']})
+# def obter_rota(request):
+#     """
+#     View para retornar a rota detalhada gerada pelo OSMnx.
+#     """
+#     try:
+#         # Aqui, você deve garantir que `mercados_df` tenha os dados necessários.
+#         data = create_tpplib_data(mercados_df, buyer_lat, buyer_lon, media_preco=5.5, raio_busca=5.0)
+#         return JsonResponse({'rota': data['rota_osmnx']})
     
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+#     except Exception as e:
+#         return JsonResponse({'error': str(e)}, status=500)
 
 def listar_produtos(request):
     if request.method == 'POST':
@@ -247,26 +247,22 @@ def calcular_distancia(lat1, lon1, lat2, lon2):
     return geodesic((lat1, lon1), (lat2, lon2)).km
 
 
-# return JsonResponse(resposta, safe=False)
-def consultar_worker(queue, descricao, raio, lat, lon, dias):
-    from algorithms.sefaz_api import obter_combustiveis  # importa dentro do processo
+def consultar_worker_thread(descricao, raio, lat, lon, dias, result_container):
+    from algorithms.sefaz_api import obter_combustiveis  # Import dentro da thread
     try:
-        result = obter_combustiveis(descricao, raio, lat, lon, dias)
-        queue.put(result)
+        result_container["result"] = obter_combustiveis(descricao, raio, lat, lon, dias)
     except Exception as e:
-        queue.put({"error": str(e)})
+        result_container["result"] = {"error": str(e)}
 
 def safe_consultar_combustivel(descricao, raio, lat, lon, dias, timeout=120):
-    queue = Queue()
-    p = Process(target=consultar_worker, args=(queue, descricao, raio, lat, lon, dias))
-    p.start()
-    p.join(timeout)
-    if p.is_alive():
-        p.terminate()
-        p.join()
-        logger.critical("⏱️ Processo da SEFAZ excedeu timeout total e foi encerrado.")
+    result = {}
+    t = threading.Thread(target=consultar_worker_thread, args=(descricao, raio, lat, lon, dias, result))
+    t.start()
+    t.join(timeout)
+    if t.is_alive():
+        logger.critical("⏱️ Thread da SEFAZ excedeu timeout total e foi encerrada.")
         return {"error": "Tempo limite atingido para a consulta à SEFAZ."}
-    return queue.get() if not queue.empty() else {"error": "Falha na consulta à SEFAZ."}
+    return result.get("result", {"error": "Falha na consulta à SEFAZ."})
 
 @csrf_exempt
 def processar_combustivel(request):
@@ -281,11 +277,14 @@ def processar_combustivel(request):
         dias = request.POST.get('dias')
         raio = request.POST.get('raio')
 
-        if not tipo_combustivel or tipo_combustivel not in ["1", "2", "3", "4", "5", "6"]:
+        # Validação como inteiro (com fallback e tratamento de erro)
+        try:
+            tipo_combustivel = int(request.POST.get('descricao'))
+        except (ValueError, TypeError):
             return JsonResponse({"error": "Tipo de combustível inválido"}, status=400)
 
-        if latitude == "0.0" or longitude == "0.0":
-            return JsonResponse({"error": "Latitude e Longitude são obrigatórios"}, status=400)
+        if tipo_combustivel not in [1, 2, 3, 4, 5, 6]:
+            return JsonResponse({"error": "Tipo de combustível inválido"}, status=400)
 
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(
