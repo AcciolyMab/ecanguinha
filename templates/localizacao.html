@@ -418,7 +418,11 @@
                                 "6": "GNV"
                             };
 
-                            painelCombustivelTipo.textContent = tipoCombustivelTexto[descricao] || "Desconhecido";
+                            const tipoTexto = tipoCombustivelTexto[descricao] || "Desconhecido";
+                            painelCombustivelTipo.textContent = tipoTexto;
+
+                            // ALERTA PARA PRD
+                            alert(`⛽ Tipo: ${tipoTexto}\n💵 Valor médio: R$ ${preco.replace('.', ',')}`);
 
                             varSemana.innerHTML = '<span class="text-success">  </span>    ';
                             varHoje.innerHTML = '<span class="text-danger">   </span>   ';
