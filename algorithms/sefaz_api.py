@@ -214,13 +214,13 @@ def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias, max_attempts=3):
 #         logger.error(f"❌ Erro consultando combustível tipo {tipo_combustivel}: {e}")
 
 #     return {"error": f"Falha na requisição para tipo {tipo_combustivel}"}
-def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
-    logger.debug(f"🛠️ [consultar_combustivel] tipo_combustivel={tipo_combustivel}, raio={raio}, lat={my_lat}, lon={my_lon}, dias={dias}")
+def consultar_combustivel(descricao, raio, my_lat, my_lon, dias):
+    logger.debug(f"🛠️ [consultar_combustivel] tipo_combustivel={descricao}, raio={raio}, lat={my_lat}, lon={my_lon}, dias={dias}")
 
     lat = round(float(my_lat), 3)
     lon = round(float(my_lon), 3)
 
-    cache_key = f"combustivel:{tipo_combustivel}:{raio}:{lat}:{lon}:{dias}"
+    cache_key = f"combustivel:{descricao}:{raio}:{lat}:{lon}:{dias}"
     cached_data = cache.get(cache_key)
     if cached_data:
         logger.info(f"✅ Cache HIT: {cache_key}")
@@ -230,7 +230,7 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
 
     url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/combustivel/pesquisa'
     data = {
-        "produto": {"tipoCombustivel": int(tipo_combustivel)},
+        "produto": {"tipoCombustivel": int(descricao)},
         "estabelecimento": {
             "geolocalizacao": {
                 "latitude": lat,
@@ -261,11 +261,11 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
         return data
 
     except requests.exceptions.Timeout:
-        logger.warning(f"⏱️ Timeout na requisição para tipo {tipo_combustivel}")
+        logger.warning(f"⏱️ Timeout na requisição para tipo {descricao}")
     except Exception as e:
-        logger.error(f"❌ Erro consultando combustível tipo {tipo_combustivel}: {e}")
+        logger.error(f"❌ Erro consultando combustível tipo {descricao}: {e}")
 
-    return {"error": f"Falha na requisição para tipo {tipo_combustivel}"}
+    return {"error": f"Falha na requisição para tipo {descricao}"}
 
 
 # ------------------------------------------------------------------------------
