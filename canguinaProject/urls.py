@@ -4,7 +4,6 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import RedirectView
 from ecanguinha import views
-from ecanguinha.views import processar_combustivel
 from django.http import JsonResponse
 
 
