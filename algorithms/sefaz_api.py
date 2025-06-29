@@ -213,11 +213,11 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
         return data
 
     except requests.exceptions.Timeout:
-        logger.warning(f"⏱️ Timeout na requisição para tipo {descricao}")
+        logger.warning(f"⏱️ Timeout na requisição para tipo {tipo_combustivel}")
     except Exception as e:
-        logger.error(f"❌ Erro consultando combustível tipo {descricao}: {e}")
+        logger.error(f"❌ Erro consultando combustível tipo {tipo_combustivel}: {e}")
 
-    return {"error": f"Falha na requisição para tipo {descricao}"}
+    return {"error": f"Falha na requisição para tipo {tipo_combustivel}"}
 
 
 # ------------------------------------------------------------------------------

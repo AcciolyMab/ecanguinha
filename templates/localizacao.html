@@ -376,7 +376,6 @@
                 verificarPrecoCombustivel();  // checa já no início
             }
 
-
             document.querySelectorAll('input[name="tipoCombustivel"]').forEach(radio => {
                 radio.addEventListener("change", function () {
                     const tipoCombustivel = this.value;
@@ -392,53 +391,70 @@
 
                     console.log({ tipoCombustivel, latitude, longitude, raio, dias });
 
-                    fetch(urlProcessar, {
-                        method: "POST",
-                        headers: {
-                            "X-CSRFToken": document.getElementById("csrfTokenGlobal").value,
-                            "Content-Type": "application/x-www-form-urlencoded"
-                        },
-                        body: new URLSearchParams({ tipoCombustivel, latitude, longitude, raio, dias })
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.media_preco !== undefined) {
-                            const preco = parseFloat(data.media_preco).toFixed(2).replace('.', ',');
-                            const tipoCombustivelTexto = {
-                                "1": "Gasolina Comum",
-                                "2": "Gasolina Aditivada",
-                                "3": "Álcool",
-                                "4": "Diesel Comum",
-                                "5": "Diesel Aditivado (S10)",
-                                "6": "GNV"
-                            };
+                    const xhr = new XMLHttpRequest();
+                    xhr.open("POST", urlProcessar, true);
+                    xhr.setRequestHeader("Content-Type", "application/json");
 
-                            const tipo = tipoCombustivelTexto[tipoCombustivel] || "Desconhecido";
+                    // Enviar o token CSRF se estiver presente no DOM
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+                    if (csrfToken) {
+                        xhr.setRequestHeader("X-CSRFToken", csrfToken.value);
+                    }
 
-                            //alert(`⛽ Tipo: ${tipo}\n🪙 Valor médio: R$ ${preco}`);
+                    xhr.onreadystatechange = function () {
+                        if (xhr.readyState === 4) {
+                            if (xhr.status === 200) {
+                                try {
+                                    const data = JSON.parse(xhr.responseText);
+                                    if (data.media_preco !== undefined) {
+                                        const preco = parseFloat(data.media_preco).toFixed(2);
+                                        const tipoCombustivelTexto = {
+                                            "1": "Gasolina Comum",
+                                            "2": "Gasolina Aditivada",
+                                            "3": "Álcool",
+                                            "4": "Diesel Comum",
+                                            "5": "Diesel Aditivado (S10)",
+                                            "6": "GNV"
+                                        };
 
-                            // Atualiza painel normalmente
-                            painelCombustivelTipo.textContent = tipo;
-                            precoPainel.textContent = preco;
-                            if (precoCombustivelInput) {
-                                precoCombustivelInput.value = preco;
-                                precoCombustivelInput.dispatchEvent(new Event("change"));
+                                        const tipo = tipoCombustivelTexto[tipoCombustivel] || "Desconhecido";
+
+                                        alert(`⛽ Tipo: ${tipo}\n🪙 Valor médio: R$ ${preco}`);
+
+                                        painelCombustivelTipo.textContent = tipo;
+                                        precoPainel.textContent = preco;
+                                        if (precoCombustivelInput) {
+                                            precoCombustivelInput.value = preco;
+                                            precoCombustivelInput.dispatchEvent(new Event("change"));
+                                        }
+                                    } else {
+                                        alert("⚠️ Erro ao calcular a média do combustível.");
+                                    }
+                                } catch (e) {
+                                    console.error("Erro ao processar JSON:", e);
+                                    alert("Erro ao interpretar resposta do servidor.");
+                                }
+                            } else {
+                                console.error("Erro na requisição:", xhr.status, xhr.statusText);
+                                painelCombustivelTipo.textContent = "Erro ao consultar";
+                                precoPainel.textContent = "0,00";
+                                alert("Erro ao buscar preço do combustível. Tente novamente.");
                             }
-
-                        } else {
-                            alert("⚠️ Erro ao calcular a média do combustível.");
                         }
-                    })
+                    };
 
-                    .catch((err) => {
-                        console.error("Erro ao buscar combustível:", err);
-                        painelCombustivelTipo.textContent = "Erro ao consultar";
-                        precoPainel.textContent = "0,00";
-                        alert("Erro ao buscar preço do combustível. Tente novamente.");
-                    });
+                    const payload = {
+                        tipoCombustivel: parseInt(tipoCombustivel),
+                        latitude: parseFloat(latitude),
+                        longitude: parseFloat(longitude),
+                        raio: parseInt(raio),
+                        dias: parseInt(dias)
+                    };
 
+                    xhr.send(JSON.stringify(payload));
                 });
             });
+
 
             locationForm.addEventListener("submit", function (e) {
                 const lat = hiddenLatitude.value;

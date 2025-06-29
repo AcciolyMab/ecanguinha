@@ -6,6 +6,7 @@ env/
 *.envrc
 .DS_Store
 
+
 # Banco de Dados
 *.sqlite3
 db.sqlite3  # Banco de dados local

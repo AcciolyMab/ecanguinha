@@ -69,7 +69,6 @@ INSTALLED_APPS = [
 
     # Sua app principal
     'ecanguinha.apps.EcanguinhaConfig',
-    'django_extensions',
 ]
 
 # Middleware da aplicação
@@ -155,13 +154,17 @@ CACHES = {
 SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 SESSION_CACHE_ALIAS = 'default'
 
-# Banco de dados: atenção ao uso de SQLite em produção!
+# # Banco de dados: atenção ao uso de SQLite em produção!
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(default=config('DATABASE_URL'))
 }
+
 # ⚠️ Recomenda-se PostgreSQL para produção (Railway já oferece nativamente)
 
 # Validações de senha (padrões de segurança)
@@ -181,6 +184,16 @@ USE_TZ = True
 # Segurança: forçar HTTPS em produção
 SECURE_SSL_REDIRECT = not DEBUG
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# Produção segura
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_HSTS_SECONDS = 31536000  # 1 ano
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+X_FRAME_OPTIONS = 'DENY'
+
 
 # Arquivos estáticos
 STATIC_URL = '/static/'
@@ -199,6 +212,21 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Confirmação de Redis configurado
 logger.warning(f"🚀 Cache Redis configurado com: {REDIS_URL}")
+
+if DEBUG:
+    INSTALLED_APPS += ['django_extensions']
+    
+if DEBUG:
+    redis_url = os.getenv("REDIS_URL", "NÃO DEFINIDO")
+    print(f"DEBUG - REDIS_URL: {redis_url}")  # ❌ Remova em produção
+
+    try:
+        from django.core.cache import cache
+        cache.set('teste_log', 'valor_log', timeout=60)
+        valor = cache.get('teste_log')
+        print(f"🧪 Cache testado com sucesso: {valor}")  # ❌ Remova também
+    except Exception as e:
+        print(f"❌ Erro ao testar Redis: {e}")  # ❌
 
 # Logging estruturado e ajustado ao Railway
 LOGGING = {
