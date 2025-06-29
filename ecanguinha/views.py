@@ -9,7 +9,7 @@ from django.views.decorators.http import require_GET
 
 from algorithms.alns_solver import alns_solve_tpp
 # Importações dos módulos personalizados
-from algorithms.sefaz_api import consultar_combustivel, obter_produtos, obter_combustiveis
+from algorithms.sefaz_api import obter_produtos, obter_combustiveis
 from algorithms.tpplib_data import create_tpplib_data
 from geopy.distance import geodesic  # Importação correta
 from django.shortcuts import render, redirect
@@ -127,18 +127,6 @@ def progresso_status(request):
     logger.warning(f"🔍 Sessão: {request.session.session_key}, Progresso: {progresso}")
     return JsonResponse({"porcentagem": progresso})
 
-# def obter_rota(request):
-#     """
-#     View para retornar a rota detalhada gerada pelo OSMnx.
-#     """
-#     try:
-#         # Aqui, você deve garantir que `mercados_df` tenha os dados necessários.
-#         data = create_tpplib_data(mercados_df, buyer_lat, buyer_lon, media_preco=5.5, raio_busca=5.0)
-#         return JsonResponse({'rota': data['rota_osmnx']})
-    
-#     except Exception as e:
-#         return JsonResponse({'error': str(e)}, status=500)
-
 def listar_produtos(request):
     if request.method == 'POST':
         if not request.session.session_key:
@@ -248,7 +236,6 @@ def calcular_distancia(lat1, lon1, lat2, lon2):
 
 
 def consultar_worker_thread(descricao, raio, lat, lon, dias, result_container):
-    from algorithms.sefaz_api import obter_combustiveis  # Import dentro da thread
     try:
         result_container["result"] = obter_combustiveis(descricao, raio, lat, lon, dias)
     except Exception as e:

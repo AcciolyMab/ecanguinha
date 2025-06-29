@@ -160,60 +160,6 @@ def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias, max_attempts=3):
             return None, gtin
 #------------------------------------------------------------------------------
 
-# def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
-#     """
-#     Consulta a API da SEFAZ Alagoas para buscar preços de combustíveis com base no tipo (1 a 6).
-#     """
-#     logger.debug(f"🛠️ [consultar_combustivel] tipo_combustivel={tipo_combustivel} | type={type(tipo_combustivel)}, raio={raio}, lat={my_lat}, lon={my_lon}, dias={dias}")
-
-#     lat = round(float(my_lat), 3)
-#     lon = round(float(my_lon), 3)
-
-#     cache_key = f"combustivel:{tipo_combustivel}:{raio}:{lat}:{lon}:{dias}"
-#     cached_data = cache.get(cache_key)
-#     if cached_data:
-#         logger.info(f"✅ Cache HIT: {cache_key}")
-#         return cached_data
-
-#     logger.warning(f"⚠️ Cache MISS: {cache_key}")
-
-#     url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/combustivel/pesquisa'
-#     payload = {
-#         "produto": {"tipoCombustivel": int(tipo_combustivel)},
-#         "estabelecimento": {
-#             "geolocalizacao": {
-#                 "latitude": lat,
-#                 "longitude": lon,
-#                 "raio": 5
-#             }
-#         },
-#         "dias": 3,
-#         "pagina": 1,
-#         "registrosPorPagina": 100
-#     }
-
-#     headers = {
-#         "Content-Type": "application/json",
-#         "AppToken": "ad909a7a6f0d6a130941ae2a9706eec58c0bb65d"
-#     }
-
-#     try:
-#         response = SEFAZ_SESSION.post(url, json=payload, headers=headers, timeout=120)  # Timeout de 120 segundos
-#         response.raise_for_status()
-#         data = response.json()
-
-#         if "conteudo" not in data or not data["conteudo"]:
-#             return {"error": "Nenhum dado encontrado"}
-
-#         cache.set(cache_key, data, timeout=60 * 60 * 24 * 2)
-#         return data
-
-#     except requests.exceptions.Timeout:
-#         logger.warning(f"⏱️ Timeout na requisição para tipo {tipo_combustivel}")
-#     except Exception as e:
-#         logger.error(f"❌ Erro consultando combustível tipo {tipo_combustivel}: {e}")
-
-#     return {"error": f"Falha na requisição para tipo {tipo_combustivel}"}
 def consultar_combustivel(descricao, raio, my_lat, my_lon, dias):
     logger.debug(f"🛠️ [consultar_combustivel] tipo_combustivel={descricao}, raio={raio}, lat={my_lat}, lon={my_lon}, dias={dias}")
 
