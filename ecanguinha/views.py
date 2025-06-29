@@ -287,7 +287,7 @@ def processar_combustivel(request):
             return JsonResponse({"error": "Nenhum dado encontrado para o combustível especificado."}, status=404)
 
         df = data.copy()
-        media_preco = float(df.nsmallest(3, "VALOR")["VALOR"].mean())
+        media_preco = round(df["VALOR"].mean(), 2)
 
         estabelecimento_mais_proximo = df.loc[df["DISTANCIA_KM"].idxmin()].to_dict()
 
