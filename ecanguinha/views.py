@@ -252,14 +252,14 @@ def safe_consultar_combustivel(tipo_combustivel, raio, lat, lon, dias, timeout=1
         logger.critical("⏱️ Thread da SEFAZ excedeu timeout total e foi encerrada.")
         return {"error": "Tempo limite atingido para a consulta à SEFAZ."}
     return result.get("result", {"error": "Falha na consulta à SEFAZ."})
-
+#----------------------------------------------------------------------------------------------------------------------#
 def processar_combustivel(request):
     if request.method != "POST":
         return JsonResponse({"erro": "Método não permitido"}, status=405)
 
     try:
-        # 🔍 Parse do JSON recebido
-        data = json.loads(request.body)
+        # ✅ Leia o corpo diretamente e apenas uma vez
+        data = json.loads(request.body.decode("utf-8"))
 
         tipo_combustivel = int(data.get("tipoCombustivel"))
         latitude = float(data.get("latitude"))
@@ -267,10 +267,7 @@ def processar_combustivel(request):
         raio = int(data.get("raio"))
         dias = int(data.get("dias"))
 
-        # ✅ Obter DataFrame com os dados da SEFAZ
         df = obter_combustiveis(tipo_combustivel, raio, latitude, longitude, dias)
-
-        # ✅ Calcular a média
         media = calcular_media_combustivel(df)
 
         return JsonResponse({
@@ -280,10 +277,39 @@ def processar_combustivel(request):
 
     except json.JSONDecodeError:
         return JsonResponse({"erro": "JSON inválido"}, status=400)
-    except (TypeError, ValueError) as e:
-        return JsonResponse({"erro": f"Erro de tipo ou valor: {str(e)}"}, status=400)
     except Exception as e:
         return JsonResponse({"erro": f"Erro interno: {str(e)}"}, status=500)
+# def processar_combustivel(request):
+#     if request.method != "POST":
+#         return JsonResponse({"erro": "Método não permitido"}, status=405)
+
+#     try:
+#         # 🔍 Parse do JSON recebido
+#         data = json.loads(request.body)
+
+#         tipo_combustivel = int(data.get("tipoCombustivel"))
+#         latitude = float(data.get("latitude"))
+#         longitude = float(data.get("longitude"))
+#         raio = int(data.get("raio"))
+#         dias = int(data.get("dias"))
+
+#         # ✅ Obter DataFrame com os dados da SEFAZ
+#         df = obter_combustiveis(tipo_combustivel, raio, latitude, longitude, dias)
+
+#         # ✅ Calcular a média
+#         media = calcular_media_combustivel(df)
+
+#         return JsonResponse({
+#             "media_preco": media,
+#             "tipo_combustivel": tipo_combustivel
+#         })
+
+#     except json.JSONDecodeError:
+#         return JsonResponse({"erro": "JSON inválido"}, status=400)
+#     except (TypeError, ValueError) as e:
+#         return JsonResponse({"erro": f"Erro de tipo ou valor: {str(e)}"}, status=400)
+#     except Exception as e:
+#         return JsonResponse({"erro": f"Erro interno: {str(e)}"}, status=500)
 
 # @csrf_exempt
 # def processar_combustivel(request):
