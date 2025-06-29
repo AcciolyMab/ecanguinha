@@ -154,7 +154,7 @@
                             <p id="labelLocalizacaoObtida" class="text-success small" style="display: none;">📍 Localização obtida com sucesso!</p>
 
                             <label for="raioSlider" class="form-label mt-2">Raio de Busca (km):</label>
-                            <input type="range" class="form-range" id="raioSlider" name="raio" min="1" max="5" value="1">
+                            <input type="range" class="form-range" id="raioSlider" name="raio" min="1" max="5" value="1" step="1">
                             <span id="raioValue" class="small">1 km</span><br>
 
                             <label for="diasSlider" class="form-label mt-2">Período de Análise (dias):</label>
@@ -592,7 +592,9 @@
             };
 
             const interval = setInterval(() => {
-                fetch("/progresso-status/")
+                fetch("/progresso-status/", {
+                    credentials: 'include'  // 🔑 ESSENCIAL PARA ENVIAR COOKIE DE SESSÃO
+                })
                     .then(res => res.json())
                     .then(data => {
                         const progresso = Math.min(data.porcentagem || 0, 100);
