@@ -31,6 +31,12 @@ ALLOWED_HOSTS = [
     '.railway.app'
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://www.canguinhaal.com.br",
+    "https://canguinhaal.com.br",  # Adicione sem o www também
+    "https://web-production-6a008.up.railway.app"  # (opcional)
+]
+
 # Mostrar valor do Redis para debug apenas se DEBUG estiver ativo
 if DEBUG:
     redis_url = os.getenv("REDIS_URL", "NÃO DEFINIDO")
@@ -46,7 +52,7 @@ if DEBUG:
         print(f"❌ Erro ao testar Redis: {e}")
 
 # Impede Django de adicionar automaticamente uma barra ao final das URLs
-APPEND_SLASH = False
+# APPEND_SLASH = False
 
 # Aplicações instaladas
 INSTALLED_APPS = [
