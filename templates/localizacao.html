@@ -592,7 +592,9 @@
             };
 
             const interval = setInterval(() => {
-                fetch("/progresso-status/")
+                fetch("/progresso-status/", {
+                    credentials: 'include'  // 🔑 ESSENCIAL PARA ENVIAR COOKIE DE SESSÃO
+                })
                     .then(res => res.json())
                     .then(data => {
                         const progresso = Math.min(data.porcentagem || 0, 100);
