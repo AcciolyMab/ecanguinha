@@ -181,32 +181,32 @@
                             <label class="form-label">Selecione o Tipo de Combustível *</label>
 
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="descricao" id="gasolina-comum" value="1" required>
+                                <input class="form-check-input" type="radio" name="tipoCombustivel" id="gasolina-comum" value="1" required>
                                 <label class="form-check-label" for="gasolina-comum">Gasolina Comum</label>
                             </div>
 
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="descricao" id="gasolina-aditivada" value="2">
+                                <input class="form-check-input" type="radio" name="tipoCombustivel" id="gasolina-aditivada" value="2">
                                 <label class="form-check-label" for="gasolina-aditivada">Gasolina Aditivada</label>
                             </div>
 
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="descricao" id="alcool" value="3">
+                                <input class="form-check-input" type="radio" name="tipoCombustivel" id="alcool" value="3">
                                 <label class="form-check-label" for="alcool">Álcool</label>
                             </div>
 
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="descricao" id="diesel-comum" value="4">
+                                <input class="form-check-input" type="radio" name="tipoCombustivel" id="diesel-comum" value="4">
                                 <label class="form-check-label" for="diesel-comum">Diesel Comum</label>
                             </div>
 
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="descricao" id="diesel-aditivado" value="5">
+                                <input class="form-check-input" type="radio" name="tipoCombustivel" id="diesel-aditivado" value="5">
                                 <label class="form-check-label" for="diesel-aditivado">Diesel Aditivado (S10)</label>
                             </div>
 
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="descricao" id="gnv" value="6">
+                                <input class="form-check-input" type="radio" name="tipoCombustivel" id="gnv" value="6">
                                 <label class="form-check-label" for="gnv">GNV</label>
                             </div>
                             
@@ -377,9 +377,9 @@
             }
 
 
-            document.querySelectorAll('input[name="descricao"]').forEach(radio => {
+            document.querySelectorAll('input[name="tipoCombustivel"]').forEach(radio => {
                 radio.addEventListener("change", function () {
-                    const descricao = this.value;
+                    const tipoCombustivel = this.value;
                     const latitude = latitudeInput.value.trim();
                     const longitude = longitudeInput.value.trim();
                     const raio = raioSlider.value;
@@ -390,7 +390,7 @@
                         return;
                     }
 
-                    console.log({ descricao, latitude, longitude, raio, dias });
+                    console.log({ tipoCombustivel, latitude, longitude, raio, dias });
 
                     fetch(urlProcessar, {
                         method: "POST",
@@ -398,7 +398,7 @@
                             "X-CSRFToken": document.getElementById("csrfTokenGlobal").value,
                             "Content-Type": "application/x-www-form-urlencoded"
                         },
-                        body: new URLSearchParams({ descricao, latitude, longitude, raio, dias })
+                        body: new URLSearchParams({ tipoCombustivel, latitude, longitude, raio, dias })
                     })
                     .then(res => res.json())
                     .then(data => {
@@ -413,7 +413,7 @@
                                 "6": "GNV"
                             };
 
-                            const tipo = tipoCombustivelTexto[descricao] || "Desconhecido";
+                            const tipo = tipoCombustivelTexto[tipoCombustivel] || "Desconhecido";
 
                             alert(`⛽ Tipo: ${tipo}\n🪙 Valor médio: R$ ${preco}`);
 
