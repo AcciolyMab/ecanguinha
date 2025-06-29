@@ -118,7 +118,7 @@
             </div>
         </nav>
             
-    <div class="container mt-5">
+        <div class="container mt-5">
             <h1 class="mb-4">Canguinha: Localização do Comprador</h1>
             <form id="locationForm" action="{% url 'listar_produtos' %}" method="post">
                 {% csrf_token %}
@@ -157,7 +157,7 @@
                             <span id="raioValue" class="small">1 km</span><br>
 
                             <label for="diasSlider" class="form-label mt-2">Período de Análise (dias):</label>
-                            <input type="range" class="form-range" id="diasSlider" name="dias" min="3" max="3" value="1">
+                            <input type="range" class="form-range" id="diasSlider" name="dias" min="3" max="3" value="3" readonly>
                             <span id="diasValue" class="small">3 dias</span>
                         </div>
                     </div>
@@ -253,7 +253,7 @@
 
                 <!-- Botão de envio -->
                 <div class="form-buttons mt-4 d-flex justify-content-center">
-                    <button type="submit" class="btn btn-success btn-lg" id="btnBuscar" disabled>
+                    <button type="submit" class="btn btn-success btn-lg" id="btnBuscar" disabled aria-disabled="true">
                         <i class="bi bi-search"></i> Buscar Ofertas
                     </button>
                 </div>
@@ -389,7 +389,7 @@
                         return;
                     }
 
-                    fetch("/processar_combustivel/", {
+                    fetch(urlProcessar, {
                         method: "POST",
                         headers: {
                             "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value,
@@ -405,7 +405,7 @@
                                 precoCombustivelInput.value = preco;
                                 precoCombustivelInput.dispatchEvent(new Event("change"));
                             }
-                            precoPainel.textContent = preco;
+                            precoPainel.textContent = preco.replace('.', ',');
                             const tipoCombustivelTexto = {
                                 "1": "Gasolina Comum",
                                 "2": "Gasolina Aditivada",
@@ -421,13 +421,19 @@
                             varHoje.innerHTML = '<span class="text-danger">   </span>   ';
                             verificarPrecoCombustivel();
                         } else {
+                            painelCombustivelTipo.textContent = "Indefinido";
+                            precoPainel.textContent = "0,00";
+
                             alert("Erro ao calcular a média do combustível.");
                         }
                     })
                     .catch((err) => {
                         console.error("Erro ao buscar combustível:", err);
+                        painelCombustivelTipo.textContent = "Erro ao consultar";
+                        precoPainel.textContent = "0,00";
                         alert("Erro ao buscar preço do combustível. Tente novamente.");
                     });
+
                 });
             });
 
@@ -529,6 +535,8 @@
             function atualizarBotaoBuscar() {
                 const algumSelecionado = document.querySelectorAll('input[name="category"]:checked').length > 0;
                 btnBuscar.disabled = !algumSelecionado;
+                btnBuscar.setAttribute("aria-disabled", String(!algumSelecionado));
+
             }
 
             // Adiciona o listener a cada checkbox individual
@@ -561,7 +569,7 @@
                 60: "🏃‍♂️💨 Quase chegando...",
                 80: "🛒 Avistando os mercados...",
                 95: "🎉 Desenhando a sua rota...",
-                100: "✅ Pronto canguinha! Caminho da pexincha encontrado!"
+                100: "✅ Pronto canguinha! Caminho da pechinchar encontrado!"
             };
 
             const interval = setInterval(() => {
