@@ -275,7 +275,6 @@ def processar_combustivel(request):
         return JsonResponse({"erro": "Método não permitido"}, status=405)
 
     try:
-        # ✅ NÃO use request.POST, use apenas request.body
         data = json.loads(request.body.decode("utf-8"))
         logger.debug(f"🔧 Payload recebido: {data}")
 
@@ -286,6 +285,18 @@ def processar_combustivel(request):
         dias = int(data.get("dias"))
 
         df = obter_combustiveis(tipo_combustivel, raio, latitude, longitude, dias)
+
+        if df.empty:
+            logger.warning("⚠️ Nenhum dado retornado da API da SEFAZ")
+            return JsonResponse({"erro": "Nenhum dado de preço encontrado"}, status=204)
+
+        # Remove registros com valor 0 ou nulo
+        df = df[df["VALOR"].apply(lambda x: isinstance(x, (int, float)) and x > 0)]
+
+        if df.empty:
+            logger.warning("⚠️ Todos os preços estavam zerados ou inválidos")
+            return JsonResponse({"erro": "Preços indisponíveis ou inválidos"}, status=204)
+
         media = calcular_media_combustivel(df)
 
         return JsonResponse({
@@ -300,4 +311,34 @@ def processar_combustivel(request):
     except Exception as e:
         logger.exception(f"❌ Erro interno ao processar combustível: {e}")
         return JsonResponse({"erro": f"Erro interno: {str(e)}"}, status=500)
+# def processar_combustivel(request):
+#     if request.method != "POST":
+#         return JsonResponse({"erro": "Método não permitido"}, status=405)
+
+#     try:
+#         # ✅ NÃO use request.POST, use apenas request.body
+#         data = json.loads(request.body.decode("utf-8"))
+#         logger.debug(f"🔧 Payload recebido: {data}")
+
+#         tipo_combustivel = int(data.get("tipoCombustivel"))
+#         latitude = float(data.get("latitude"))
+#         longitude = float(data.get("longitude"))
+#         raio = int(data.get("raio"))
+#         dias = int(data.get("dias"))
+
+#         df = obter_combustiveis(tipo_combustivel, raio, latitude, longitude, dias)
+#         media = calcular_media_combustivel(df)
+
+#         return JsonResponse({
+#             "media_preco": round(media, 2),
+#             "tipo_combustivel": tipo_combustivel
+#         })
+
+#     except json.JSONDecodeError:
+#         logger.error("❌ JSON inválido recebido")
+#         return JsonResponse({"erro": "JSON inválido"}, status=400)
+
+#     except Exception as e:
+#         logger.exception(f"❌ Erro interno ao processar combustível: {e}")
+#         return JsonResponse({"erro": f"Erro interno: {str(e)}"}, status=500)
     
