@@ -771,6 +771,7 @@
                 })
                 .then(res => res.json())
                 .then(data => {
+                    const sessionKey = document.body.dataset.session;
                     const progresso = Math.min(data.porcentagem || 0, 100);
                     console.log("🎯 Progresso recebido do backend:", progresso);
 
