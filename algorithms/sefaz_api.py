@@ -353,7 +353,7 @@ def obter_produtos(session_key_raw, gtin_list, raio, my_lat, my_lon, dias):
             for gtin in gtin_list
         }
 
-        for future in concurrent.futures.as_completed(future_map):
+        for i, future in enumerate(concurrent.futures.as_completed(future_map), 1):
             gtin = future_map[future]
             try:
                 resp_json, used_gtin = future.result()
@@ -392,7 +392,7 @@ def obter_produtos(session_key_raw, gtin_list, raio, my_lat, my_lon, dias):
 
             # Atualiza progresso
             concluídos += 1
-            progresso = int((concluídos / total) * 100)
+            progresso = int((i / total) * 100)
             cache.set(session_key, progresso, timeout=300)
             logger.warning(f"📊 Progresso atualizado: {progresso}% (GTIN: {gtin})")
 
