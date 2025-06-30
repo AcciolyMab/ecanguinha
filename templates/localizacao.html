@@ -7,7 +7,7 @@
     <title>Canguinha</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}" />
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
@@ -163,7 +163,7 @@
             <div class="caipira-moldura">
                 <!-- Caminho por onde o caipira anda -->
                 <div class="caipira-caminho" id="caminho">
-                    <img id="caipiraIcon" src="{% static 'ecanguinha/img/canguinha_animado.gif' %}"
+                    <img id="caipiraIcon" src="{% static 'ecanguinha/img/canguinha_animado.gif' %}" alt="Caipira animado">
                         class="emoji-caipira" alt="Caipira Andando" />
                 </div>
             </div>
@@ -707,7 +707,6 @@
                 checkboxContainer.appendChild(div);
             }
 
-
             const selectAllCheckbox = document.getElementById("selectAllCheckbox");
             selectAllCheckbox.addEventListener("change", () => {
                 document.querySelectorAll('input[name="category"]').forEach(cb => cb.checked = selectAllCheckbox.checked);
@@ -750,65 +749,6 @@
             // Atualiza estado inicial do botão ao carregar os checkboxes
             atualizarBotaoBuscar();
         });
-
-        {% comment %} function iniciarProgressoReal() {
-            const barra = document.getElementById("barraProgressoInterna");
-            const texto = document.getElementById("textoProgresso");
-            const caipira = document.getElementById("caipiraIcon");
-            const caminho = document.querySelector(".caipira-caminho");
-
-            // Mostrar a barra de progresso
-            document.getElementById("progressContainer").style.display = "block";
-            caipira.classList.add("andando");
-
-            const mensagens = {
-                0: "🏠 To Pesquisando aqui...",
-                10: "🚶‍♂️ To achando procurando as ruas...",
-                25: "🌳 Passando pelas árvores...",
-                40: "🏃‍♂️ Acelerando o passo...",
-                60: "🏃‍♂️💨 Quase chegando...",
-                80: "🛒 Avistando os mercados...",
-                95: "🎉 Desenhando a sua rota...",
-                100: "✅ Pronto canguinha! Caminho da pechinchar encontrado!"
-            };
-
-            const interval = setInterval(() => {
-                fetch("/progresso-status/", {
-                    credentials: 'include'  // 🔑 ESSENCIAL PARA ENVIAR COOKIE DE SESSÃO
-                })
-                    .then(res => res.json())
-                    .then(data => {
-                        const progresso = Math.min(data.porcentagem || 0, 100);
-                        console.log("🎯 Progresso recebido do backend:", progresso);
-
-                        barra.style.width = `${progresso}%`;
-
-                        let mensagemAtual = "🔍 Buscando ofertas...";
-                        for (let p in mensagens) {
-                            if (progresso >= parseInt(p)) {
-                                mensagemAtual = mensagens[p];
-                            }
-                        }
-
-                        texto.textContent = `${Math.round(progresso)}% - ${mensagemAtual}`;
-
-                        const deslocamento = 100 - (progresso * 0.90);
-                        caipira.style.right = `${deslocamento}%`;
-
-                        if (progresso > 0 && progresso < 100 && Math.random() < 0.3) {
-                            criarPegada(caminho, deslocamento);
-                        }
-
-                        if (progresso >= 100) {
-                            clearInterval(interval);
-                            caipira.classList.remove("andando");
-                        }
-                    })
-                    .catch((err) => {
-                        console.error("Erro ao consultar progresso:", err);
-                    });
-            }, 500);
-        } {% endcomment %}
 
         function iniciarProgressoReal() {
             const texto = document.getElementById("textoProgresso");
