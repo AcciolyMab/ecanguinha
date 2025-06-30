@@ -91,6 +91,52 @@
             background-color: #f8f9fa;
             /* cinza clarinho */
         }
+    .caipira-barra {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+    }
+
+    .caipira-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .caipira-moldura {
+        border: 2px solid #004d26; /* verde escuro */
+        height: 130px;
+        background-color: transparent;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        position: relative;
+    }
+
+    .caipira-caminho {
+        position: relative;
+        width: 100%;
+        height: 100%;
+    }
+
+    .emoji-caipira {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        height: 120px;
+        transition: left 0.3s ease-in-out;
+    }
+
+    .texto-status {
+        font-size: 1.1rem;
+        color: #333;
+        text-align: center;
+    }
+
     </style>
 </head>
 
@@ -98,7 +144,7 @@
     <input type="hidden" id="csrfTokenGlobal" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
     <input type="hidden" id="mediaCombustivel" name="mediaCombustivel" value="">
     <!-- Progresso Caipira -->
-    <div id="progressContainer" class="caipira-barra" style="display: none;">
+    {% comment %} <div id="progressContainer" class="caipira-barra" style="display: none;">
         <div class="caipira-wrapper">
             <div class="caipira-caminho">
                 <img id="caipiraIcon" src="{% static 'ecanguinha/img/canguinha_animado.gif' %}" class="emoji-caipira"
@@ -107,6 +153,22 @@
             <div class="caipira-progresso-externo">
                 <div id="barraProgressoInterna" class="caipira-progresso-interno"></div>
             </div>
+            <p id="textoProgresso" class="texto-status">0% - Buscando ofertas...</p>
+        </div>
+    </div> {% endcomment %}
+    <div id="progressContainer" class="caipira-barra" style="display: none;">
+        <div class="caipira-wrapper">
+            
+            <!-- Moldura fina verde escuro -->
+            <div class="caipira-moldura">
+                <!-- Caminho por onde o caipira anda -->
+                <div class="caipira-caminho" id="caminho">
+                    <img id="caipiraIcon" src="{% static 'ecanguinha/img/canguinha_animado.gif' %}"
+                        class="emoji-caipira" alt="Caipira Andando" />
+                </div>
+            </div>
+
+            <!-- Texto abaixo da moldura -->
             <p id="textoProgresso" class="texto-status">0% - Buscando ofertas...</p>
         </div>
     </div>
@@ -689,7 +751,7 @@
             atualizarBotaoBuscar();
         });
 
-        function iniciarProgressoReal() {
+        {% comment %} function iniciarProgressoReal() {
             const barra = document.getElementById("barraProgressoInterna");
             const texto = document.getElementById("textoProgresso");
             const caipira = document.getElementById("caipiraIcon");
@@ -746,7 +808,67 @@
                         console.error("Erro ao consultar progresso:", err);
                     });
             }, 500);
+        } {% endcomment %}
+
+        function iniciarProgressoReal() {
+            const texto = document.getElementById("textoProgresso");
+            const caipira = document.getElementById("caipiraIcon");
+            const caminho = document.getElementById("caminho");
+
+            // Mostrar a moldura com o Caipira
+            document.getElementById("progressContainer").style.display = "block";
+            caipira.classList.add("andando");
+
+            const mensagens = {
+                0: "🏠 Tô pesquisando aqui...",
+                10: "🚶‍♂️ Procurando pelas ruas...",
+                25: "🌳 Passando pelas árvores...",
+                40: "🏃‍♂️ Acelerando o passo...",
+                60: "🏃‍♂️💨 Quase chegando...",
+                80: "🛒 Avistando os mercados...",
+                95: "🎉 Desenhando a sua rota...",
+                100: "✅ Pronto, Canguinha! Caminho da pechincha encontrado!"
+            };
+
+            const interval = setInterval(() => {
+                fetch("/progresso-status/", {
+                    credentials: 'include'
+                })
+                .then(res => res.json())
+                .then(data => {
+                    const progresso = Math.min(data.porcentagem || 0, 100);
+                    console.log("🎯 Progresso recebido do backend:", progresso);
+
+                    // Atualiza a posição do Caipira
+                    const larguraCaminho = caminho.offsetWidth;
+                    const larguraCaipira = caipira.offsetWidth;
+                    const posicao = ((larguraCaminho - larguraCaipira) * progresso) / 100;
+
+                    caipira.style.left = `${posicao}px`;
+
+                    // Atualiza o texto
+                    let mensagemAtual = "🔍 Buscando ofertas...";
+                    for (let p in mensagens) {
+                        if (progresso >= parseInt(p)) {
+                            mensagemAtual = mensagens[p];
+                        }
+                    }
+
+                    texto.textContent = `${Math.round(progresso)}% - ${mensagemAtual}`;
+
+                    // Finaliza
+                    if (progresso >= 100) {
+                        clearInterval(interval);
+                        caipira.classList.remove("andando");
+                    }
+                })
+                .catch((err) => {
+                    console.error("Erro ao consultar progresso:", err);
+                });
+            }, 500);
         }
+
+
 
         // Função para criar efeito de pegadas (opcional)
         function criarPegada(container, posicao) {
