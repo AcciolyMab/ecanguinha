@@ -91,51 +91,51 @@
             background-color: #f8f9fa;
             /* cinza clarinho */
         }
-    .caipira-barra {
-        width: 100%;
-        display: flex;
-        justify-content: center;
-        margin-top: 20px;
-    }
+        .caipira-barra {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
 
-    .caipira-wrapper {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-        width: 100%;
-    }
+        .caipira-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
 
-    .caipira-moldura {
-        border: 2px solid #004d26; /* verde escuro */
-        height: 130px;
-        background-color: transparent;
-        width: 100%;
-        display: flex;
-        align-items: center;
-        padding: 0 20px;
-        position: relative;
-    }
+        .caipira-moldura {
+            border: 2px solid #004d26; /* verde escuro */
+            height: 130px;
+            background-color: transparent;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            position: relative;
+        }
 
-    .caipira-caminho {
-        position: relative;
-        width: 100%;
-        height: 100%;
-    }
+        .caipira-caminho {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
 
-    .emoji-caipira {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        height: 120px;
-        transition: left 0.3s ease-in-out;
-    }
+        .emoji-caipira {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 120px;
+            transition: left 0.3s ease-in-out;
+        }
 
-    .texto-status {
-        font-size: 1.1rem;
-        color: #333;
-        text-align: center;
-    }
+        .texto-status {
+            font-size: 1.1rem;
+            color: #333;
+            text-align: center;
+        }
 
     </style>
 </head>
@@ -144,27 +144,17 @@
     <input type="hidden" id="csrfTokenGlobal" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
     <input type="hidden" id="mediaCombustivel" name="mediaCombustivel" value="">
     <!-- Progresso Caipira -->
-    {% comment %} <div id="progressContainer" class="caipira-barra" style="display: none;">
-        <div class="caipira-wrapper">
-            <div class="caipira-caminho">
-                <img id="caipiraIcon" src="{% static 'ecanguinha/img/canguinha_animado.gif' %}" class="emoji-caipira"
-                    alt="Caipira Andando" />
-            </div>
-            <div class="caipira-progresso-externo">
-                <div id="barraProgressoInterna" class="caipira-progresso-interno"></div>
-            </div>
-            <p id="textoProgresso" class="texto-status">0% - Buscando ofertas...</p>
-        </div>
-    </div> {% endcomment %}
     <div id="progressContainer" class="caipira-barra" style="display: none;">
         <div class="caipira-wrapper">
-            
+
             <!-- Moldura fina verde escuro -->
             <div class="caipira-moldura">
                 <!-- Caminho por onde o caipira anda -->
                 <div class="caipira-caminho" id="caminho">
-                    <img id="caipiraIcon" src="{% static 'ecanguinha/img/canguinha_animado.gif' %}" alt="Caipira animado">
-                        class="emoji-caipira" alt="Caipira Andando" />
+                    <img id="caipiraIcon"
+                        src="{% static 'ecanguinha/img/canguinha_animado.gif' %}"
+                        class="emoji-caipira"
+                        alt="Caipira Andando" />
                 </div>
             </div>
 
@@ -172,6 +162,7 @@
             <p id="textoProgresso" class="texto-status">0% - Buscando ofertas...</p>
         </div>
     </div>
+
 
     <div id="containerGeral">
         <nav class="navbar navbar-expand-lg">
@@ -707,20 +698,11 @@
                 checkboxContainer.appendChild(div);
             }
 
+
             const selectAllCheckbox = document.getElementById("selectAllCheckbox");
             selectAllCheckbox.addEventListener("change", () => {
                 document.querySelectorAll('input[name="category"]').forEach(cb => cb.checked = selectAllCheckbox.checked);
             });
-
-            {% comment %} const btnBuscar = document.getElementById("btnBuscar");
-
-            // Habilita/desabilita botão com base nos produtos selecionados
-            function atualizarBotaoBuscar() {
-                const algumSelecionado = document.querySelectorAll('input[name="category"]:checked').length > 0;
-                btnBuscar.disabled = !algumSelecionado;
-                btnBuscar.setAttribute("aria-disabled", String(!algumSelecionado));
-
-            } {% endcomment %}
 
             const btnBuscar = document.getElementById("btnBuscar");
 
