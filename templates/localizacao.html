@@ -764,6 +764,11 @@
                 95: "🎉 Desenhando a sua rota...",
                 100: "✅ Pronto, Canguinha! Caminho da pechincha encontrado!"
             };
+            const sessionKey = document.body.dataset.session;
+            if (!sessionKey) {
+                console.warn("⚠️ session_key ausente. Cancelando polling.");
+                return;
+            }
 
             const interval = setInterval(() => {
                 fetch("/progresso-status/", {
