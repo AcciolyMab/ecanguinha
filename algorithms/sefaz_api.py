@@ -227,6 +227,8 @@ def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
         request.session.save()
     resultados = []
     total = len(gtin_list)
+    session_key_base = request.session.session_key
+    session_key = f"progresso_{session_key_base}"
     
     logger.warning(f"🔑 Chave da sessão: {request.session.session_key}")
     logger.warning(f"📦 Progresso será salvo em: {session_key}")
@@ -294,7 +296,7 @@ def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
             progresso = int((concluídos / total) * 100)
             # Crie a chave com o prefixo, igual você faz na leitura
             session_key = f"progresso_{request.session.session_key}"
-            cache.set(session_key, 0, timeout=300)
+            cache.set(session_key, progresso, timeout=300)
             logger.warning(f"📊 Progresso atualizado: {progresso}% (GTIN: {gtin})")
 
     logger.info(f"📊 Uso de memória após obter produtos e antes do DataFrame: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")

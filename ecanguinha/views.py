@@ -125,8 +125,9 @@ def agradecimento(request):
 def progresso_status(request):
     if not request.session.session_key:
         request.session.save()  # Garante que a sessão exista
-    session_key = f"progresso_{request.session.session_key}"
-    progresso = cache.get(session_key, 0)
+    session_key_base = request.session.session_key
+    session_key = f"progresso_{session_key_base}"
+    progresso = cache.get(session_key, 0, timeout=300)  # Padrão de 0% se não houver progresso
     logger.warning(f"🔍 Lendo da chave: {session_key}, Progresso: {progresso}")
     return JsonResponse({"porcentagem": progresso})
 
