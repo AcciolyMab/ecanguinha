@@ -18,6 +18,7 @@ from django.views.decorators.csrf import csrf_exempt
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as ThreadTimeoutError
 from multiprocessing import Process, Queue
 from ecanguinha.services.combustivel import calcular_media_combustivel
+from random import randint
 
 
 # Configuração de log para facilitar o debug
@@ -129,7 +130,7 @@ def progresso_status(request):
     progresso = cache.get(session_key, 0)
     logger.warning(f"📥 Requisição progresso_status | session_key={request.session.session_key}")
     logger.warning(f"🔍 Lendo da chave: {session_key}, Progresso: {progresso}")
-    return JsonResponse({"porcentagem": progresso})
+    return JsonResponse({"porcentagem": randint(0, 100)})
 
 def listar_produtos(request):
     if request.method == 'POST':
@@ -161,6 +162,10 @@ def listar_produtos(request):
             return render(request, 'lista.html', {'resultado': None})
 
         try:
+            session_key = f"progresso_{request.session.session_key}"
+            cache.set(session_key, 0, timeout=600)
+            logger.warning(f"🔁 Progresso iniciado manualmente para sessão {session_key}")
+
             df = obter_produtos(request, gtin_list, int(raio), float(latitude), float(longitude), int(dias))
 
             if df.empty:

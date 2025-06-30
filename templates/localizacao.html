@@ -634,7 +634,20 @@
                 // Ativa o progresso animado estilo Caipira
                 document.body.classList.add("loading");
                 progressContainer.style.display = "block";
-                iniciarProgressoReal();
+                // ⏳ Aguarda 1 segundo para garantir que backend começou
+                setTimeout(() => {
+                    // tenta iniciar polling até obter progresso > 0
+                    fetch("/progresso-status/", { credentials: 'include' })
+                        .then(res => res.json())
+                        .then(data => {
+                            if ((data.porcentagem || 0) > 0) {
+                                iniciarProgressoReal();
+                            } else {
+                                setTimeout(() => iniciarProgressoReal(), 500); // tenta novamente
+                            }
+                        });
+                }, 500);
+
 
                 // Inicia animação visual
                 const progressoCaipira = document.getElementById("progressoCaipira");

@@ -295,8 +295,9 @@ def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
             concluídos += 1
             progresso = int((concluídos / total) * 100)
             # Crie a chave com o prefixo, igual você faz na leitura
-            #session_key = f"progresso_{request.session.session_key}"
-            cache.set(session_key, progresso, timeout=300)
+            session_key = f"progresso_{request.session.session_key}"
+            cache.set(session_key, 0, timeout=600)
+            #cache.set(session_key, progresso, timeout=300)
             logger.warning(f"📊 Progresso atualizado: {progresso}% (GTIN: {gtin})")
             logger.warning(f"📤 Inicializando progresso | session_key={request.session.session_key}")
 
@@ -320,8 +321,9 @@ def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
         if col in df.columns:
             df[col] = df[col].astype('category')
 
-    cache.set(session_key, 100, timeout=600)
+    
     logger.info(f"📊 Uso de memória após criar DataFrame: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
+    cache.set(session_key, 100, timeout=600)
 
     return df
 
