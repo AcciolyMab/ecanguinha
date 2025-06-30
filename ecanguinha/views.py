@@ -124,13 +124,19 @@ def agradecimento(request):
     return render(request, 'agradecimento.html')
 
 def progresso_status(request):
-    if not request.session.session_key:
-        request.session.save()  # Garante que a sessão exista
-    session_key = f"progresso_{request.session.session_key}"
-    progresso = cache.get(session_key, 0)
-    logger.warning(f"📥 Requisição progresso_status | session_key={request.session.session_key}")
-    logger.warning(f"🔍 Lendo da chave: {session_key}, Progresso: {progresso}")
-    return JsonResponse({"porcentagem": randint(0, 100)})
+    session_key = request.session.session_key
+    if not session_key:
+        logger.warning("⚠️ Sessão inválida ou inexistente na requisição.")
+        return JsonResponse({"porcentagem": 0})
+
+    cache_key = f"progresso_{session_key}"
+    progresso = cache.get(cache_key, 0)
+
+    logger.warning(f"📥 Requisição progresso_status | session_key={session_key}")
+    logger.warning(f"🔍 Lendo da chave: {cache_key}, Progresso: {progresso}")
+
+    return JsonResponse({"porcentagem": progresso})
+
 
 def listar_produtos(request):
     if request.method == 'POST':
@@ -162,11 +168,15 @@ def listar_produtos(request):
             return render(request, 'lista.html', {'resultado': None})
 
         try:
-            session_key = f"progresso_{request.session.session_key}"
+            if not request.session.session_key:
+                request.session.save()
+            session_key_raw = request.session.session_key
+            session_key = f"progresso_{session_key_raw}"
             cache.set(session_key, 0, timeout=600)
             logger.warning(f"🔁 Progresso iniciado manualmente para sessão {session_key}")
 
-            df = obter_produtos(request, gtin_list, int(raio), float(latitude), float(longitude), int(dias))
+            df = obter_produtos(session_key_raw, gtin_list, int(raio), float(latitude), float(longitude), int(dias))
+
 
             if df.empty:
                 messages.warning(request, "Nenhum dado foi retornado pela API.")

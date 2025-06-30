@@ -222,20 +222,120 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
 
 # ------------------------------------------------------------------------------
 
-def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
-    if not request.session.session_key:
-        request.session.save()
+# def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
+#     if not request.session.session_key:
+#         request.session.save()
+#     resultados = []
+#     total = len(gtin_list)
+#     session_key_base = request.session.session_key
+#     session_key = f"progresso_{session_key_base}"
+    
+#     logger.warning(f"🔑 Chave da sessão: {request.session.session_key}")
+#     logger.warning(f"📦 Progresso será salvo em: {session_key}")
+
+#     if not gtin_list:
+#         logger.warning("Lista de GTIN está vazia.")
+#         messages.warning(request, "Lista de GTIN está vazia.")
+#         return pd.DataFrame()
+
+#     data_list = []
+#     max_workers = min(2, len(gtin_list))
+
+#     logger.info(f"📊 Uso de memória antes das requisições: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
+
+#     # Inicializa progresso no cache
+#     cache.set(session_key, 0, timeout=300)
+#     concluídos = 0
+
+#     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+#         future_map = {
+#             executor.submit(_request_produto_sefaz, gtin, raio, my_lat, my_lon, dias): gtin
+#             for gtin in gtin_list
+#         }
+
+#         for future in concurrent.futures.as_completed(future_map):
+#             gtin = future_map[future]
+#             try:
+#                 resp_json, used_gtin = future.result()
+#                 if resp_json and 'conteudo' in resp_json and resp_json['conteudo']:
+#                     for item in resp_json.get('conteudo', []):
+#                         produto = item.get('produto', {})
+#                         estabelecimento = item.get('estabelecimento', {})
+#                         endereco = estabelecimento.get('endereco', {})
+#                         item_gtin = produto.get('gtin')
+#                         if not item_gtin:
+#                             logger.warning(f"GTIN ausente em um item da resposta para GTIN {gtin}.")
+#                             continue
+#                         try:
+#                             data_entry = {
+#                                 'CODIGO_BARRAS': int(item_gtin),
+#                                 'CATEGORIA': gtin_to_category.get(int(item_gtin), "OUTROS"),
+#                                 'PRODUTO': gtin_to_product_name.get(int(item_gtin), "OUTROS"),
+#                                 'VALOR': produto.get('venda', {}).get('valorVenda', 0.0),
+#                                 'CNPJ': estabelecimento.get('cnpj', 'Desconhecido'),
+#                                 'MERCADO': estabelecimento.get('razaoSocial', 'Desconhecido'),
+#                                 'ENDERECO': endereco.get('nomeLogradouro', 'Desconhecido'),
+#                                 'NUMERO': endereco.get('numeroImovel', 'S/N'),
+#                                 'BAIRRO': endereco.get('bairro', 'Desconhecido'),
+#                                 'LAT': endereco.get('latitude', 0.0),
+#                                 'LONG': endereco.get('longitude', 0.0)
+#                             }
+#                             data_list.append(data_entry)
+#                         except Exception as e:
+#                             logger.error(f"Erro ao processar item com GTIN {item_gtin} da resposta para GTIN {gtin}: {e}")
+#                             messages.error(request, f"Erro ao processar item com GTIN {item_gtin}: {e}")
+#                     del resp_json
+#                     gc.collect()
+#                 else:
+#                     messages.warning(request, f"Nenhum conteúdo encontrado ou resposta inválida para o GTIN {gtin}.")
+#             except Exception as e:
+#                 messages.error(request, f"Erro ao consultar o GTIN {gtin}: {e}")
+
+#             # Atualiza o progresso após processar este GTIN
+#             concluídos += 1
+#             progresso = int((concluídos / total) * 100)
+#             # Crie a chave com o prefixo, igual você faz na leitura
+#             session_key = f"progresso_{request.session.session_key}"
+#             cache.set(session_key, 0, timeout=600)
+#             #cache.set(session_key, progresso, timeout=300)
+#             logger.warning(f"📊 Progresso atualizado: {progresso}% (GTIN: {gtin})")
+#             logger.warning(f"📤 Inicializando progresso | session_key={request.session.session_key}")
+
+#     logger.info(f"📊 Uso de memória após obter produtos e antes do DataFrame: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
+
+#     if not data_list:
+#         messages.warning(request, "Nenhum dado válido foi retornado pela API ou processado.")
+#         return pd.DataFrame()
+
+#     df = pd.DataFrame(data_list)
+
+#     for col in ['CODIGO_BARRAS', 'NUMERO']:
+#         if col in df.columns:
+#             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype('int32')
+
+#     for col in ['VALOR', 'LAT', 'LONG']:
+#         if col in df.columns:
+#             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0).astype('float32')
+
+#     for col in ['CATEGORIA', 'PRODUTO', 'CNPJ', 'MERCADO', 'ENDERECO', 'BAIRRO']:
+#         if col in df.columns:
+#             df[col] = df[col].astype('category')
+
+    
+#     logger.info(f"📊 Uso de memória após criar DataFrame: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
+#     cache.set(session_key, 100, timeout=600)
+
+#     return df
+def obter_produtos(session_key_raw, gtin_list, raio, my_lat, my_lon, dias):
     resultados = []
     total = len(gtin_list)
-    session_key_base = request.session.session_key
-    session_key = f"progresso_{session_key_base}"
-    
-    logger.warning(f"🔑 Chave da sessão: {request.session.session_key}")
+    session_key = f"progresso_{session_key_raw}"
+
+    logger.warning(f"🔑 Chave da sessão recebida: {session_key_raw}")
     logger.warning(f"📦 Progresso será salvo em: {session_key}")
 
     if not gtin_list:
         logger.warning("Lista de GTIN está vazia.")
-        messages.warning(request, "Lista de GTIN está vazia.")
         return pd.DataFrame()
 
     data_list = []
@@ -283,28 +383,21 @@ def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
                             data_list.append(data_entry)
                         except Exception as e:
                             logger.error(f"Erro ao processar item com GTIN {item_gtin} da resposta para GTIN {gtin}: {e}")
-                            messages.error(request, f"Erro ao processar item com GTIN {item_gtin}: {e}")
                     del resp_json
                     gc.collect()
                 else:
-                    messages.warning(request, f"Nenhum conteúdo encontrado ou resposta inválida para o GTIN {gtin}.")
+                    logger.warning(f"Nenhum conteúdo encontrado ou resposta inválida para o GTIN {gtin}.")
             except Exception as e:
-                messages.error(request, f"Erro ao consultar o GTIN {gtin}: {e}")
+                logger.error(f"Erro ao consultar o GTIN {gtin}: {e}")
 
-            # Atualiza o progresso após processar este GTIN
+            # Atualiza progresso
             concluídos += 1
             progresso = int((concluídos / total) * 100)
-            # Crie a chave com o prefixo, igual você faz na leitura
-            session_key = f"progresso_{request.session.session_key}"
-            cache.set(session_key, 0, timeout=600)
-            #cache.set(session_key, progresso, timeout=300)
+            cache.set(session_key, progresso, timeout=300)
             logger.warning(f"📊 Progresso atualizado: {progresso}% (GTIN: {gtin})")
-            logger.warning(f"📤 Inicializando progresso | session_key={request.session.session_key}")
-
-    logger.info(f"📊 Uso de memória após obter produtos e antes do DataFrame: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
 
     if not data_list:
-        messages.warning(request, "Nenhum dado válido foi retornado pela API ou processado.")
+        logger.warning("Nenhum dado válido foi retornado pela API ou processado.")
         return pd.DataFrame()
 
     df = pd.DataFrame(data_list)
@@ -321,9 +414,7 @@ def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
         if col in df.columns:
             df[col] = df[col].astype('category')
 
-    
     logger.info(f"📊 Uso de memória após criar DataFrame: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
-    cache.set(session_key, 100, timeout=600)
 
     return df
 
