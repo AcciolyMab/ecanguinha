@@ -104,6 +104,25 @@
             font-size: 16px;
             color: #333;
         }
+        .botao-oferta {
+            background-color: #238a4a; /* verde escuro */
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 10px 20px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 16px;
+        }
+
+        .botao-oferta:hover {
+            background-color: #1e7a42; /* tom mais escuro ao passar o mouse */
+            text-decoration: none;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -161,7 +180,7 @@
             </div>
 
             <div style="margin-top: 20px; display: flex; gap: 10px;">
-                <a href="{% url 'localizacao' %}" class="btn btn-secondary">🔄 Nova Busca</a>
+                <a href="{% url 'localizacao' %}" class="botao-oferta">🔄 Nova Busca</a>
             </div>
         </div>
         <div id="map"></div>

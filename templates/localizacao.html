@@ -75,6 +75,9 @@
         svg circle {
             animation: progressAnimation 3s linear infinite;
         }
+          #cep {
+            background-color: #f8f9fa; /* cinza clarinho */
+        }
     </style>
 </head>
 <body>
@@ -118,51 +121,63 @@
                 </div>
             </div>
         </nav>
-            
         <div class="container mt-5">
-            <h1 class="mb-4">Canguinha: Localização do Comprador</h1>
-            <form id="locationForm" action="{% url 'listar_produtos' %}" method="post">
-                {% csrf_token %}
-                <div class="row g-4">
-                    <!-- Localização -->
-                    <div class="col-md-6">
-                        <div class="p-4 border border-primary rounded shadow-sm bg-light w-100">
-                            <h5 class="text-primary"><i class="bi bi-geo-alt-fill"></i> Localização</h5>
-
-                            <div class="form-check mb-2">
-                                <input type="checkbox" id="checkEndereco" class="form-check-input">
-                                <label for="checkEndereco" class="form-check-label">Endereço de Origem(Opcional)</label>
-                            </div>
-
-                            <div class="mb-2" id="enderecoGroup" style="display: none;">
-                                <label for="endereco" class="form-label">Endereço do Comprador</label>
-                                <input type="text" class="form-control" id="endereco" name="endereco">
-                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btnObterLocalizacao">Obter Localização</button>
-                                <p id="geoStatus" class="text-danger mt-1" style="display: none;"></p>
-                            </div>
-
-                            <div class="row mb-2">
-                                <div class="col">
-                                    <label class="form-label">Latitude</label>
-                                    <input type="text" id="latitude" name="latitude" class="form-control small-input" readonly>
-                                </div>
-                                <div class="col">
-                                    <label class="form-label">Longitude</label>
-                                    <input type="text" id="longitude" name="longitude" class="form-control small-input" readonly>
-                                </div>
-                            </div>
-                            <p id="labelLocalizacaoObtida" class="text-success small" style="display: none;">📍 Localização obtida com sucesso!</p>
-
-                            <label for="raioSlider" class="form-label mt-2">Raio de Busca (km):</label>
-                            <input type="range" class="form-range" id="raioSlider" name="raio" min="1" max="5" value="1" step="1">
-                            <span id="raioValue" class="small">1 km</span><br>
-
-                            <label for="diasSlider" class="form-label mt-2">Período de Análise (dias):</label>
-                            <input type="range" class="form-range" id="diasSlider" name="dias" min="3" max="3" value="3" readonly>
-                            <span id="diasValue" class="small">3 dias</span>
-                        </div>
+    <h1 class="mb-4">Canguinha: Localização do Comprador</h1>
+    <form id="locationForm" action="{% url 'listar_produtos' %}" method="post">
+      {% csrf_token %}
+      <div class="row g-4">
+        <div class="col-md-6">
+          <div class="p-4 border border-primary rounded shadow-sm bg-light w-100">
+            <h5 class="text-primary"><i class="bi bi-geo-alt-fill"></i> Localização</h5>
+                <label for="cep" class="form-label">CEP da Região</label>
+                <div class="input-group mb-2" style="max-width: 300px;">
+                    <input type="text" class="form-control" id="cep" name="cep" placeholder="57000-000" maxlength="9">
+                    <div class="input-group-append">
+                        <button type="button" class="btn btn-outline-primary form-control" id="btnBuscarCep" style="display: none;">Buscar</button>
                     </div>
+                </div>
+            <div class="form-check mb-2">
+              <input type="checkbox" id="checkAutoGeo" class="form-check-input">
+              <label for="checkAutoGeo" class="form-check-label">Obter localização automaticamente (GPS)</label>
+            </div>
 
+            <div class="form-check mb-2">
+              <input type="checkbox" id="checkEndereco" class="form-check-input">
+              <label for="checkEndereco" class="form-check-label">Buscar pelo Endereço</label>
+            </div>
+
+            <div class="mb-2" id="enderecoGroup" style="display: none;">
+              <label for="endereco" class="form-label">Endereço do Comprador</label>
+              <input type="text" class="form-control" id="endereco" name="endereco">
+            </div>
+
+            <div id="btnObterWrapper" style="display: none;">
+                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btnObterLocalizacao">Obter Localização</button>
+            </div>
+            <p id="geoStatus" class="text-danger mt-1" style="display: none;"></p>
+
+            <div class="row mb-2">
+              <div class="col">
+                <label class="form-label">Latitude</label>
+                <input type="text" id="latitude" name="latitude" class="form-control small-input" readonly>
+              </div>
+              <div class="col">
+                <label class="form-label">Longitude</label>
+                <input type="text" id="longitude" name="longitude" class="form-control small-input" readonly>
+              </div>
+            </div>
+                <label for="raioSlider" class="form-label mt-2">Raio de Busca (km):</label>
+                <input type="range" class="form-range" id="raioSlider" name="raio" min="1" max="5" value="1" step="1">
+                <span id="raioValue" class="small">1 km</span><br>
+
+                <label for="diasSlider" class="form-label mt-2">Período de Análise (dias):</label>
+                <input type="range" class="form-range" id="diasSlider" name="dias" min="3" max="3" value="3" readonly>
+                <span id="diasValue" class="small">3 dias</span>
+
+            <p id="labelLocalizacaoObtida" class="text-success small" style="display: none;">📍 Localização obtida com sucesso!</p>
+          </div>
+        </div>    
+        
                     <!-- Mapa da Região com Leaflet -->
                     <div class="col-md-6">
                         <div class="p-4 border border-warning rounded shadow-sm bg-light h-100 w-100">
@@ -283,21 +298,28 @@
             const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
 
             let map = null;
+            let marcadorUsuario = null;
+
             function inicializarMapa(lat, lon) {
-                if (map) {
+                if (!map) {
+                    map = L.map('map').setView([lat, lon], 18);
+
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        maxZoom: 22,
+                        attribution: '&copy; OpenStreetMap contributors'
+                    }).addTo(map);
+                } else {
                     map.setView([lat, lon], 18);
-                    return;
                 }
 
-                map = L.map('map').setView([lat, lon], 18);
+                // Remove o marcador anterior, se houver
+                if (marcadorUsuario) {
+                    map.removeLayer(marcadorUsuario);
+                }
 
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 22,
-                    attribution: '&copy; OpenStreetMap contributors'
-                }).addTo(map);
-
-                L.marker([lat, lon]).addTo(map)
-                    .bindPopup('Você está aqui!')
+                // Adiciona novo marcador
+                marcadorUsuario = L.marker([lat, lon]).addTo(map)
+                    .bindPopup('📍 Você está aqui!')
                     .openPopup();
             }
 
@@ -324,7 +346,43 @@
                 }
             }
 
+            // Executa geolocalização inicial
             obterLocalizacao();
+
+            const cepInput = document.getElementById("cep");
+            const btnBuscarCep = document.getElementById("btnBuscarCep");
+
+            cepInput.addEventListener("input", function () {
+                const cep = this.value.replace(/\D/g, "");
+                btnBuscarCep.style.display = cep.length === 8 ? "inline-block" : "none";
+            });
+
+
+            document.getElementById("btnBuscarCep").addEventListener("click", function () {
+                const cep = cepInput.value.replace(/\D/g, "");
+                if (cep.length !== 8) return alert("CEP inválido.");
+
+                const query = `${cep}, Brasil`;
+
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.length > 0) {
+                            const { lat, lon } = data[0];
+                            latitudeInput.value = lat;
+                            longitudeInput.value = lon;
+                            hiddenLatitude.value = lat;
+                            hiddenLongitude.value = lon;
+                            inicializarMapa(lat, lon);
+                            document.getElementById("labelLocalizacaoObtida").style.display = "block";
+                        } else {
+                            alert("Localização não encontrada para o CEP informado.");
+                        }
+                    })
+                    .catch(() => alert("Erro ao buscar localização."));
+            });
+
+
 
             document.getElementById("checkEndereco").addEventListener("change", function () {
                 document.getElementById("enderecoGroup").style.display = this.checked ? "block" : "none";
@@ -345,6 +403,7 @@
                             hiddenLongitude.value = lon;
 
                             inicializarMapa(lat, lon);
+                            document.getElementById("labelLocalizacaoObtida").style.display = "block";
                         } else {
                             alert("Endereço não encontrado.");
                         }
@@ -355,9 +414,11 @@
             document.getElementById("raioSlider").addEventListener("input", e => {
                 document.getElementById("raioValue").textContent = `${e.target.value} km`;
             });
+
             document.getElementById("diasSlider").addEventListener("input", e => {
                 document.getElementById("diasValue").textContent = `${e.target.value} dia(s)`;
             });
+
 
             function verificarPrecoCombustivel() {
                 const precoText = precoPainel?.textContent?.trim().replace(",", ".");
