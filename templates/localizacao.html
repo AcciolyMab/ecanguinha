@@ -385,8 +385,11 @@
 
 
             document.getElementById("checkEndereco").addEventListener("change", function () {
-                document.getElementById("enderecoGroup").style.display = this.checked ? "block" : "none";
+                const mostrar = this.checked;
+                document.getElementById("enderecoGroup").style.display = mostrar ? "block" : "none";
+                document.getElementById("btnObterWrapper").style.display = mostrar ? "block" : "none";
             });
+
 
             document.getElementById("btnObterLocalizacao").addEventListener("click", function () {
                 const endereco = document.getElementById("endereco").value.trim();
