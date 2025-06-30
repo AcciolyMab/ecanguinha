@@ -140,7 +140,7 @@
     </style>
 </head>
 
-<body>
+<body data-session="{{ request.session.session_key }}">
     <input type="hidden" id="csrfTokenGlobal" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
     <input type="hidden" id="mediaCombustivel" name="mediaCombustivel" value="">
     <!-- Progresso Caipira -->

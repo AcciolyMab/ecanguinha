@@ -86,6 +86,8 @@ def get_lat_long(request):
 
 
 def localizacao(request):
+    if not request.session.session_key:
+        request.session.save()
     return render(request, 'localizacao.html')
 
 
