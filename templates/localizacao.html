@@ -791,11 +791,25 @@
 
                     texto.textContent = `${Math.round(progresso)}% - ${mensagemAtual}`;
 
-                    // Finaliza
+                    // Finaliza progresso quando atingir 100%
                     if (progresso >= 100) {
                         clearInterval(interval);
                         caipira.classList.remove("andando");
+
+                        // Evita chamadas futuras
+                        progressContainer.style.display = "none";
+
+                        // Limpa texto da barra ou indica finalização
+                        texto.textContent = "✅ Busca finalizada!";
+
+                        if (sessionStorage.getItem("session_key")) {
+                            sessionStorage.removeItem("session_key");
+                            progressContainer.style.display = "none";
+                        }
+
+                        return; // interrompe execução
                     }
+
                 })
                 .catch((err) => {
                     console.error("Erro ao consultar progresso:", err);
