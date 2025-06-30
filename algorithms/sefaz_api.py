@@ -133,14 +133,18 @@ def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias, max_attempts=3):
 
     for attempt in range(1, max_attempts + 1):
         try:
-            # Adiciona timeout explícito para evitar workers presos 
             response = requests.post(url, json=data, headers=headers, timeout=120)
             response.raise_for_status()
-            return response.json(), gtin
 
-            # Salva no cache por 2 dias (172800 segundos)
-            cache.set(cache_key, response_json, timeout=60 * 60 * 24 * 2)
-            logger.info(f"🔁 Progresso atualizado: {progresso}% para sessão {session_key}")
+            # 1. Armazene o resultado em uma variável
+            response_json = response.json()
+
+            # 2. Salve a variável no cache
+            # (O timeout de 2 dias é 172800 segundos)
+            cache.set(cache_key, response_json, timeout=172800) 
+            logger.info(f"💾 GTIN Cache SET: {cache_key}")
+
+            # 3. Retorne a variável
             return response_json, gtin
 
         except (requests.exceptions.Timeout,
@@ -150,10 +154,9 @@ def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias, max_attempts=3):
 
             if attempt == max_attempts:
                 logger.error(f"❌ Todas as tentativas falharam para GTIN {gtin}")
-                # Retorna None para que o chamador possa lidar com isso graciosamente
                 return None, gtin
 
-            time.sleep(0.5 * attempt) # Backoff exponencial
+            time.sleep(0.5 * attempt)
 
         except Exception as e:
             logger.error(f"❌ Erro inesperado para GTIN {gtin}: {e}")
