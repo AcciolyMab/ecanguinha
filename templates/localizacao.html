@@ -826,23 +826,6 @@
                 });
             }, 500);
         }
-
-
-
-        // Função para criar efeito de pegadas (opcional)
-        function criarPegada(container, posicao) {
-            const pegada = document.createElement('div');
-            pegada.className = 'pegadas';
-            pegada.style.right = `${posicao + 5}%`;
-            container.appendChild(pegada);
-
-            // Remove a pegada após a animação
-            setTimeout(() => {
-                if (pegada.parentNode) {
-                    pegada.parentNode.removeChild(pegada);
-                }
-            }, 2000);
-        }
     </script>
 </body>
 
