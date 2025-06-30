@@ -612,65 +612,58 @@
             });
 
 
+            // --- Evento de Submissão do Formulário ---
             locationForm.addEventListener("submit", function (e) {
+                // Previne a submissão padrão do formulário
+                e.preventDefault();
+
+                // Obtém a referência do botão e o desabilita para evitar cliques duplos
+                const btnBuscar = document.getElementById("btnBuscar");
+                btnBuscar.disabled = true;
+
+                // --- Validações ---
                 const lat = hiddenLatitude.value;
                 const lon = hiddenLongitude.value;
                 if (!lat || !lon) {
                     alert("A localização não foi capturada corretamente.");
-                    e.preventDefault();
+                    btnBuscar.disabled = false; // Reabilita o botão em caso de erro
                     return;
                 }
 
                 const produtosSelecionados = [...document.querySelectorAll('input[name="category"]:checked')];
                 if (produtosSelecionados.length === 0) {
                     alert("Por favor, selecione ao menos um produto.");
-                    //e.preventDefault();
+                    btnBuscar.disabled = false; // Reabilita o botão em caso de erro
                     return;
                 }
 
+                // --- Preparação dos Dados ---
                 const todosBarcodes = produtosSelecionados.flatMap(cb => JSON.parse(cb.value));
                 document.getElementById("item_list").value = JSON.stringify(todosBarcodes);
 
-                // Ativa o progresso animado estilo Caipira
+                // --- Interface de Progresso ---
                 document.body.classList.add("loading");
                 progressContainer.style.display = "block";
-                iniciarProgressoReal();
-                // ⏳ Aguarda 1 segundo para garantir que backend começou
-                {% comment %} setTimeout(() => {
-                    // tenta iniciar polling até obter progresso > 0
-                    fetch("/progresso-status/", { credentials: 'include' })
-                        .then(res => res.json())
-                        .then(data => {
-                            if ((data.porcentagem || 0) > 0) {
-                                iniciarProgressoReal();
-                            } else {
-                                setTimeout(() => iniciarProgressoReal(), 500); // tenta novamente
-                            }
-                        });
-                }, 500); {% endcomment %}
+                iniciarProgressoReal(); // Inicia a verificação do progresso real
 
-                 // Passo 4: Enviar os dados do formulário em segundo plano com fetch
+                // --- Envio Assíncrono dos Dados ---
                 const formData = new FormData(locationForm);
 
                 fetch("{% url 'listar_produtos' %}", {
                     method: 'POST',
                     body: formData,
                     headers: {
-                        // O Django FormData precisa do token CSRF
                         'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value
                     }
                 })
                 .then(response => {
                     if (!response.ok) {
-                        // Se o servidor retornar um erro (e.g., 500), joga um erro
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
-                    // A resposta do seu 'listar_produtos' é uma página HTML completa
                     return response.text();
                 })
                 .then(html => {
-                    // Passo 5: Substituir a página atual pelo HTML dos resultados
-                    // Isso simula a navegação sem matar o ambiente do script abruptamente
+                    // Substitui a página atual pelo HTML dos resultados
                     document.open();
                     document.write(html);
                     document.close();
@@ -678,33 +671,14 @@
                 .catch(error => {
                     console.error("Erro ao submeter o formulário via fetch:", error);
                     alert("Ocorreu um erro ao buscar as ofertas. Verifique o console para mais detalhes.");
-                    // Esconde a barra de progresso e restaura a UI em caso de erro
+                    
+                    // Esconde a barra de progresso e restaura a UI
                     document.body.classList.remove("loading");
                     progressContainer.style.display = "none";
+                    
+                    // Reabilita o botão para que o usuário possa tentar novamente
+                    btnBuscar.disabled = false;
                 });
-
-
-                // Inicia animação visual
-                const progressoCaipira = document.getElementById("progressoCaipira");
-                const mensagem = document.getElementById("caipiraMensagem");
-                let progresso = 0;
-                const interval = setInterval(() => {
-                    progresso += 2;
-                    progressoCaipira.style.width = `${progresso}%`;
-                    document.getElementById("textoProgresso").textContent = `${progresso}% - Buscando ofertas...`;
-
-
-                    if (progresso >= 100) {
-                        clearInterval(interval);
-                        mensagem.textContent = "🛒 Chegou ao mercado!";
-                    } else if (progresso >= 70) {
-                        mensagem.textContent = "🏃‍♂️💨 Correndo para o mercado...";
-                    } else if (progresso >= 40) {
-                        mensagem.textContent = "🌳 Passando pelas árvores...";
-                    } else {
-                        mensagem.textContent = "🚶‍♂️ Saindo de casa...";
-                    }
-                }, 100);
             });
 
             const categorias = {
