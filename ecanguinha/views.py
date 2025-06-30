@@ -143,6 +143,7 @@ def listar_produtos(request):
             longitude = -35.7350
 
         dias = request.POST.get('dias')
+        preco_combustivel = request.POST.get('precoCombustivel')
         raio = request.POST.get('raio')
         item_list = request.POST.get('item_list')
 
@@ -219,7 +220,8 @@ def listar_produtos(request):
                 'user_lon': float(avg_lon),
                 'dias': int(dias),
                 'raio': int(raio),
-                'item_list': gtin_list
+                'item_list': gtin_list,
+                'media_combustivel': preco_combustivel
             }
 
             logger.warning(f"🧭 Coordenadas médias: avg_lat={avg_lat}, avg_lon={avg_lon}")
@@ -303,7 +305,7 @@ def processar_combustivel(request):
             "media_preco": round(media, 2),
             "tipo_combustivel": tipo_combustivel
         })
-
+    
     except json.JSONDecodeError:
         logger.error("❌ JSON inválido recebido")
         return JsonResponse({"erro": "JSON inválido"}, status=400)

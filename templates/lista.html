@@ -176,6 +176,11 @@
             {% endfor %}
             <div class="summary-container" style="background-color: #d1f0e3; border: 2px solid #168f53; font-weight: bold; font-size: 16px; color: #084c41;">
                 <p>💰 <strong style="font-size: 18px;">Custo Total:</strong> R$ {{ resultado.total_cost|floatformat:2 }}</p>
+
+                {% if media_combustivel %}
+                    <p>⛽ <strong>Preço Médio do Combustível:</strong> R$ {{ media_combustivel|floatformat:2 }}</p>
+                {% endif %}
+
                 <p>📍 <strong>Distância Total:</strong> {{ resultado.total_distance }} km &nbsp;&nbsp;⏱️ <strong>Tempo:</strong> {{ resultado.execution_time }} segundos</p>
             </div>
 
