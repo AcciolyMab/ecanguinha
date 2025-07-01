@@ -191,12 +191,20 @@
                             <h5 class="text-primary"><i class="bi bi-geo-alt-fill"></i> Localização</h5>
                             <label for="cep" class="form-label">CEP da Região</label>
                             <div class="input-group mb-2" style="max-width: 300px;">
-                                <input type="text" class="form-control" id="cep" name="cep" placeholder="57000-000"
-                                    maxlength="9">
-                                <div class="input-group-append">
-                                    <button type="button" class="btn btn-outline-primary form-control" id="btnBuscarCep"
-                                        style="display: none;">Buscar</button>
-                                </div>
+                                    <input type="text"
+                                        class="form-control"
+                                        id="cep"
+                                        name="cep"
+                                        placeholder="57000-000"
+                                        maxlength="9"
+                                        style="height: 60px; width: 100px; font-size: 14px;">
+                                        
+                                <button type="button"
+                                        class="btn btn-outline-primary"
+                                        id="btnBuscarCep"
+                                        style="height: 60px; font-size: 14px; padding: 6px 16px;">
+                                    Buscar
+                                </button>
                             </div>
                             <div class="form-check mb-2" style="display: none;">
                                 <input type="checkbox" id="checkAutoGeo" class="form-check-input">
@@ -220,7 +228,7 @@
                             </div>
                             <p id="geoStatus" class="text-danger mt-1" style="display: none;"></p>
 
-                            <div class="row mb-2">
+                            <div class="row mb-2 mt-3">
                                 <div class="col">
                                     <label class="form-label">Latitude</label>
                                     <input type="text" id="latitude" name="latitude" class="form-control small-input"
@@ -261,7 +269,7 @@
                                     <i class="bi bi-fuel-pump-fill"></i> Combustível
                                 </h5>
                                 <div class="mb-3">
-                                    <label class="form-label">Selecione o Tipo de Combustível *</label>
+                                    <label class="form-label">Selecione o Tipo de Combustível</label>
 
                                     <div class="form-check">
                                         <input class="form-check-input" type="radio" name="tipoCombustivel" id="gasolina-comum" value="1" required>
