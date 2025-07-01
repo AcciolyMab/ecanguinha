@@ -8,12 +8,10 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}" />
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
-    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 
@@ -143,13 +141,10 @@
 <body>
     <input type="hidden" id="csrfTokenGlobal" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
     <input type="hidden" id="mediaCombustivel" name="mediaCombustivel" value="">
-    <!-- Progresso Caipira -->
     <div id="progressContainer" class="caipira-barra" style="display: none;">
         <div class="caipira-wrapper">
 
-            <!-- Moldura fina verde escuro -->
             <div class="caipira-moldura">
-                <!-- Caminho por onde o caipira anda -->
                 <div class="caipira-caminho" id="caminho">
                     <img id="caipiraIcon"
                         src="{% static 'ecanguinha/img/canguinha_animado.gif' %}"
@@ -158,7 +153,6 @@
                 </div>
             </div>
 
-            <!-- Texto abaixo da moldura -->
             <p id="textoProgresso" class="texto-status">0% - Buscando ofertas...</p>
         </div>
     </div>
@@ -253,7 +247,6 @@
                         </div>
                     </div>
 
-                    <!-- Mapa da Região com Leaflet -->
                     <div class="col-md-6">
                         <div class="p-4 border border-warning rounded shadow-sm bg-light h-100 w-100">
                             <h5 class="text-success text-center"><i class="bi bi-map-fill"></i> Mapa da Região</h5>
@@ -262,9 +255,7 @@
                     </div>
 
                     <div class="d-flex gap-3 align-items-stretch">
-                        <!-- Painel de Combustível -->
                         <div class="p-4 border border-warning rounded shadow-sm bg-light w-100 flex-fill d-flex justify-content-between align-items-center">
-                            <!-- Lado esquerdo: opções de combustível -->
                             <div>
                                 <h5 class="text-warning">
                                     <i class="bi bi-fuel-pump-fill"></i> Combustível
@@ -304,30 +295,23 @@
                                 </div>
                             </div>
 
-                            <!-- Lado direito: imagem centralizada -->
                             <div class="d-flex align-items-center justify-content-center" style="min-width: 500px; height: 100%;">
                                 <img src="{% static 'ecanguinha/img/784867.png' %}" alt="bomba" style="max-width: 300px; height: auto;">
                             </div>
                         </div>
                     </div>
 
-                    <!-- Painel de Preços -->
                     <div class="p-4 border border-danger rounded shadow-sm bg-light text-center w-100 flex-fill" style="display: none;">
                         <h5 class="text-danger"><i class="bi bi-currency-exchange"></i> Painel de Preços</h5>
                         <div class="bg-white border rounded p-3 my-2">
-                            <h6 class="text-muted" id="painelCombustivelTipo">GASOLINA</h6>
-                            <h2 class="text-success">R$ <span id="precoPainel">0,00</span></h2>
-                            <div class="small text-muted">
-                                <span class="text-success" id="varSemana"> </span> <br>
-                                <span class="text-danger" id="varHoje"> </span>
-                            </div>
+                            <h6 class="text-muted" id="painelCombustivelTipo">Selecione um combustível</h6>
+                            <h2 class="text-success">R$ <span id="precoPainel">--,--</span></h2>
                         </div>
-                        <small class="text-muted">Preço médio na região<br>Atualizado em tempo real</small>
+                        <small class="text-muted">O preço médio será calculado para a sua região<br>no momento da busca.</small>
                     </div>
                 </div>
 
-                <!-- Produtos -->
-                <div class="col-12" id="productSection" style="display: none; width: 100%;">
+                <div class="col-12 mt-4" id="productSection" style="display: none; width: 100%;">
                     <div class="p-4 border border-purple rounded shadow-sm bg-light">
 
                         <h5 class="text-purple"><i class="bi bi-basket-fill"></i> Selecionar Produtos</h5>
@@ -337,20 +321,17 @@
                             <label class="form-check-label" for="selectAllCheckbox">Selecionar Todos</label>
                         </div>
 
-                        <!--<div id="categoryCheckboxes" class="row row-cols-2 row-cols-md-4 g-2"></div>-->
                         <div id="categoryCheckboxes" class="checkbox-group"></div>
                     </div>
                 </div>
 
-                <!-- Campos ocultos -->
                 <input type="hidden" id="hiddenLatitude" name="hiddenLatitude">
                 <input type="hidden" id="hiddenLongitude" name="hiddenLongitude">
                 <input type="hidden" id="item_list" name="item_list">
         </div>
         <input type="hidden" id="precoCombustivel" name="precoCombustivel" value="0.00">
 
-        <!-- Botão de envio -->
-        <div class="form-buttons mt-4 d-flex justify-content-center">
+        <div class="form-buttons mt-4 d-flex justify-content-center" id="btnBuscarWrapper" style="display: none;">
             <button type="submit" class="btn btn-success btn-lg" id="btnBuscar" disabled aria-disabled="true">
                 <i class="bi bi-search"></i> Buscar Ofertas
             </button>
@@ -367,17 +348,14 @@
             const longitudeInput = document.getElementById("longitude");
             const hiddenLatitude = document.getElementById("hiddenLatitude");
             const hiddenLongitude = document.getElementById("hiddenLongitude");
-            const precoCombustivelInput = document.getElementById("precoCombustivel");
-            const productSection = document.getElementById("productSection");
             const locationForm = document.getElementById("locationForm");
             const progressContainer = document.getElementById("progressContainer");
             const raioSlider = document.getElementById("raioSlider");
             const diasSlider = document.getElementById("diasSlider");
             const painelCombustivelTipo = document.getElementById("painelCombustivelTipo");
             const precoPainel = document.getElementById("precoPainel");
-            const varSemana = document.getElementById("varSemana");
-            const varHoje = document.getElementById("varHoje");
-            const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+            const csrfToken = document.getElementById("csrfTokenGlobal")?.value;
+            const btnBuscar = document.getElementById("btnBuscar");
 
             let map = null;
             let marcadorUsuario = null;
@@ -394,15 +372,22 @@
                     map.setView([lat, lon], 18);
                 }
 
-                // Remove o marcador anterior, se houver
                 if (marcadorUsuario) {
                     map.removeLayer(marcadorUsuario);
                 }
-
-                // Adiciona novo marcador
                 marcadorUsuario = L.marker([lat, lon]).addTo(map)
                     .bindPopup('📍 Você está aqui!')
                     .openPopup();
+            }
+            
+            function postLocationUpdate(lat, lon) {
+                latitudeInput.value = lat;
+                longitudeInput.value = lon;
+                hiddenLatitude.value = lat;
+                hiddenLongitude.value = lon;
+                document.getElementById("labelLocalizacaoObtida").style.display = "block";
+                inicializarMapa(lat, lon);
+                atualizarBotaoBuscar();
             }
 
             function obterLocalizacao() {
@@ -411,13 +396,7 @@
                         function (position) {
                             const lat = position.coords.latitude.toFixed(6);
                             const lon = position.coords.longitude.toFixed(6);
-                            latitudeInput.value = lat;
-                            longitudeInput.value = lon;
-                            hiddenLatitude.value = lat;
-                            hiddenLongitude.value = lon;
-                            document.getElementById("labelLocalizacaoObtida").style.display = "block";
-
-                            inicializarMapa(lat, lon);
+                            postLocationUpdate(lat, lon);
                         },
                         function (error) {
                             alert("Erro ao obter localização: " + error.message);
@@ -428,22 +407,17 @@
                 }
             }
 
-            // Executa geolocalização inicial
             obterLocalizacao();
 
             const cepInput = document.getElementById("cep");
-            const btnBuscarCep = document.getElementById("btnBuscarCep");
-
             cepInput.addEventListener("input", function () {
                 const cep = this.value.replace(/\D/g, "");
-                btnBuscarCep.style.display = cep.length === 8 ? "inline-block" : "none";
+                document.getElementById("btnBuscarCep").style.display = cep.length === 8 ? "inline-block" : "none";
             });
-
 
             document.getElementById("btnBuscarCep").addEventListener("click", function () {
                 const cep = cepInput.value.replace(/\D/g, "");
                 if (cep.length !== 8) return alert("CEP inválido.");
-
                 const query = `${cep}, Brasil`;
 
                 fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
@@ -451,12 +425,7 @@
                     .then(data => {
                         if (data.length > 0) {
                             const { lat, lon } = data[0];
-                            latitudeInput.value = lat;
-                            longitudeInput.value = lon;
-                            hiddenLatitude.value = lat;
-                            hiddenLongitude.value = lon;
-                            inicializarMapa(lat, lon);
-                            document.getElementById("labelLocalizacaoObtida").style.display = "block";
+                            postLocationUpdate(lat, lon);
                         } else {
                             alert("Localização não encontrada para o CEP informado.");
                         }
@@ -479,13 +448,7 @@
                     .then(data => {
                         if (data.length > 0) {
                             const { lat, lon } = data[0];
-                            latitudeInput.value = lat;
-                            longitudeInput.value = lon;
-                            hiddenLatitude.value = lat;
-                            hiddenLongitude.value = lon;
-
-                            inicializarMapa(lat, lon);
-                            document.getElementById("labelLocalizacaoObtida").style.display = "block";
+                            postLocationUpdate(lat, lon);
                         } else {
                             alert("Endereço não encontrado.");
                         }
@@ -501,183 +464,147 @@
                 document.getElementById("diasValue").textContent = `${e.target.value} dia(s)`;
             });
 
-
-            function verificarPrecoCombustivel() {
-                const precoText = precoPainel?.textContent?.trim().replace(",", ".");
-                const preco = parseFloat(precoText);
-                if (productSection && !isNaN(preco) && preco > 0) {
-                    productSection.style.display = "block";
-                } else if (productSection) {
-                    productSection.style.display = "none";
-                }
-            }
-
-            if (precoCombustivelInput) {
-                ["input", "change"].forEach(evt =>
-                    precoCombustivelInput.addEventListener(evt, verificarPrecoCombustivel)
-                );
-                verificarPrecoCombustivel();  // checa já no início
-            }
-
+            // Mostra o painel de produtos e o botão de busca ao selecionar combustível
             document.querySelectorAll('input[name="tipoCombustivel"]').forEach(radio => {
                 radio.addEventListener("change", function () {
-                    const tipoCombustivel = this.value;
-                    const latitude = latitudeInput.value.trim();
-                    const longitude = longitudeInput.value.trim();
-                    const raio = raioSlider.value;
-                    const dias = diasSlider.value;
-
-                    if (!latitude || !longitude || latitude === "0.0" || longitude === "0.0") {
-                        alert("Latitude e longitude são obrigatórias.");
-                        return;
+                    // Atualiza o painel de preços (oculto), se existir
+                    if (painelCombustivelTipo) {
+                        painelCombustivelTipo.textContent = this.labels[0].innerText;
+                    }
+                    if (precoPainel) {
+                        precoPainel.textContent = "--,--";
                     }
 
-                    console.log({ tipoCombustivel, latitude, longitude, raio, dias });
-
-                    const xhr = new XMLHttpRequest();
-                    xhr.open("POST", urlProcessar, true);
-                    xhr.setRequestHeader("Content-Type", "application/json");
-
-                    // Enviar o token CSRF se estiver presente no DOM
-                    const csrfToken = document.getElementById("csrfTokenGlobal")?.value;
-                    if (csrfToken) {
-                        xhr.setRequestHeader("X-CSRFToken", csrfToken);
+                    // Exibe a seção de produtos
+                    const productSection = document.getElementById("productSection");
+                    if (productSection) {
+                        productSection.style.display = "block";
                     }
 
-                    xhr.onreadystatechange = function () {
-                        if (xhr.readyState === 4) {
-                            if (xhr.status === 200) {
-                                try {
-                                    const data = JSON.parse(xhr.responseText);
-                                    if (data.media_preco !== undefined) {
-                                        const preco = parseFloat(data.media_preco).toFixed(2);
-                                        const tipoCombustivelTexto = {
-                                            "1": "Gasolina Comum",
-                                            "2": "Gasolina Aditivada",
-                                            "3": "Álcool",
-                                            "4": "Diesel Comum",
-                                            "5": "Diesel Aditivado (S10)",
-                                            "6": "GNV"
-                                        };
+                    // Exibe o contêiner do botão de busca
+                    const btnWrapper = document.getElementById("btnBuscarWrapper");
+                    if (btnWrapper) {
+                        btnWrapper.style.display = "flex";
+                    }
 
-                                        const tipo = tipoCombustivelTexto[tipoCombustivel] || "Desconhecido";
-
-                                        painelCombustivelTipo.textContent = tipo;
-                                        precoPainel.textContent = preco;
-
-                                        if (precoCombustivelInput) {
-                                            precoCombustivelInput.value = preco;
-                                            precoCombustivelInput.dispatchEvent(new Event("change"));
-
-                                            // Também envia para a lista
-                                            document.getElementById("mediaCombustivel").value = preco;
-                                        }
-                                    } else {
-                                        alert("⚠️ Erro ao calcular a média do combustível.");
-                                    }
-                                } catch (e) {
-                                    console.error("Erro ao processar JSON:", e);
-                                    alert("Erro ao interpretar resposta do servidor.");
-                                }
-                            } else if (xhr.status === 204) {
-                                alert("⚠️ Nenhum dado de preço foi encontrado para o combustível selecionado.");
-                                painelCombustivelTipo.textContent = "Indisponível";
-                                precoPainel.textContent = "0,00";
-
-                                if (precoCombustivelInput) {
-                                    precoCombustivelInput.value = "";
-                                    precoCombustivelInput.dispatchEvent(new Event("change"));
-
-                                    document.getElementById("mediaCombustivel").value = "";
-                                }
-                            } else {
-                                console.error("Erro na requisição:", xhr.status, xhr.statusText);
-                                painelCombustivelTipo.textContent = "Erro ao consultar";
-                                precoPainel.textContent = "0,00";
-                                alert("Erro ao buscar preço do combustível. Tente novamente.");
-                            }
-                        }
-                    };
-
-                    const payload = {
-                        tipoCombustivel: parseInt(tipoCombustivel),
-                        latitude: parseFloat(latitude),
-                        longitude: parseFloat(longitude),
-                        raio: parseInt(raio),
-                        dias: parseInt(dias)
-                    };
-
-                    xhr.send(JSON.stringify(payload));
+                    // Atualiza o estado do botão de busca (que ainda estará desabilitado)
+                    atualizarBotaoBuscar();
                 });
             });
 
 
             // --- Evento de Submissão do Formulário ---
-            locationForm.addEventListener("submit", function (e) {
-                // Previne a submissão padrão do formulário
+            locationForm.addEventListener("submit", async function (e) {
                 e.preventDefault();
-
-                // Obtém a referência do botão e o desabilita para evitar cliques duplos
-                const btnBuscar = document.getElementById("btnBuscar");
                 btnBuscar.disabled = true;
 
                 // --- Validações ---
                 const lat = hiddenLatitude.value;
                 const lon = hiddenLongitude.value;
-                if (!lat || !lon) {
+                const tipoCombustivelRadio = document.querySelector('input[name="tipoCombustivel"]:checked');
+                const produtosSelecionados = [...document.querySelectorAll('input[name="category"]:checked')];
+
+                if (!lat || !lon || lat === "0.0" || lon === "0.0") {
                     alert("A localização não foi capturada corretamente.");
-                    btnBuscar.disabled = false; // Reabilita o botão em caso de erro
+                    atualizarBotaoBuscar();
                     return;
                 }
-
-                const produtosSelecionados = [...document.querySelectorAll('input[name="category"]:checked')];
+                if (!tipoCombustivelRadio) {
+                    alert("Por favor, selecione um tipo de combustível.");
+                    atualizarBotaoBuscar();
+                    return;
+                }
                 if (produtosSelecionados.length === 0) {
                     alert("Por favor, selecione ao menos um produto.");
-                    btnBuscar.disabled = false; // Reabilita o botão em caso de erro
+                    atualizarBotaoBuscar();
                     return;
                 }
-
-                // --- Preparação dos Dados ---
-                const todosBarcodes = produtosSelecionados.flatMap(cb => JSON.parse(cb.value));
-                document.getElementById("item_list").value = JSON.stringify(todosBarcodes);
 
                 // --- Interface de Progresso ---
                 document.body.classList.add("loading");
                 progressContainer.style.display = "block";
-                iniciarProgressoReal(); // Inicia a verificação do progresso real
+                iniciarProgressoReal();
 
-                // --- Envio Assíncrono dos Dados ---
+                // --- ETAPA 1: Calcular Média do Combustível ---
+                try {
+                    const tipoCombustivel = tipoCombustivelRadio.value;
+                    const raio = raioSlider.value;
+                    const dias = diasSlider.value;
+
+                    const payload = {
+                        tipoCombustivel: parseInt(tipoCombustivel),
+                        latitude: parseFloat(lat),
+                        longitude: parseFloat(lon),
+                        raio: parseInt(raio),
+                        dias: parseInt(dias)
+                    };
+
+                    const response = await fetch(urlProcessar, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": csrfToken
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.status === 204) {
+                        throw new Error("Nenhum dado de preço foi encontrado para o combustível selecionado na região. Tente outro tipo ou aumente o raio de busca.");
+                    }
+                    if (!response.ok) {
+                        throw new Error(`Erro no servidor: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+                    
+                    if (data.media_preco !== undefined) {
+                        const preco = parseFloat(data.media_preco).toFixed(2);
+                        
+                        // Atualiza os elementos (mesmo que ocultos)
+                        if (painelCombustivelTipo) painelCombustivelTipo.textContent = tipoCombustivelRadio.labels[0].innerText;
+                        if (precoPainel) precoPainel.textContent = preco.replace('.', ',');
+                        
+                        document.getElementById("precoCombustivel").value = preco;
+                        document.getElementById("mediaCombustivel").value = preco;
+                    } else {
+                        throw new Error("Resposta do servidor não continha a média de preço.");
+                    }
+
+                } catch (error) {
+                    console.error("Erro ao calcular o preço do combustível:", error);
+                    alert(`Não foi possível continuar: ${error.message}`);
+                    document.body.classList.remove("loading");
+                    progressContainer.style.display = "none";
+                    atualizarBotaoBuscar(); 
+                    return; 
+                }
+                
+                // --- ETAPA 2: Preparar e Enviar para Listar Produtos ---
+                const todosBarcodes = produtosSelecionados.flatMap(cb => JSON.parse(cb.value));
+                document.getElementById("item_list").value = JSON.stringify(todosBarcodes);
+
                 const formData = new FormData(locationForm);
 
                 fetch("{% url 'listar_produtos' %}", {
                     method: 'POST',
                     body: formData,
-                    headers: {
-                        'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value
-                    }
+                    headers: { 'X-CSRFToken': csrfToken }
                 })
                 .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                     return response.text();
                 })
                 .then(html => {
-                    // Substitui a página atual pelo HTML dos resultados
                     document.open();
                     document.write(html);
                     document.close();
                 })
                 .catch(error => {
-                    console.error("Erro ao submeter o formulário via fetch:", error);
+                    console.error("Erro ao submeter o formulário para listar produtos:", error);
                     alert("Ocorreu um erro ao buscar as ofertas. Verifique o console para mais detalhes.");
-                    
-                    // Esconde a barra de progresso e restaura a UI
                     document.body.classList.remove("loading");
                     progressContainer.style.display = "none";
-                    
-                    // Reabilita o botão para que o usuário possa tentar novamente
-                    btnBuscar.disabled = false;
+                    atualizarBotaoBuscar();
                 });
             });
 
@@ -710,6 +637,7 @@
                 input.className = "form-check-input";
                 input.name = "category";
                 input.value = JSON.stringify(codigos);
+                input.addEventListener("change", atualizarBotaoBuscar);
 
                 const label = document.createElement("label");
                 label.className = "form-check-label";
@@ -720,37 +648,26 @@
                 checkboxContainer.appendChild(div);
             }
 
-
             const selectAllCheckbox = document.getElementById("selectAllCheckbox");
             selectAllCheckbox.addEventListener("change", () => {
                 document.querySelectorAll('input[name="category"]').forEach(cb => cb.checked = selectAllCheckbox.checked);
+                atualizarBotaoBuscar();
             });
-
-            const btnBuscar = document.getElementById("btnBuscar");
-
-            // Habilita/desabilita botão com base nos produtos e no preço do combustível
+            
+            // Habilita/desabilita botão com base nos produtos, combustível e localização
             function atualizarBotaoBuscar() {
-                const algumSelecionado = document.querySelectorAll('input[name="category"]:checked').length > 0;
-                const precoCombustivel = document.getElementById("mediaCombustivel")?.value.trim();
+                const algumProdutoSelecionado = document.querySelectorAll('input[name="category"]:checked').length > 0;
+                const combustivelSelecionado = document.querySelector('input[name="tipoCombustivel"]:checked');
+                const lat = latitudeInput.value;
+                const lon = longitudeInput.value;
+                const localizacaoValida = lat && lon && lat !== "0.0" && lon !== "0.0";
 
-                const precoValido = precoCombustivel && !isNaN(precoCombustivel) && parseFloat(precoCombustivel) > 0;
-
-                const habilitar = algumSelecionado && precoValido;
+                const habilitar = algumProdutoSelecionado && combustivelSelecionado && localizacaoValida;
 
                 btnBuscar.disabled = !habilitar;
                 btnBuscar.setAttribute("aria-disabled", String(!habilitar));
             }
 
-
-            // Adiciona o listener a cada checkbox individual
-            document.querySelectorAll('input[name="category"]').forEach(cb => {
-                cb.addEventListener("change", atualizarBotaoBuscar);
-            });
-
-            // Listener também para o checkbox "Selecionar Todos"
-            document.getElementById("selectAllCheckbox").addEventListener("change", atualizarBotaoBuscar);
-
-            // Atualiza estado inicial do botão ao carregar os checkboxes
             atualizarBotaoBuscar();
         });
 
@@ -759,7 +676,6 @@
             const caipira = document.getElementById("caipiraIcon");
             const caminho = document.getElementById("caminho");
 
-            // Mostrar a moldura com o Caipira
             document.getElementById("progressContainer").style.display = "block";
             caipira.classList.add("andando");
 
@@ -780,46 +696,30 @@
                 })
                 .then(res => res.json())
                 .then(data => {
-                    const sessionKey = document.body.dataset.session;
                     const progresso = Math.min(data.porcentagem || 0, 100);
                     console.log("🎯 Progresso recebido do backend:", progresso);
 
-                    // Atualiza a posição do Caipira
                     const larguraCaminho = caminho.offsetWidth;
                     const larguraCaipira = caipira.offsetWidth;
                     const posicao = ((larguraCaminho - larguraCaipira) * progresso) / 100;
-
                     caipira.style.left = `${posicao}px`;
 
-                    // Atualiza o texto
                     let mensagemAtual = "🔍 Buscando ofertas...";
                     for (let p in mensagens) {
                         if (progresso >= parseInt(p)) {
                             mensagemAtual = mensagens[p];
                         }
                     }
-
                     texto.textContent = `${Math.round(progresso)}% - ${mensagemAtual}`;
 
-                    // Finaliza progresso quando atingir 100%
                     if (progresso >= 100) {
                         clearInterval(interval);
                         caipira.classList.remove("andando");
-
-                        // Evita chamadas futuras
-                        progressContainer.style.display = "none";
-
-                        // Limpa texto da barra ou indica finalização
                         texto.textContent = "✅ Busca finalizada!";
-
                         if (sessionStorage.getItem("session_key")) {
                             sessionStorage.removeItem("session_key");
-                            progressContainer.style.display = "none";
                         }
-
-                        return; // interrompe execução
                     }
-
                 })
                 .catch((err) => {
                     console.error("Erro ao consultar progresso:", err);
