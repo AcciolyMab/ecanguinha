@@ -98,6 +98,11 @@ DATABASES = {
 # REDIS_URL: pode ser ajustado via .env ou fallback local
 REDIS_URL = config('REDIS_URL', default='redis://127.0.0.1:6379/1')
 
+# Validação defensiva para evitar erro de parsing
+if not REDIS_URL.startswith(('redis://', 'rediss://', 'unix://')):
+    raise ValueError(f"❌ REDIS_URL inválido: {REDIS_URL}")
+
+
 # Logger dedicado para Redis
 redis_logger = logging.getLogger("redis")
 
