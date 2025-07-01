@@ -140,8 +140,8 @@ def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias, max_attempts=3):
             response_json = response.json()
 
             # 2. Salve a variável no cache
-            # (O timeout de 2 dias é 172800 segundos)
-            cache.set(cache_key, response_json, timeout=172800) 
+            # (O timeout de 2 horas é 3600 segundos)
+            cache.set(cache_key, response_json, timeout=7200) 
             logger.info(f"💾 GTIN Cache SET: {cache_key}")
 
             # 3. Retorne a variável
@@ -212,7 +212,8 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
         if "conteudo" not in data or not data["conteudo"]:
             return {"error": "Nenhum dado encontrado"}
 
-        cache.set(cache_key, data, timeout=60 * 60 * 24 * 2)
+        cache.set(cache_key, data, timeout=7200)  # Armazena no cache por 2 horas
+        logger.info(f"💾 Cache SET: {cache_key}")
         return data
 
     except requests.exceptions.Timeout:
