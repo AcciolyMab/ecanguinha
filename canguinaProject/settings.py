@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 from django.core.cache import cache
 from canguinaProject.utils import testar_redis_em_debug
 
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "canguinaProject.settings")
 
 # Diretório base do projeto
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -224,6 +225,16 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutos
+
+if not CELERY_BROKER_URL.startswith(('redis://', 'rediss://')):
+    raise ValueError(f"❌ CELERY_BROKER_URL inválido: {CELERY_BROKER_URL}")
+
+if not CELERY_RESULT_BACKEND.startswith(('redis://', 'rediss://')):
+    raise ValueError(f"❌ CELERY_RESULT_BACKEND inválido: {CELERY_RESULT_BACKEND}")
+
+logger.info(f"🚀 Celery Broker: {CELERY_BROKER_URL}")
+logger.info(f"🗄️ Celery Backend: {CELERY_RESULT_BACKEND}")
+
 
 
 LOGGING = {
