@@ -18,6 +18,7 @@ RUN python manage.py collectstatic --noinput
 # Variável de ambiente padrão para Django
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV DJANGO_SETTINGS_MODULE=canguinaProject.settings
 
 HEALTHCHECK --interval=30s --timeout=10s \
   CMD curl -f http://localhost:8000/ || exit 1
