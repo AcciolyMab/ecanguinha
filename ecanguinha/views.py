@@ -131,13 +131,15 @@ def progresso_status(request):
         logger.warning("⚠️ Sessão inválida ou inexistente na requisição.")
         return JsonResponse({"porcentagem": 0})
 
-    cache_key = f"progresso_{session_key}"
+    # Recupera a última chave de progresso associada à sessão
+    cache_key = cache.get(f"last_progress_key:{session_key}", f"progresso_{session_key}")
     progresso = cache.get(cache_key, 0)
 
     logger.warning(f"📥 Requisição progresso_status | session_key={session_key}")
     logger.warning(f"🔍 Lendo da chave: {cache_key}, Progresso: {progresso}")
 
     return JsonResponse({"porcentagem": progresso})
+
 
 
 def listar_produtos(request):
