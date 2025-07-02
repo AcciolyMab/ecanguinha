@@ -3,6 +3,7 @@ import logging
 import re
 import threading
 import math
+import uuid
 import requests
 from django.core.cache import cache
 from django.http import JsonResponse
@@ -131,14 +132,19 @@ def progresso_status(request):
         logger.warning("⚠️ Sessão inválida ou inexistente na requisição.")
         return JsonResponse({"porcentagem": 0})
 
-    # Recupera a última chave de progresso associada à sessão
-    cache_key = cache.get(f"last_progress_key:{session_key}", f"progresso_{session_key}")
+    progress_id = request.GET.get("progress_id")  # Corrigido aqui
+    if not progress_id:
+        logger.warning("⚠️ progress_id ausente na requisição.")
+        return JsonResponse({"porcentagem": 0})
+
+    cache_key = f"progresso_{session_key}_{progress_id}"
     progresso = cache.get(cache_key, 0)
 
     logger.warning(f"📥 Requisição progresso_status | session_key={session_key}")
     logger.warning(f"🔍 Lendo da chave: {cache_key}, Progresso: {progresso}")
 
     return JsonResponse({"porcentagem": progresso})
+
 
 
 
@@ -172,14 +178,16 @@ def listar_produtos(request):
             return render(request, 'lista.html', {'resultado': None})
 
         try:
-            if not request.session.session_key:
-                request.session.save()
+            progress_id = request.POST.get('progress_id')
+            if not progress_id:
+                progress_id = str(uuid.uuid4())  # fallback caso frontend não envie
             session_key_raw = request.session.session_key
-            session_key = f"progresso_{session_key_raw}"
-            cache.set(session_key, 0, timeout=600)
-            logger.warning(f"🔁 Progresso iniciado manualmente para sessão {session_key}")
+            cache_key = f"progresso_{session_key_raw}_{progress_id}"
+            cache.set(cache_key, 0, timeout=600)  # Define timeout de 10 minutos
 
-            df = obter_produtos(session_key_raw, gtin_list, int(raio), float(latitude), float(longitude), int(dias))
+            logger.warning(f"🔁 Progresso iniciado manualmente para sessão {session_key_raw}")
+
+            df = obter_produtos(session_key_raw, gtin_list, int(raio), float(latitude), float(longitude), int(dias), progress_id)
 
 
             if df.empty:

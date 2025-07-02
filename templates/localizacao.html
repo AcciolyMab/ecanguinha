@@ -255,9 +255,11 @@
                         </div>
                     </div>
 
-                    <div class="col-md-6">
+                    <div id="painelMapa" class="col-md-6" style="display: none;">
                         <div class="p-4 border border-warning rounded shadow-sm bg-light h-100 w-100">
-                            <h5 class="text-success text-center"><i class="bi bi-map-fill"></i> Mapa da Região</h5>
+                            <h5 class="text-success text-center">
+                                <i class="bi bi-map-fill"></i> Mapa da Região
+                            </h5>
                             <div id="map" style="flex: 1; min-height: 350px; border-radius: 10px;"></div>
                         </div>
                     </div>
@@ -393,7 +395,10 @@
                 longitudeInput.value = lon;
                 hiddenLatitude.value = lat;
                 hiddenLongitude.value = lon;
+
                 document.getElementById("labelLocalizacaoObtida").style.display = "block";
+                document.getElementById("painelMapa").style.display = "block"; // ✅ mostra o painel
+
                 inicializarMapa(lat, lon);
                 atualizarBotaoBuscar();
             }
@@ -415,7 +420,7 @@
                 }
             }
 
-            obterLocalizacao();
+            //obterLocalizacao();
 
             const cepInput = document.getElementById("cep");
             cepInput.addEventListener("input", function () {
@@ -593,6 +598,15 @@
 
                 const formData = new FormData(locationForm);
 
+                // 🔐 Garante que o mesmo progress_id do sessionStorage seja enviado no POST
+                let progressId = sessionStorage.getItem("progress_id");
+                if (!progressId || progressId === "null") {
+                    progressId = crypto.randomUUID();
+                    sessionStorage.setItem("progress_id", progressId);
+                }
+                formData.append("progress_id", progressId);
+
+
                 fetch("{% url 'listar_produtos' %}", {
                     method: 'POST',
                     body: formData,
@@ -687,6 +701,13 @@
             document.getElementById("progressContainer").style.display = "block";
             caipira.classList.add("andando");
 
+            // 🔒 Garante que progress_id esteja definido corretamente
+            let progressId = sessionStorage.getItem("progress_id");
+            if (!progressId || progressId === "null") {
+                progressId = crypto.randomUUID();
+                sessionStorage.setItem("progress_id", progressId);
+            }
+
             const mensagens = {
                 0: "🏠 Tô pesquisando aqui...",
                 10: "🚶‍♂️ Procurando pelas ruas...",
@@ -699,7 +720,7 @@
             };
 
             const interval = setInterval(() => {
-                fetch("/progresso-status/", {
+                fetch(`/progresso-status/?progress_id=${progressId}`, {
                     credentials: 'include'
                 })
                 .then(res => res.json())
@@ -724,9 +745,8 @@
                         clearInterval(interval);
                         caipira.classList.remove("andando");
                         texto.textContent = "✅ Busca finalizada!";
-                        if (sessionStorage.getItem("session_key")) {
-                            sessionStorage.removeItem("session_key");
-                        }
+                        // Limpa progress_id da aba se quiser reiniciar em outra busca
+                        sessionStorage.removeItem("progress_id");
                     }
                 })
                 .catch((err) => {
@@ -734,6 +754,7 @@
                 });
             }, 500);
         }
+
     </script>
 </body>
 

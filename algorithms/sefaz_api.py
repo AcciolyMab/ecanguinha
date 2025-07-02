@@ -227,19 +227,14 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
 
 # ------------------------------------------------------------------------------
 
-def obter_produtos(session_key_raw, gtin_list, raio, my_lat, my_lon, dias):
+def obter_produtos(session_key_raw, gtin_list, raio, my_lat, my_lon, dias, progress_id):
     resultados = []
     total = len(gtin_list)
 
-     # Gera um hash dos parâmetros para diferenciar buscas com base nos dados da requisição
-    parametros_raw = f"{gtin_list}-{raio}-{my_lat}-{my_lon}-{dias}"
-    param_hash = md5(parametros_raw.encode()).hexdigest()
-    session_key = f"progresso_{session_key_raw}_{param_hash}"
-
-    # Grava mapeamento para recuperação da barra de progresso
-    cache.set(f"last_progress_key:{session_key_raw}", session_key, timeout=600)
-
-    # Inicia progresso
+    # Gera um hash dos parâmetros para diferenciar buscas com base nos dados da requisição
+    session_key = f"progresso_{session_key_raw}_{progress_id}"
+    
+    # Inicia progresso explicitamente
     cache.set(session_key, 0, timeout=600)
 
     logger.warning(f"🔑 Chave da sessão recebida: {session_key_raw}")
