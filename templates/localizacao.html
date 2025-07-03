@@ -123,9 +123,10 @@
 
         .emoji-caipira {
             position: absolute;
-            bottom: 0;
+            bottom: -35px;
             left: 0;
-            height: 120px;
+            width: 200px;  /* ou 100px, 120px... */
+            height: auto; /* mantém a proporção da imagem */
             transition: left 0.3s ease-in-out;
         }
 
@@ -134,7 +135,6 @@
             color: #333;
             text-align: center;
         }
-
     </style>
 </head>
 
@@ -147,7 +147,7 @@
             <div class="caipira-moldura">
                 <div class="caipira-caminho" id="caminho">
                     <img id="caipiraIcon"
-                        src="{% static 'ecanguinha/img/canguinha_animado.gif' %}"
+                        src="{% static 'ecanguinha/img/canguinhalogo_oficial.png' %}"
                         class="emoji-caipira"
                         alt="Caipira Andando" />
                 </div>
@@ -189,12 +189,13 @@
                     <div class="col-md-6">
                         <div class="p-4 border border-primary rounded shadow-sm bg-light w-100">
                             <h5 class="text-primary"><i class="bi bi-geo-alt-fill"></i> Localização</h5>
-                            <label for="cep" class="form-label">CEP da Região</label>
+                            <label for="cep" class="form-label">CEP da Sua Localização</label>
                             <div class="input-group mb-2" style="max-width: 300px;">
                                     <input type="text"
                                         class="form-control"
                                         id="cep"
                                         name="cep"
+                                        value="57020-040"
                                         placeholder="57000-000"
                                         maxlength="9"
                                         style="height: 60px; width: 100px; font-size: 14px;">
@@ -228,7 +229,7 @@
                             </div>
                             <p id="geoStatus" class="text-danger mt-1" style="display: none;"></p>
 
-                            <div class="row mb-2 mt-3">
+                            <div class="row mb-2 mt-3" style="display: none;">
                                 <div class="col">
                                     <label class="form-label">Latitude</label>
                                     <input type="text" id="latitude" name="latitude" class="form-control small-input"
@@ -255,7 +256,7 @@
                         </div>
                     </div>
 
-                    <div id="painelMapa" class="col-md-6" style="display: none;">
+                    <div id="painelMapa" class="col-md-6"> <!--style="display: none;"-->
                         <div class="p-4 border border-warning rounded shadow-sm bg-light h-100 w-100">
                             <h5 class="text-success text-center">
                                 <i class="bi bi-map-fill"></i> Mapa da Região
@@ -403,6 +404,24 @@
                 atualizarBotaoBuscar();
             }
 
+            function buscarLocalPorCep(cep) {
+                const query = `${cep}, Brasil`;
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.length > 0) {
+                            const { lat, lon } = data[0];
+                            postLocationUpdate(lat, lon);
+                        } else {
+                            console.warn("CEP padrão não encontrado.");
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Erro ao buscar localização por CEP padrão:", err);
+                    });
+            }
+
+
             function obterLocalizacao() {
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(
@@ -412,15 +431,20 @@
                             postLocationUpdate(lat, lon);
                         },
                         function (error) {
-                            alert("Erro ao obter localização: " + error.message);
-                        }
+                            console.warn("⚠️ Erro ao obter geolocalização. Usando CEP padrão:", error.message);
+                            buscarLocalPorCep("57020-040");
+                        },
+                        { timeout: 7000 } // opcional: define tempo máximo de espera da geolocalização
                     );
                 } else {
-                    alert("Seu navegador não suporta geolocalização.");
+                    console.warn("⚠️ Navegador não suporta geolocalização. Usando CEP padrão.");
+                    buscarLocalPorCep("57020-040");
                 }
             }
 
+
             //obterLocalizacao();
+            buscarLocalPorCep("57020-040");
 
             const cepInput = document.getElementById("cep");
             cepInput.addEventListener("input", function () {

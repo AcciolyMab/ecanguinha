@@ -100,8 +100,8 @@ def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias, max_attempts=3):
     Retorna (response_json, gtin) ou lança exceção em caso de falha persistente.
     """
     # Arredonda coordenadas para evitar fragmentação de cache e para corresponder ao manual 
-    lat = round(float(my_lat), 3)
-    lon = round(float(my_lon), 3)
+    lat = round(float(my_lat), 6)
+    lon = round(float(my_lon), 6)
 
     # Cria chave única para o cache
     cache_key = f"gtin:{gtin}:{raio}:{lat}:{lon}:{dias}"
