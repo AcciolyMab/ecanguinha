@@ -376,3 +376,43 @@ def obter_combustiveis(tipo_combustivel, raio, my_lat, my_lon, dias):
         if col in df.columns:
             df[col] = df[col].astype('category')     
     return df
+
+# ecanguinha/integrations/sefaz_api.py
+
+
+def calcular_dias_validos_dinamicamente(gtin_exemplo, raio, lat, lon, max_dias=10, tipo_combustivel=None):
+    """
+    Testa consultas com diferentes valores de dias e retorna o menor valor possível
+    que retorna dados válidos da SEFAZ. Usa um GTIN de exemplo.
+    """
+    for dias in range(2, max_dias + 1):
+        try:
+            payload = {
+                "produto": {"tipoCombustivel": 2},  # pode tornar isso um parâmetro
+                "estabelecimento": {
+                    "geolocalizacao": {
+                        "latitude": lat,
+                        "longitude": lon,
+                        "raio": int(raio)
+                    }
+                },
+                "dias": dias,
+                "pagina": 1,
+                "registrosPorPagina": 20
+            }
+
+            response = requests.post(
+                'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/combustivel/pesquisa',
+                json=payload,
+                timeout=10
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("resultado"):
+                    return dias
+        except Exception as e:
+            logger.warning(f"❌ Erro na tentativa com {dias} dias: {e}")
+        time.sleep(0.5)
+
+    return max_dias

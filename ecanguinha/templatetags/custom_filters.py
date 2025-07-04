@@ -23,3 +23,11 @@ def sum_precos(lista_produtos):
     if not lista_produtos:
         return 0.0
     return sum(p.get('preco', 0) for p in lista_produtos if isinstance(p, dict))
+
+@register.filter
+def subtrair(valor1, valor2):
+    try:
+        return float(valor1) - float(valor2)
+    except (ValueError, TypeError):
+        return 0
+

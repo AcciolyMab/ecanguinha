@@ -150,12 +150,14 @@
                                 ⭐ {{ mercado.avaliacao|default:4.0 }} &nbsp;&nbsp; 📍 {{ mercado.distancia|default:'  ' }} 
                             </div>
                         </div>
-                       {% with resultado.purchases|dict_get:mercado.nome as produtos_mercado %}
-                            <div class="mercado-preco">
-                                R$ {{ produtos_mercado|sum_precos|floatformat:2 }}<br>
-                                <small>{{ mercado.tipo|default:"Mercado" }}</small>
-                            </div>
+                        {% with resultado.purchases|dict_get:mercado.nome as produtos_mercado %}
+                            {% with produtos_mercado|sum_precos as subtotal %}
+                                <div class="mercado-preco">
+                                    R$ {{ subtotal|floatformat:2 }}<br>
+                                    <small>{{ mercado.tipo|default:"Mercado" }}</small>
+                                </div>
                             </div> <!-- fecha .mercado-header -->
+
                             <table class="table">
                                 <thead>
                                     <tr><th>Produto</th><th>Preço</th></tr>
@@ -171,18 +173,95 @@
                                     {% endfor %}
                                 </tbody>
                             </table>
+
+                            <!-- Tabela de Resumo -->
+                            <table class="table table-bordered mt-3">
+                                <thead style="background-color: #c2f2e6; text-align: center;">
+                                    <tr>
+                                        <th colspan="2">Resumo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Preço Médio combustível</td>
+                                        <td>R$ {{ media_combustivel|floatformat:2 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Sub Total Cesta Básica</td>
+                                        <td>R$ {{ subtotal|floatformat:2 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Custo de deslocamento:</td>
+                                        <td>
+                                            R$ {{ resultado.total_cost|subtrair:subtotal|floatformat:2 }}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Custo total</strong></td>
+                                        <td><strong>R$ {{ resultado.total_cost|floatformat:2 }}</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            {% endwith %}
                         {% endwith %}
+
+
+
+                       <!--{% with resultado.purchases|dict_get:mercado.nome as produtos_mercado %}
+                            <div class="mercado-preco">
+                                R$ {{ produtos_mercado|sum_precos|floatformat:2 }}<br>
+                                <small>{{ mercado.tipo|default:"Mercado" }}</small>
+                            </div>
+                            </div> fecha .mercado-header
+                            <table class="table">
+                                <thead>
+                                    <tr><th>Produto</th><th>Preço</th></tr>
+                                </thead>
+                                <tbody>
+                                    {% for produto in produtos_mercado %}
+                                        <tr>
+                                            <td>{{ produto.produto }}</td>
+                                            <td>R$ {{ produto.preco|floatformat:2 }}</td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr><td colspan="2">Nenhum produto encontrado</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% endwith %}-->
                 </div>
             {% endfor %}
-            <div class="summary-container" style="background-color: #d1f0e3; border: 2px solid #168f53; font-weight: bold; font-size: 16px; color: #084c41;">
+            <!--<div class="summary-container" style="background-color: #d1f0e3; border: 2px solid #168f53; font-weight: bold; font-size: 16px; color: #084c41;">
                 <p>💰 <strong style="font-size: 18px;">Custo Total:</strong> R$ {{ resultado.total_cost|floatformat:2 }}</p>
 
                 {% if media_combustivel %}
                     <p>⛽ <strong>Preço Médio do Combustível:</strong> R$ {{ media_combustivel|floatformat:2 }}</p>
                 {% endif %}
 
-                <p>📍 <strong>Distância Total:</strong> {{ resultado.total_distance }} km &nbsp;&nbsp;</p> <!-- ⏱️ <strong>Tempo:</strong> {{ resultado.execution_time }} segundos -->
+                <p>📍 <strong>Distância Total:</strong> {{ resultado.total_distance }} km </p>
+           
+                <div style="margin-top: 15px; display: flex; align-items: right; gap: 10px;">
+                    <span style="font-weight: bold;">Apoio:</span>
+                    <img src="{% static 'ecanguinha/img/sefaz.png' %}" alt="Logo SEFAZ" style="height: 40px;">
+                </div>
+            </div>-->
+            <div class="summary-container" style="background-color: #d1f0e3; border: 2px solid #168f53; font-weight: bold; font-size: 16px; color: #084c41; padding: 10px;">
+
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    
+                    <!-- Logo Canguinha -->
+                    <img src="{% static 'ecanguinha/img/canguinhalogo_oficial.png' %}" alt="Logo Canguinha" style="height: 140px;">
+
+                    <!-- Apoio SEFAZ (Texto acima do logo) -->
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <span style="font-weight: bold; color: #084c41;">Apoio:</span>
+                        <img src="{% static 'ecanguinha/img/sefaz.png' %}" alt="Logo SEFAZ" style="height: 100px;">
+                    </div>
+                    
+                </div>
+
             </div>
+
 
             <div style="margin-top: 20px; display: flex; gap: 10px;">
                 <a href="{% url 'localizacao' %}" class="botao-oferta">🔄 Nova Busca</a>

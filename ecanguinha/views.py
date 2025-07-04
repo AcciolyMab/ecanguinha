@@ -19,6 +19,7 @@ from django.views.decorators.csrf import csrf_exempt
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as ThreadTimeoutError
 from multiprocessing import Process, Queue
 from ecanguinha.services.combustivel import calcular_media_combustivel
+from algorithms.sefaz_api import calcular_dias_validos_dinamicamente
 from random import randint
 
 
@@ -145,9 +146,6 @@ def progresso_status(request):
 
     return JsonResponse({"porcentagem": progresso})
 
-
-
-
 def listar_produtos(request):
     if request.method == 'POST':
         if not request.session.session_key:
@@ -155,7 +153,7 @@ def listar_produtos(request):
         latitude = request.POST.get('latitude')
         longitude = request.POST.get('longitude')
 
-        # Se latitude e longitude forem inválidas, definir valores padrão (Maceió)
+        # Valores padrão se localização for inválida
         if not latitude or not longitude or latitude == "0.0" or longitude == "0.0":
             latitude = -9.6658  # Maceió
             longitude = -35.7350
@@ -167,7 +165,23 @@ def listar_produtos(request):
 
         if not item_list:
             messages.error(request, "Nenhum produto selecionado.")
-            return render(request, 'lista.html', {'resultado': None})
+            return render(request, 'lista.html', {
+                'resultado': {
+                    'rota': [],
+                    'purchases': {},
+                    'total_cost': 0.0,
+                    'total_distance': 0.0,
+                    'execution_time': 0.0
+                },
+                'mercados_comprados': [],
+                'media_combustivel': 0,
+                'user_lat': float(latitude),
+                'user_lon': float(longitude),
+                'node_coords': [],
+                'dias': int(dias or 0),
+                'raio': int(raio or 0),
+                'item_list': []
+            })
 
         try:
             item_list = json.loads(item_list) if isinstance(item_list, str) else item_list
@@ -175,35 +189,92 @@ def listar_produtos(request):
         except Exception as e:
             logger.error("Erro ao processar item_list: %s", e)
             messages.error(request, "Erro ao processar a lista de produtos.")
-            return render(request, 'lista.html', {'resultado': None})
+            return render(request, 'lista.html', {
+                'resultado': {
+                    'rota': [],
+                    'purchases': {},
+                    'total_cost': 0.0,
+                    'total_distance': 0.0,
+                    'execution_time': 0.0
+                },
+                'mercados_comprados': [],
+                'media_combustivel': 0,
+                'user_lat': float(latitude),
+                'user_lon': float(longitude),
+                'node_coords': [],
+                'dias': int(dias or 0),
+                'raio': int(raio or 0),
+                'item_list': []
+            })
 
         try:
-            progress_id = request.POST.get('progress_id')
-            if not progress_id:
-                progress_id = str(uuid.uuid4())  # fallback caso frontend não envie
+            progress_id = request.POST.get('progress_id') or str(uuid.uuid4())
             session_key_raw = request.session.session_key
             cache_key = f"progresso_{session_key_raw}_{progress_id}"
-            cache.set(cache_key, 0, timeout=600)  # Define timeout de 10 minutos
+            cache.set(cache_key, 0, timeout=600)
 
             logger.warning(f"🔁 Progresso iniciado manualmente para sessão {session_key_raw}")
 
             df = obter_produtos(session_key_raw, gtin_list, int(raio), float(latitude), float(longitude), int(dias), progress_id)
 
+            # Se a SEFAZ estiver instável e não retornar nada, tenta dias dinamicamente
+            if df.empty:
+                logger.warning("⚠️ Nenhum dado encontrado. Recalculando dias dinamicamente...")
+                dias = calcular_dias_validos_dinamicamente(
+                    gtin_exemplo=gtin_list[0],
+                    tipo_combustivel=2,
+                    raio=raio,
+                    lat=float(latitude),
+                    lon=float(longitude),
+                    max_dias=10
+                )
+                df = obter_produtos(session_key_raw, gtin_list, int(raio), float(latitude), float(longitude), dias, progress_id)
 
             if df.empty:
                 messages.warning(request, "Nenhum dado foi retornado pela API.")
-                return render(request, 'lista.html', {'resultado': None})
+                return render(request, 'lista.html', {
+                    'resultado': {
+                        'rota': [],
+                        'purchases': {},
+                        'total_cost': 0.0,
+                        'total_distance': 0.0,
+                        'execution_time': 0.0
+                    },
+                    'mercados_comprados': [],
+                    'media_combustivel': 0,
+                    'user_lat': float(latitude),
+                    'user_lon': float(longitude),
+                    'node_coords': [],
+                    'dias': int(dias or 0),
+                    'raio': int(raio or 0),
+                    'item_list': gtin_list
+                })
 
             avg_lat = df["LAT"].mean() if "LAT" in df.columns else float(latitude)
             avg_lon = df["LONG"].mean() if "LONG" in df.columns else float(longitude)
 
-            tpplib_data = create_tpplib_data(df, avg_lat, avg_lon, media_preco=float(request.POST.get('precoCombustivel', 0)))
-
+            tpplib_data = create_tpplib_data(df, avg_lat, avg_lon, media_preco=float(preco_combustivel or 0))
             resultado_solver = alns_solve_tpp(tpplib_data, 10000, 100)
 
             if not resultado_solver:
                 messages.error(request, "Não foi possível encontrar uma solução viável.")
-                return render(request, 'lista.html', {'resultado': None})
+                return render(request, 'lista.html', {
+                    'resultado': {
+                        'rota': [],
+                        'purchases': {},
+                        'total_cost': 0.0,
+                        'total_distance': 0.0,
+                        'execution_time': 0.0
+                    },
+                    'mercados_comprados': [],
+                    'media_combustivel': preco_combustivel or 0,
+                    'user_lat': float(avg_lat),
+                    'user_lon': float(avg_lon),
+                    'node_coords': [],
+                    'dias': int(dias or 0),
+                    'raio': int(raio or 0),
+                    'item_list': gtin_list
+                })
 
             rota = [idx for idx in resultado_solver.get('route', []) if 1 <= idx <= len(resultado_solver.get('mercados_comprados', []))]
             purchases = resultado_solver.get('purchases', {})
@@ -236,7 +307,7 @@ def listar_produtos(request):
                         'longitude': float(m['longitude']),
                         'valor_total': float(m.get('valor_total', 0.0)),
                         'distancia': calcular_distancia(avg_lat, avg_lon, float(m['latitude']), float(m['longitude'])),
-                        'tipo': m.get('tipo', 'Supermercado'),  # Pega o tipo de 'm' ou usa 'Supermercado' como padrão
+                        'tipo': m.get('tipo', 'Supermercado'),
                         'avaliacao': m.get('avaliacao', 0)
                     }
                     for m in mercados_comprados
@@ -253,16 +324,30 @@ def listar_produtos(request):
             }
 
             logger.warning(f"🧭 Coordenadas médias: avg_lat={avg_lat}, avg_lon={avg_lon}")
-
             return render(request, 'lista.html', context)
 
         except Exception as e:
             logger.error("Erro ao processar a solicitação: %s", e)
             messages.error(request, "Erro ao processar a solicitação.")
-            return render(request, 'lista.html', {'resultado': None})
+            return render(request, 'lista.html', {
+                'resultado': {
+                    'rota': [],
+                    'purchases': {},
+                    'total_cost': 0.0,
+                    'total_distance': 0.0,
+                    'execution_time': 0.0
+                },
+                'mercados_comprados': [],
+                'media_combustivel': preco_combustivel or 0,
+                'user_lat': float(latitude),
+                'user_lon': float(longitude),
+                'node_coords': [],
+                'dias': int(dias or 0),
+                'raio': int(raio or 0),
+                'item_list': gtin_list if 'gtin_list' in locals() else []
+            })
 
     return redirect('localizacao')
-
 
 def calcular_distancia(lat1, lon1, lat2, lon2):
     """
@@ -317,8 +402,16 @@ def processar_combustivel(request):
         df = obter_combustiveis(tipo_combustivel, raio, latitude, longitude, dias)
 
         if df.empty:
-            logger.warning("⚠️ Nenhum dado retornado da API da SEFAZ")
-            return JsonResponse({"erro": "Nenhum dado de preço encontrado"}, status=204)
+            logger.warning("⚠️ Nenhum dado retornado. Recalculando dias dinamicamente...")
+            dias = calcular_dias_validos_dinamicamente(
+                gtin_exemplo=None,  # não é necessário para combustíveis
+                tipo_combustivel=tipo_combustivel,
+                raio=raio,
+                lat=latitude,
+                lon=longitude,
+                max_dias=10
+            )
+            df = obter_combustiveis(tipo_combustivel, raio, latitude, longitude, dias)
 
         # Remove registros com valor 0 ou nulo
         df = df[df["VALOR"].apply(lambda x: isinstance(x, (int, float)) and x > 0)]
@@ -341,5 +434,3 @@ def processar_combustivel(request):
     except Exception as e:
         logger.exception(f"❌ Erro interno ao processar combustível: {e}")
         return JsonResponse({"erro": f"Erro interno: {str(e)}"}, status=500)
-
-    
