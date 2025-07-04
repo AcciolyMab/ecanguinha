@@ -163,6 +163,8 @@ def listar_produtos(request):
         raio = request.POST.get('raio')
         item_list = request.POST.get('item_list')
 
+        preco_combustivel = float(preco_combustivel or 0)
+
         if not item_list:
             messages.error(request, "Nenhum produto selecionado.")
             return render(request, 'lista.html', {
@@ -282,6 +284,12 @@ def listar_produtos(request):
             total_distance = resultado_solver.get('total_distance', 0.0)
             execution_time = resultado_solver.get('execution_time', 0.0)
             mercados_comprados = resultado_solver.get('mercados_comprados', [])
+            subtotal_cesta_basica = sum(
+                float(item['preco'])
+                for produtos in purchases.values()
+                for item in produtos
+            )
+
 
             node_coords = {
                 str(idx): [float(mercado.get('latitude')), float(mercado.get('longitude'))]
@@ -320,7 +328,8 @@ def listar_produtos(request):
                 'dias': int(dias),
                 'raio': int(raio),
                 'item_list': gtin_list,
-                'media_combustivel': preco_combustivel
+                'media_combustivel': preco_combustivel,
+                'subtotal_cesta_basica': subtotal_cesta_basica  # ✅ adicionado
             }
 
             logger.warning(f"🧭 Coordenadas médias: avg_lat={avg_lat}, avg_lon={avg_lon}")
