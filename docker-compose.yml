@@ -1,7 +1,52 @@
-version: '3'
+version: '3.8'
+
 services:
-  core_api:
+  # Serviço Redis: Usado como Message Broker para o Celery e para Cache do Django.
+  redis:
+    image: "redis:6-alpine"
+    container_name: canguinha_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  # Serviço da Aplicação Web (Django + Gunicorn)
+  web:
     build: .
-    container_name: "core_api_container"
+    container_name: canguinha_web
+    # Comando específico para iniciar o servidor web
+    command: gunicorn canguinaProject.wsgi:application --bind 0.0.0.0:8000 --workers 3 --threads 2 --timeout 120
+    volumes:
+      - .:/app
     ports:
       - "8000:8000"
+    environment:
+      # As variáveis de ambiente são passadas para os contêineres
+      - DJANGO_SETTINGS_MODULE=canguinaProject.settings
+      - SECRET_KEY=${SECRET_KEY} # Carregado de um arquivo .env
+      - DEBUG=${DEBUG}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis # O serviço web só inicia depois que o redis estiver pronto
+    restart: on-failure
+
+  # Serviço do Celery Worker
+  worker:
+    build: . # Usa a mesma imagem do serviço 'web'
+    container_name: canguinha_worker
+    # Comando específico para iniciar o worker do Celery
+    command: celery -A canguinaProject worker -l info
+    volumes:
+      - .:/app
+    environment:
+      # O worker precisa das mesmas variáveis de ambiente para acessar o Django e o Redis
+      - DJANGO_SETTINGS_MODULE=canguinaProject.settings
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+      - web # Garante que o worker inicie depois da aplicação web
+    restart: on-failure
+

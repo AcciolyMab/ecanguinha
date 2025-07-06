@@ -167,11 +167,13 @@ def format_result(solution: Dict, best_cost: float, execution_time: float,
         latitude = market_info['latitude']
         longitude = market_info['longitude']
 
-        compras_detalhadas[f'Produtos comprados no {market_name}'] = []
+        #compras_detalhadas[f'Produtos comprados no {market_name}'] = []
+        compras_detalhadas[market_name] = [] 
         for k in products:
             nome_produto = data['produtos'][k]
             preco_produto = data['pik'][(market, k)]
-            compras_detalhadas[f'Produtos comprados no {market_name}'].append({
+            #compras_detalhadas[f'Produtos comprados no {market_name}'].append({
+            compras_detalhadas[market_name].append({
                 'produto': nome_produto,
                 'preco': preco_produto
             })

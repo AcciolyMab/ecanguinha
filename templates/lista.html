@@ -140,14 +140,23 @@
                                 <span class="status-aberto" 
                                     data-nome="{{ mercado.nome|escapejs }}" 
                                     data-endereco="{{ mercado.endereco|escapejs }}">
-                                    <!-- O texto será preenchido dinamicamente -->
                                 </span>
                             </div>
                             <div class="mercado-endereco">
                                 <i class="fa fa-map-marker"></i> {{ mercado.endereco }}
                             </div>
                             <div class="mercado-meta">
-                                ⭐ {{ mercado.avaliacao|default:4.0 }} &nbsp;&nbsp; 📍 {{ mercado.distancia|default:'  ' }} 
+                                {% if mercado.avaliacao %}
+                                    ⭐ {{ mercado.avaliacao|floatformat:1 }}
+                                {% else %}
+                                    ⭐ N/A
+                                {% endif %}
+                                &nbsp;&nbsp;
+                                {% if mercado.distancia %}
+                                    📍 {{ mercado.distancia|floatformat:2 }}
+                                {% else %}
+                                    📍 N/A
+                                {% endif %}
                             </div>
                         </div>
                         {% with resultado.purchases|dict_get:mercado.nome as produtos_mercado %}
@@ -156,8 +165,7 @@
                                     R$ {{ subtotal|floatformat:2 }}<br>
                                     <small>{{ mercado.tipo|default:"Mercado" }}</small>
                                 </div>
-                            </div> <!-- fecha .mercado-header -->
-
+                            </div>
                             <table class="table">
                                 <thead>
                                     <tr><th>Produto</th><th>Preço</th></tr>
@@ -175,8 +183,9 @@
                             </table>
                             {% endwith %}
                         {% endwith %}
-                </div>
-            {% endfor %}
+                    </div>
+                {% endfor %}
+
             <div class="summary-container" style="background-color:rgb(255, 255, 255); border: 2px solid #168f53; border-radius: 8px; padding: 20px; margin-top: 20px;">
                 <table class="table table-bordered">
                     <thead style="background-color: #c2f2e6; text-align: center;">
@@ -226,9 +235,11 @@
 
     {{ user_lat|json_script:"user-latitude" }}
     {{ user_lon|json_script:"user-longitude" }}
-    {{ resultado.rota|json_script:"rota-data" }}
+    {{ resultado.route|json_script:"rota-data" }}
     {{ node_coords|json_script:"node-coords-data" }}
     {{ mercados_comprados|json_script:"mercados-data" }}
+
+
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {

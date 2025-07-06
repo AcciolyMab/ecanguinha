@@ -21,7 +21,13 @@ urlpatterns = [
     path('submit/', views.submit_feedback, name='submit_feedback'),
     path('agradecimento/', views.agradecimento, name='agradecimento'),
     path('favicon.ico', RedirectView.as_view(url='/static/favicon.ico', permanent=True)),
-    path('processar_combustivel/', views.processar_combustivel, name='processar_combustivel'),
+    # URL para iniciar a busca (substitui a antiga 'listar_produtos')
+    path('api/iniciar-busca/', views.iniciar_busca_produtos, name='iniciar_busca_produtos'),
+    # URL para verificar o status da tarefa
+    path('api/task-status/', views.get_task_status, name='get_task_status'),
+    # URL para mostrar o resultado final
+    path('resultado/<str:task_id>/', views.mostrar_resultado, name='mostrar_resultado'),
+    path("processar_combustivel/", views.processar_combustivel, name="processar_combustivel"),
     path('.well-known/appspecific/com.chrome.devtools.json', lambda request: JsonResponse({}, status=204)),
 ]
 

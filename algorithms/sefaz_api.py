@@ -1,3 +1,5 @@
+# algorithms/sefaz_api.py
+
 import requests
 import json
 import logging
@@ -5,7 +7,7 @@ import time
 from urllib3.exceptions import InsecureRequestWarning
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from django.core.cache import cache # Certifique-se de que o Django e o Redis estão configurados
+from django.core.cache import cache
 import urllib3
 import pandas as pd
 import numpy as np
@@ -16,13 +18,12 @@ import os
 import concurrent.futures
 from math import floor
 from math import ceil
-import gc  # opcional se quiser forçar liberação de memória
-import time
-import psutil # Para monitoramento de memória, útil em debug
+import gc
+import psutil
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as ThreadTimeoutError
-from django.core.cache import cache
 from hashlib import md5
-
+from datetime import datetime, timedelta
+import pytz  # Adicionado para a função de delay
 
 from django.contrib import messages
 
@@ -31,7 +32,7 @@ LOG_LEVEL = 'DEBUG' if os.getenv('DEBUG', 'False') == 'True' else 'INFO'
 logging.basicConfig(
     level=LOG_LEVEL,
     format='%(levelname)s %(asctime)s %(message)s',
-    force=True  # 🔥 força reconfiguração mesmo se já tiver sido setado
+    force=True
 )
 logger = logging.getLogger(__name__)
 SEFAZ_URL = "http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/produto/pesquisa"
@@ -58,200 +59,121 @@ category_map = {
     'SARDINHA 125G': (7891167021013, 7891167023017, 7891167023024, 7896009301063, 7891167021075)
 }
 
-# Dicionário invertido para mapeamento rápido de GTIN -> categoria e nome
-gtin_to_category = {}
-gtin_to_product_name = {}
+gtin_to_category = {gtin: cat for cat, gtins in category_map.items() for gtin in gtins}
+gtin_to_product_name = {gtin: cat for cat, gtins in category_map.items() for gtin in gtins}
 
-for category, gtins in category_map.items():
-    for gtin in gtins:
-        gtin_to_category[gtin] = category
-        gtin_to_product_name[gtin] = category
-
-# Criamos uma sessão global para reaproveitar conexões
 SEFAZ_SESSION = requests.Session()
-
-# Configura o adaptador HTTP com controle de pool e retry
 adapter = HTTPAdapter(
     pool_connections=30,
     pool_maxsize=30,
-    max_retries=Retry(
-        total=3,                # Tenta 3 vezes em caso de erro
-        backoff_factor=0.3,     # Atraso progressivo entre tentativas
-        status_forcelist=[500, 502, 503, 504]  # Somente para esses erros
-    )
+    max_retries=Retry(total=3, backoff_factor=0.3, status_forcelist=[500, 502, 503, 504])
 )
-
 SEFAZ_SESSION.mount("http://", adapter)
 SEFAZ_SESSION.mount("https://", adapter)
-
-# Configurações adicionais da sessão
 SEFAZ_SESSION.verify = False
 SEFAZ_SESSION.headers.update({
     "Content-Type": "application/json",
-    "AppToken": "ad909a7a6f0d6a130941ae2a9706eec58c0bb65d" # Substitua pelo seu token real
+    "AppToken": "ad909a7a6f0d6a130941ae2a9706eec58c0bb65d"
 })
 
-# ------------------------------------------------------------------------------
-# Implementação da função auxiliar síncrona com cache e retries:
 def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias, max_attempts=3):
-    """
-    Função auxiliar que faz a requisição para a API SEFAZ usando a sessão global.
-    Inclui cache, timeouts e retries com backoff exponencial.
-    Retorna (response_json, gtin) ou lança exceção em caso de falha persistente.
-    """
-    # Arredonda coordenadas para evitar fragmentação de cache e para corresponder ao manual 
     lat = round(float(my_lat), 6)
     lon = round(float(my_lon), 6)
-
-    # Cria chave única para o cache
     cache_key = f"gtin:{gtin}:{raio}:{lat}:{lon}:{dias}"
     cached = cache.get(cache_key)
     if cached:
         logger.info(f"✅ GTIN Cache HIT: {cache_key}")
         return cached, gtin
-
     logger.warning(f"⚠️ GTIN Cache MISS: {cache_key}")
-
     url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/produto/pesquisa'
     data = {
         "produto": {"gtin": str(gtin)},
-        "estabelecimento": {
-            "geolocalizacao": {
-                "latitude": lat,
-                "longitude": lon,
-                "raio": int(raio)
-            }
-        },
+        "estabelecimento": {"geolocalizacao": {"latitude": lat, "longitude": lon, "raio": int(raio)}},
         "dias": int(dias),
         "pagina": 1,
-        "registrosPorPagina": 50 # Manual permite até 5.000, mas 50 é conservador para memória.
+        "registrosPorPagina": 50
     }
-
-    headers = {
-        "Content-Type": "application/json",
-        "AppToken": "ad909a7a6f0d6a130941ae2a9706eec58c0bb65d"
-    }
-
+    headers = {"Content-Type": "application/json", "AppToken": "ad909a7a6f0d6a130941ae2a9706eec58c0bb65d"}
     for attempt in range(1, max_attempts + 1):
         try:
-            response = requests.post(url, json=data, headers=headers, timeout=120)
+            # CORREÇÃO: Usa a sessão global pré-configurada
+            response = SEFAZ_SESSION.post(url, json=data, headers=headers, timeout=120)
             response.raise_for_status()
-
-            # 1. Armazene o resultado em uma variável
             response_json = response.json()
-
-            # 2. Salve a variável no cache
-            # (O timeout de 2 horas é 3600 segundos)
-            cache.set(cache_key, response_json, timeout=7200) 
+            cache.set(cache_key, response_json, timeout=7200)
             logger.info(f"💾 GTIN Cache SET: {cache_key}")
-
-            # 3. Retorne a variável
             return response_json, gtin
-
-        except (requests.exceptions.Timeout,
-                requests.exceptions.ConnectionError,
-                requests.exceptions.HTTPError) as e:
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, requests.exceptions.HTTPError) as e:
             logger.warning(f"⚠️ Erro ao consultar GTIN {gtin}, tentativa {attempt}: {e}")
-
             if attempt == max_attempts:
                 logger.error(f"❌ Todas as tentativas falharam para GTIN {gtin}")
                 return None, gtin
-
             time.sleep(0.5 * attempt)
-
         except Exception as e:
             logger.error(f"❌ Erro inesperado para GTIN {gtin}: {e}")
             return None, gtin
-#------------------------------------------------------------------------------
 
 def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
     logger.debug(f"🛠️ [consultar_combustivel] tipo_combustivel={tipo_combustivel}, raio={raio}, lat={my_lat}, lon={my_lon}, dias={dias}")
-
     lat = round(float(my_lat), 3)
     lon = round(float(my_lon), 3)
-
     cache_key = f"combustivel:{tipo_combustivel}:{raio}:{lat}:{lon}:{dias}"
     cached_data = cache.get(cache_key)
     if cached_data:
         logger.info(f"✅ Cache HIT: {cache_key}")
         return cached_data
-
     logger.warning(f"⚠️ Cache MISS: {cache_key}")
-
     tipo_combustivel = int(tipo_combustivel)
     latitude = round(float(lat), 6)
     longitude = round(float(lon), 6)
     raio = int(raio)
     dias = int(dias)
-
     url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/combustivel/pesquisa'
     data = {
         "produto": {"tipoCombustivel": tipo_combustivel},
-        "estabelecimento": {
-            "geolocalizacao": {
-                "latitude": latitude,
-                "longitude": longitude,
-                "raio": raio,
-            }
-        },
+        "estabelecimento": {"geolocalizacao": {"latitude": latitude, "longitude": longitude, "raio": raio}},
         "dias": dias,
         "pagina": 1,
         "registrosPorPagina": 50
     }
-
-    headers = {
-        "Content-Type": "application/json",
-        "AppToken": "ad909a7a6f0d6a130941ae2a9706eec58c0bb65d"
-    }
-
+    headers = {"Content-Type": "application/json", "AppToken": "ad909a7a6f0d6a130941ae2a9706eec58c0bb65d"}
     try:
-        session = requests.Session()
-        response = session.post(url, json=data, headers=headers, timeout=120)
+        # CORREÇÃO: Usa a sessão global pré-configurada
+        response = SEFAZ_SESSION.post(url, json=data, headers=headers, timeout=120)
         response.raise_for_status()
         data = response.json()
-
         if "conteudo" not in data or not data["conteudo"]:
             return {"error": "Nenhum dado encontrado"}
-
-        cache.set(cache_key, data, timeout=7200)  # Armazena no cache por 2 horas
+        cache.set(cache_key, data, timeout=7200)
         logger.info(f"💾 Cache SET: {cache_key}")
         return data
-
     except requests.exceptions.Timeout:
         logger.warning(f"⏱️ Timeout na requisição para tipo {tipo_combustivel}")
     except Exception as e:
         logger.error(f"❌ Erro consultando combustível tipo {tipo_combustivel}: {e}")
-
     return {"error": f"Falha na requisição para tipo {tipo_combustivel}"}
 
-
-# ------------------------------------------------------------------------------
-
 def obter_produtos(session_key_raw, gtin_list, raio, my_lat, my_lon, dias, progress_id):
-    resultados = []
     total = len(gtin_list)
-
-    # Gera um hash dos parâmetros para diferenciar buscas com base nos dados da requisição
     session_key = f"progresso_{session_key_raw}_{progress_id}"
-    
-    # Inicia progresso explicitamente
     cache.set(session_key, 0, timeout=600)
-
     logger.warning(f"🔑 Chave da sessão recebida: {session_key_raw}")
     logger.warning(f"📦 Progresso será salvo em: {session_key}")
 
     if not gtin_list:
         logger.warning("Lista de GTIN está vazia.")
-        return pd.DataFrame()
+        return {
+            "error": "Lista de produtos vazia. Nenhuma busca foi realizada.",
+            "gtins": [],
+            "dados": []
+        }
 
     data_list = []
     max_workers = min(2, len(gtin_list))
-
     logger.info(f"📊 Uso de memória antes das requisições: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
 
-    # Inicializa progresso no cache
+    fallback_ativado = False
     cache.set(session_key, 0, timeout=300)
-    concluídos = 0
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_map = {
@@ -263,6 +185,14 @@ def obter_produtos(session_key_raw, gtin_list, raio, my_lat, my_lon, dias, progr
             gtin = future_map[future]
             try:
                 resp_json, used_gtin = future.result()
+
+                # Tenta novamente com dias dinâmicos se resposta estiver vazia
+                if (not resp_json or not resp_json.get('conteudo')) and not fallback_ativado:
+                    logger.warning(f"⚠️ Nenhum conteúdo para GTIN {gtin} com dias={dias}. Tentando fallback dinâmico.")
+                    dias_fallback = calcular_dias_validos_dinamicamente(gtin, raio, my_lat, my_lon)
+                    fallback_ativado = True
+                    resp_json, used_gtin = _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias_fallback)
+
                 if resp_json and 'conteudo' in resp_json and resp_json['conteudo']:
                     for item in resp_json.get('conteudo', []):
                         produto = item.get('produto', {})
@@ -270,7 +200,7 @@ def obter_produtos(session_key_raw, gtin_list, raio, my_lat, my_lon, dias, progr
                         endereco = estabelecimento.get('endereco', {})
                         item_gtin = produto.get('gtin')
                         if not item_gtin:
-                            logger.warning(f"GTIN ausente em um item da resposta para GTIN {gtin}.")
+                            logger.warning(f"GTIN ausente em item da resposta para GTIN {gtin}.")
                             continue
                         try:
                             data_entry = {
@@ -288,55 +218,52 @@ def obter_produtos(session_key_raw, gtin_list, raio, my_lat, my_lon, dias, progr
                             }
                             data_list.append(data_entry)
                         except Exception as e:
-                            logger.error(f"Erro ao processar item com GTIN {item_gtin} da resposta para GTIN {gtin}: {e}")
-                    del resp_json
-                    gc.collect()
+                            logger.error(f"Erro ao processar item com GTIN {item_gtin}: {e}")
                 else:
-                    logger.warning(f"Nenhum conteúdo encontrado ou resposta inválida para o GTIN {gtin}.")
+                    logger.warning(f"❌ Conteúdo vazio da SEFAZ para o GTIN {gtin}. Resposta: {resp_json}")
             except Exception as e:
                 logger.error(f"Erro ao consultar o GTIN {gtin}: {e}")
 
-            # Atualiza progresso
-            concluídos += 1
             progresso = int((i / total) * 100)
             cache.set(session_key, progresso, timeout=300)
             logger.warning(f"📊 Progresso atualizado: {progresso}% (GTIN: {gtin})")
 
     if not data_list:
-        logger.warning("Nenhum dado válido foi retornado pela API ou processado.")
-        return pd.DataFrame()
+        logger.warning("❌ Nenhum dado retornado ou processado de forma válida.")
+        return {
+            "error": "Nenhum dado foi retornado pela API da SEFAZ.",
+            "sugestao": "Tente aumentar o raio ou o número de dias. Verifique também se os GTINs são válidos.",
+            "possiveis_causas": [
+                "GTINs sem movimentação recente",
+                "Delay da SEFAZ (verifique com verificar_delay_sefaz)",
+                "Raio geográfico muito pequeno",
+                "GTINs incorretos ou sem venda recente"
+            ],
+            "gtins_processados": gtin_list,
+            "fallback_dinamico_usado": fallback_ativado
+        }
 
     df = pd.DataFrame(data_list)
 
     for col in ['CODIGO_BARRAS', 'NUMERO']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype('int32')
-
     for col in ['VALOR', 'LAT', 'LONG']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0).astype('float32')
-
     for col in ['CATEGORIA', 'PRODUTO', 'CNPJ', 'MERCADO', 'ENDERECO', 'BAIRRO']:
         if col in df.columns:
             df[col] = df[col].astype('category')
 
     logger.info(f"📊 Uso de memória após criar DataFrame: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
-
     return df
 
-# ------------------------------------------------------------------------------
 def obter_combustiveis(tipo_combustivel, raio, my_lat, my_lon, dias):
-    """
-    Obtém os 3 estabelecimentos mais próximos que vendem o combustível especificado.
-    """
     logger.debug(f"🚦 [obter_combustiveis] tipo_combustivel={tipo_combustivel} | type={type(tipo_combustivel)} | raio={raio} | lat={my_lat} | lon={my_lon} | dias={dias}")
-
     response = consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias)
-
     if not isinstance(response, dict) or 'conteudo' not in response or 'error' in response:
         logger.warning(f"Nenhum dado válido foi retornado para '{tipo_combustivel}'. Erro: {response.get('error', 'Desconhecido')}")
         return pd.DataFrame()
-
     estabelecimentos = response.get('conteudo', [])
     data_list = []
     for item in estabelecimentos:
@@ -357,18 +284,16 @@ def obter_combustiveis(tipo_combustivel, raio, my_lat, my_lon, dias):
                 'BAIRRO': endereco.get('bairro', 'Desconhecido'),
                 'LAT': lat_estab,
                 'LONG': lon_estab,
-                'DISTANCIA_KM': round(distancia, 2)
+                'DISTANCIA_KM': round(distancia, 2),
+                'dataVenda': produto.get('venda', {}).get('dataVenda') # Adicionado para verificação de delay
             }
             data_list.append(data_entry)
         except Exception as e:
             logger.error(f"Erro ao processar item para '{tipo_combustivel}': {e}")
-
     if not data_list:
         logger.warning(f"Nenhum dado processado para '{tipo_combustivel}'. Total de registros recebidos: {len(estabelecimentos)}")
         return pd.DataFrame()
-
     df = pd.DataFrame(data_list)
-    # Otimização de tipos de dados para o DataFrame de combustíveis
     for col in ['VALOR', 'LAT', 'LONG', 'DISTANCIA_KM']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0).astype('float32')
@@ -377,42 +302,65 @@ def obter_combustiveis(tipo_combustivel, raio, my_lat, my_lon, dias):
             df[col] = df[col].astype('category')     
     return df
 
-# ecanguinha/integrations/sefaz_api.py
-
-
 def calcular_dias_validos_dinamicamente(gtin_exemplo, raio, lat, lon, max_dias=10, tipo_combustivel=None):
-    """
-    Testa consultas com diferentes valores de dias e retorna o menor valor possível
-    que retorna dados válidos da SEFAZ. Usa um GTIN de exemplo.
-    """
     for dias in range(2, max_dias + 1):
         try:
             payload = {
-                "produto": {"tipoCombustivel": 2},  # pode tornar isso um parâmetro
-                "estabelecimento": {
-                    "geolocalizacao": {
-                        "latitude": lat,
-                        "longitude": lon,
-                        "raio": int(raio)
-                    }
-                },
+                "produto": {"tipoCombustivel": 2},
+                "estabelecimento": {"geolocalizacao": {"latitude": lat, "longitude": lon, "raio": int(raio)}},
                 "dias": dias,
                 "pagina": 1,
                 "registrosPorPagina": 20
             }
-
-            response = requests.post(
+            # CORREÇÃO: Usa a sessão global pré-configurada
+            response = SEFAZ_SESSION.post(
                 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/combustivel/pesquisa',
                 json=payload,
                 timeout=10
             )
-
             if response.status_code == 200:
                 data = response.json()
-                if data.get("resultado"):
+                # CORREÇÃO: A chave de resposta correta é 'conteudo'
+                if data.get("conteudo"):
                     return dias
         except Exception as e:
             logger.warning(f"❌ Erro na tentativa com {dias} dias: {e}")
         time.sleep(0.5)
-
     return max_dias
+
+# --- NOVA FUNÇÃO PARA VERIFICAÇÃO DE DELAY ---
+def verificar_delay_sefaz(latitude, longitude, raio=5):
+    """Verifica o atraso (delay) da API da SEFAZ de forma mais robusta."""
+    logger.info(f"Verificando delay da API da SEFAZ para lat={latitude}, lon={longitude}")
+    
+    fuso_horario_br = pytz.timezone('America/Sao_Paulo')
+    
+    # Usa a função obter_combustiveis para fazer a chamada à API
+    df = obter_combustiveis(tipo_combustivel=1, raio=raio, my_lat=latitude, my_lon=longitude, dias=10)
+
+    if df.empty or 'dataVenda' not in df.columns:
+        logger.warning("Verificação de delay: Nenhum dado de combustível ou coluna 'dataVenda' retornado.")
+        return 99
+    
+    logger.debug(f"Amostra de 'dataVenda' recebida para verificação de delay: {df['dataVenda'].dropna().head().tolist()}")
+
+    # O formato da API é ISO 8601 com 'Z' (UTC).
+    # O pandas lida com isso automaticamente. O 'utc=True' garante
+    # que o objeto datetime resultante seja timezone-aware (UTC).
+    datas_venda_utc = pd.to_datetime(df['dataVenda'], utc=True, errors='coerce').dropna()
+
+    if datas_venda_utc.empty:
+        logger.error("Verificação de delay: Nenhuma data de venda válida encontrada após a conversão.")
+        return 99
+
+    # Pega a data mais recente (já está em UTC)
+    data_mais_recente_utc = datas_venda_utc.max()
+    
+    # Compara com a data atual no fuso horário correto
+    data_atual_br = datetime.now(fuso_horario_br)
+    
+    # Converte a data da API para o fuso do Brasil para comparar as datas (dia/mês/ano)
+    delay = (data_atual_br.date() - data_mais_recente_utc.astimezone(fuso_horario_br).date()).days
+    
+    logger.info(f"API da SEFAZ tem um delay de aproximadamente {delay} dia(s).")
+    return int(delay)

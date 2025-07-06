@@ -1,31 +1,57 @@
-# Imagem base com Python 3.10
-FROM python:3.10-slim
+# --- Estágio 1: Builder ---
+# Usado para instalar dependências e compilar pacotes.
+FROM python:3.10-slim AS builder
 
-# Diretório de trabalho
+# Define o diretório de trabalho
 WORKDIR /app
 
-# Copia o requirements.txt e instala dependências
-COPY requirements.txt ./
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# Previne a criação de arquivos .pyc
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
 
-# Copia o restante da aplicação
-COPY . .
+# Instala dependências do sistema necessárias para compilar pacotes Python
+# e netcat para o script de entrypoint.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    curl \
+    netcat-traditional \
+    && rm -rf /var/lib/apt/lists/*
 
-# Coleta arquivos estáticos para a pasta `staticfiles/`
-RUN python manage.py collectstatic --noinput
+# Copia o arquivo de requisitos e instala as dependências em um "wheelhouse"
+COPY requirements.txt .
+RUN pip wheel --no-cache-dir --wheel-dir /wheels -r requirements.txt
 
-# Variável de ambiente padrão para Django
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+
+# --- Estágio 2: Final ---
+# A imagem final que será usada para rodar a aplicação.
+FROM python:3.10-slim
+
+# Define o diretório de trabalho
+WORKDIR /app
+
+# Previne a criação de arquivos .pyc
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
 ENV DJANGO_SETTINGS_MODULE=canguinaProject.settings
 
-HEALTHCHECK --interval=30s --timeout=10s \
-  CMD curl -f http://localhost:8000/ || exit 1
+# Copia as dependências pré-compiladas do estágio builder
+COPY --from=builder /wheels /wheels
+COPY --from=builder /app/requirements.txt .
+# Instala as dependências a partir dos wheels, o que é mais rápido
+RUN pip install --no-cache /wheels/*
 
+# Copia o código da aplicação e o script de entrypoint
+COPY . .
+COPY ./entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# Expõe a porta 8000 (usada pelo Gunicorn)---
+# Coleta os arquivos estáticos
+RUN python manage.py collectstatic --noinput
+
+# Expõe a porta que o Gunicorn vai usar
 EXPOSE 8000
 
-# Comando para iniciar o Gunicorn (usa $PORT se disponível, ou 8000)
-CMD sh -c "gunicorn canguinaProject.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 3 --threads 6 --timeout 180 --keep-alive 300 --log-level debug"
+# Define o script de entrypoint como o ponto de entrada do contêiner.
+# Ele irá executar o comando passado pelo docker-compose (CMD).
+ENTRYPOINT ["/entrypoint.sh"]
