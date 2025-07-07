@@ -183,6 +183,9 @@ def buscar_ofertas_task(self, gtin_list, raio, latitude, longitude, dias, preco_
         # logger.info(f"📊 Preço médio do combustível calculado: R$ {media_combustivel:.2f}")
 
         # --- ETAPA 3: PREPARAR DADOS E RODAR SOLVER ---
+
+        # ADICIONE A IMPORTAÇÃO AQUI
+        from algorithms.tpplib_data import create_tpplib_data 
         update_progress(70, "Preparando dados para o otimizador...")
         avg_lat = df["LAT"].mean()
         avg_lon = df["LONG"].mean()
