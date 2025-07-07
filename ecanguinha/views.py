@@ -16,7 +16,6 @@ from django.contrib import messages  # Importe o messages framework
 from algorithms.alns_solver import alns_solve_tpp
 # Importações dos módulos personalizados
 from algorithms.sefaz_api import obter_produtos, obter_combustiveis
-from algorithms.tpplib_data import create_tpplib_data
 from geopy.distance import geodesic  # Importação correta
 from django.shortcuts import render, redirect
 from django.views.decorators.csrf import csrf_exempt
@@ -271,6 +270,7 @@ def listar_produtos(request):
 
         avg_lat = df["LAT"].mean() if "LAT" in df.columns else latitude
         avg_lon = df["LONG"].mean() if "LONG" in df.columns else longitude
+        from algorithms.tpplib_data import create_tpplib_data
 
         tpplib_data = create_tpplib_data(df, avg_lat, avg_lon, media_preco=preco_combustivel)
         resultado_solver = alns_solve_tpp(tpplib_data, 10000, 100)
