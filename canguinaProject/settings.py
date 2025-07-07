@@ -89,16 +89,20 @@ TEMPLATES = [
 # Definição do entry point WSGI
 WSGI_APPLICATION = 'canguinaProject.wsgi.application'
 
-# # Banco de dados: atenção ao uso de SQLite em produção!
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-DATABASES = {
-    'default': dj_database_url.config(conn_max_age=600)
-}
+DATABASE_URL = os.getenv('DATABASE_URL')
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.parse(DATABASE_URL)
+    }
+    DATABASES['default']['CONN_MAX_AGE'] = 600
+else:
+    # Fallback para SQLite se DATABASE_URL não estiver definida
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # REDIS_URL: pode ser ajustado via .env ou fallback local
 REDIS_URL = config('REDIS_URL', default='redis://127.0.0.1:6379/1')
