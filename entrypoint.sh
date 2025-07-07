@@ -20,11 +20,11 @@ echo "⏳ Preparando o ambiente da aplicação..."
 echo "📦 Aplicando migrações do banco de dados..."
 python manage.py migrate --noinput
 
-# A flag --clear garante que arquivos estáticos antigos sejam removidos.
+echo "🎯 Preparando diretório de estáticos..."
+mkdir -p /app/staticfiles
+
 echo "🎯 Coletando arquivos estáticos..."
 python manage.py collectstatic --noinput --clear
-
-echo "✅ Ambiente pronto. Iniciando a aplicação..."
 
 # Executa o comando principal passado para o contêiner (gunicorn, celery, etc.).
 exec "$@"
