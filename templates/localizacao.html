@@ -115,8 +115,7 @@
                                         value="57020-040"
                                         placeholder="57000-000"
                                         maxlength="9"
-                                        style="height: 60px; width: 100px; font-size: 14px;"
-                                        value = "57025-040">
+                                        style="height: 60px; width: 100px; font-size: 14px;">
                                         
                                 <button type="button"
                                         class="btn btn-outline-primary"
@@ -272,8 +271,14 @@
         });
 
         btnBuscarCep.addEventListener("click", () => {
-            buscarLocalPorCep(cepInput.value);
+            const cep = cepInput.value.trim();
+            if (!cep || cep.length < 8) {
+                alert("Digite um CEP válido.");
+                return;
+            }
+            buscarLocalPorCep(cep);
         });
+
 
         document.querySelectorAll('input[name="tipoCombustivel"]').forEach(radio => {
             radio.addEventListener("change", function () {
@@ -444,6 +449,8 @@
         });
 
         //buscarLocalPorCep(cepInput.value || "57020-040");
+        buscarLocalPorCep(cepInput.value || "57020-040");
+
     });
 </script>
 {% endblock %}
