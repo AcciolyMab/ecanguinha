@@ -196,15 +196,15 @@
                     <tbody>
                         <tr>
                             <td>Preço Médio combustível</td>
-                            <td>R$ {{ media_combustivel|floatformat:2 }}</td>
+                            <td>R$ {{ media_combustivel|default:0.0|floatformat:2 }}</td>
                         </tr>
                         <tr>
                             <td>Sub Total Cesta Básica</td>
-                            <td>R$ {{ subtotal_cesta_basica|floatformat:2 }}</td>
+                            <td>R$ {{ subtotal_cesta_basica|default:0.0|floatformat:2 }}</td>
                         </tr>
                         <tr>
                             <td>Custo de deslocamento:</td>
-                            <td>R$ {{ resultado.total_cost|subtrair:subtotal_cesta_basica|floatformat:2 }}</td>
+                            <td>R$ {{ resultado.total_cost|subtrair:subtotal_cesta_basica|default:0.0|floatformat:2 }}</td>
                         </tr>
                         <tr>
                             <td><strong>Custo total</strong></td>
@@ -213,6 +213,7 @@
                     </tbody>
                 </table>
             </div>
+
 
             <!-- ✅ Container separado só para os logos -->
             <div style="margin-top: 30px; background-color: #d1f0e3; border: 2px solid #168f53; border-radius: 8px; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
@@ -235,9 +236,15 @@
 
     {{ user_lat|json_script:"user-latitude" }}
     {{ user_lon|json_script:"user-longitude" }}
+    {{ user_lat|json_script:"user-latitude" }}
+    {{ user_lon|json_script:"user-longitude" }}
     {{ resultado.route|json_script:"rota-data" }}
-    {{ node_coords|json_script:"node-coords-data" }}
+    {% for coord in node_coords %}
+        <p>Latitude: {{ coord.0 }}, Longitude: {{ coord.1 }}</p>
+    {% endfor %}
     {{ mercados_comprados|json_script:"mercados-data" }}
+
+
 
 
 

@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   # Serviço Redis: Usado como Message Broker para o Celery e para Cache do Django.

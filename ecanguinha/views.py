@@ -27,6 +27,7 @@ from algorithms.sefaz_api import calcular_dias_validos_dinamicamente
 from ecanguinha.tasks import processar_busca_produtos_task
 from random import randint
 from algorithms.sefaz_api import verificar_delay_sefaz # Importe a função
+from ecanguinha.tasks import buscar_ofertas_task
 from ecanguinha.services.combustivel import (
     calcular_media_combustivel,
     obter_produtos
@@ -288,7 +289,7 @@ def listar_produtos(request):
                 'item_list': gtin_list
             })
         
-        rota = [idx for idx in resultado_solver.get('route', []) if 1 <= idx <= len(resultado_solver.get('mercados_comprados', []))]
+        route = [idx for idx in resultado_solver.get('route', []) if 1 <= idx <= len(resultado_solver.get('mercados_comprados', []))]
         purchases = resultado_solver.get('purchases', {})
         total_cost = resultado_solver.get('total_cost', 0.0)
         total_distance = resultado_solver.get('total_distance', 0.0)
@@ -296,10 +297,18 @@ def listar_produtos(request):
         mercados_raw = resultado_solver.get('mercados_comprados', [])
 
         node_coords = {
-            str(idx): [float(m.get('latitude', avg_lat)), float(m.get('longitude', avg_lon))]
+            str(idx): [
+                float(m.get('latitude', avg_lat)), 
+                float(m.get('longitude', avg_lon))
+            ]
             for idx, m in enumerate(mercados_raw, start=1)
             if m.get('latitude') and m.get('longitude')
         }
+
+        # Fallback caso não haja coordenadas
+        if not node_coords:
+            node_coords = {0: [avg_lat, avg_lon]}  # Usando as coordenadas médias como fallback
+
 
         processed_purchases = {key.replace('Produtos comprados no ', ''): value for key, value in purchases.items()}
 
@@ -323,7 +332,7 @@ def listar_produtos(request):
 
         context = {
             'resultado': {
-                'rota': rota,
+                'rota': route,
                 'purchases': processed_purchases,
                 'total_cost': float(total_cost),
                 'total_distance': float(total_distance),
@@ -341,6 +350,7 @@ def listar_produtos(request):
         }
 
         logger.warning(f"🧭 Coordenadas médias: lat={avg_lat}, lon={avg_lon}")
+        #print(context)
         return render(request, 'lista.html', context)
 
     except Exception as e:
@@ -454,17 +464,20 @@ def processar_combustivel(request):
         return JsonResponse({"erro": f"Erro interno: {str(e)}"}, status=500)
 
 
-@csrf_exempt # Adicione isso se o POST vier de um AJAX sem o token CSRF no corpo
+@csrf_exempt
 def iniciar_busca_produtos(request):
-    if request.method == 'POST':
-        # 1. Extrair e validar dados do request.POST
-        latitude = request.POST.get('latitude', '-9.6658')
-        longitude = request.POST.get('longitude', '-35.7350')
-        dias = request.POST.get('dias', '1')
-        raio = request.POST.get('raio', '1')
-        item_list_json = request.POST.get('item_list')
-        preco_combustivel = request.POST.get('precoCombustivel', '0.0')
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método GET não permitido'}, status=405)
 
+    try:
+        # Extrai dados do formulário
+        latitude = float(request.POST.get('latitude', '-9.6658'))
+        longitude = float(request.POST.get('longitude', '-35.7350'))
+        dias = int(request.POST.get('dias', '1'))
+        raio = int(request.POST.get('raio', '1'))
+        preco_combustivel = float(request.POST.get('precoCombustivel', '0.0'))
+
+        item_list_json = request.POST.get('item_list')
         if not item_list_json:
             return JsonResponse({'error': 'Nenhum produto selecionado.'}, status=400)
 
@@ -472,17 +485,34 @@ def iniciar_busca_produtos(request):
             item_list = json.loads(item_list_json)
             gtin_list = [int(gtin) for gtin in item_list]
         except (json.JSONDecodeError, TypeError, ValueError) as e:
+            logger.exception("Erro ao interpretar item_list.")
             return JsonResponse({'error': f'Erro ao processar a lista de produtos: {e}'}, status=400)
 
-        # 2. Iniciar a tarefa Celery
-        task = processar_busca_produtos_task.delay(
-            gtin_list, raio, latitude, longitude, dias, float(preco_combustivel)
-        )
-        
-        # 3. Retornar o ID da tarefa para o frontend
-        return JsonResponse({'task_id': task.id})
+        # Garante session_key válida
+        if not request.session.session_key:
+            request.session.save()
+        session_key = request.session.session_key
 
-    return JsonResponse({'error': 'Método GET não permitido'}, status=405)
+        # Inicia a task Celery com todos os argumentos
+        task = buscar_ofertas_task.delay(
+            gtin_list, raio, latitude, longitude, dias, preco_combustivel, session_key=session_key
+        )
+
+        progress_id = task.id
+        cache.set(f"progresso_{session_key}_{progress_id}", 0, timeout=600)
+
+        logger.info(f"🚀 Task Celery iniciada | session_key={session_key} | progress_id={progress_id}")
+
+        return JsonResponse({
+            'task_id': task.id,
+            'progress_id': progress_id,
+            'status': 'PROCESSING',
+            'message': 'Busca iniciada com sucesso.'
+        })
+
+    except Exception as e:
+        logger.exception("❌ Erro interno ao iniciar a busca de produtos.")
+        return JsonResponse({'error': f'Erro interno: {str(e)}'}, status=500)
 
 def get_task_status(request):
     task_id = request.GET.get('task_id')
@@ -514,45 +544,24 @@ def get_task_status(request):
 
     return JsonResponse(response_data)
 
+def sum_precos(produtos):
+    return sum(item['preco'] for item in produtos if 'preco' in item)
 
-def mostrar_resultado(request, task_id):
-    task_result = AsyncResult(task_id)
-    if task_result.state == 'SUCCESS':
-        context = task_result.result
-        # A view `lista.html` espera 'resultado' como uma chave do dicionário
-        # Vamos garantir que o contexto tenha a estrutura correta.
-        if 'error' in context:
-            messages.error(request, context['error'])
-            return render(request, 'lista.html', {'error': context['error']}) # Renderiza com erro
-        return render(request, 'lista.html', context)
-    elif task_result.state == 'FAILURE':
-         messages.error(request, "Ocorreu um erro ao processar sua solicitação.")
-         return redirect('localizacao')
-    else:
-        # Se a tarefa ainda não terminou, pode-se mostrar uma página de "aguarde"
-        # ou simplesmente redirecionar para a home.
-        messages.info(request, "Sua solicitação ainda está sendo processada. Por favor, aguarde.")
-        return redirect('localizacao')
-    
 def mostrar_resultado(request, task_id):
     task_result = AsyncResult(task_id)
 
     if task_result.state == 'SUCCESS':
-        context_raw = task_result.result  # Resultado bruto da tarefa
+        context_raw = task_result.result
 
-        # Verificamos se o resultado da tarefa foi um dicionário de erro
         if isinstance(context_raw, dict) and 'error' in context_raw:
             messages.error(request, context_raw['error'])
             return redirect('localizacao')
 
-        # --- LÓGICA DE ENRIQUECIMENTO APLICADA AQUI ---
         mercados_raw = context_raw.get('mercados_comprados', [])
-        mercados_enriquecidos = []
-
-        # Use uma localização padrão ou a média se disponível
         avg_lat = context_raw.get('user_lat', -9.6658)
         avg_lon = context_raw.get('user_lon', -35.7350)
 
+        mercados_enriquecidos = []
         for m in mercados_raw:
             mercado = {
                 'nome': m.get('nome', 'Desconhecido'),
@@ -560,28 +569,53 @@ def mostrar_resultado(request, task_id):
                 'latitude': float(m.get('latitude', avg_lat)),
                 'longitude': float(m.get('longitude', avg_lon)),
                 'valor_total': float(m.get('valor_total', 0.0)),
-                # Garante que estas chaves sempre existam
                 'tipo': m.get('tipo', 'Mercado'),
                 'avaliacao': m.get('avaliacao', None),
                 'distancia': m.get('distancia', None),
             }
             mercados_enriquecidos.append(mercado)
-        
-        # Substitui a lista de mercados brutos pela lista enriquecida no contexto
-        context_enriquecido = context_raw.copy() # Cria uma cópia para não modificar o original
-        context_enriquecido['mercados_comprados'] = mercados_enriquecidos
-        # --- FIM DA LÓGICA DE ENRIQUECIMENTO ---
 
-        # Renderiza a página de lista com o contexto tratado
-        return render(request, 'lista.html', context_enriquecido)
+        context = context_raw.copy()
+        context['mercados_comprados'] = mercados_enriquecidos
+
+        # ✅ Calcula subtotal da cesta básica
+        total = 0.0
+        purchases = context.get('purchases', {})
+        for produtos in purchases.values():
+            total += sum_precos(produtos)
+        context['subtotal_cesta_basica'] = total
+
+        # ✅ Garante que media_combustivel esteja presente
+        context.setdefault('media_combustivel', 0.0)
+
+        # ✅ Reorganiza dados no formato esperado pela template
+        context['resultado'] = {
+            'route': context.get('route', []),
+            'purchases': context.get('purchases', {}),
+            'total_cost': context.get('total_cost', 0.0),
+            'total_distance': context.get('total_distance', 0.0),
+            'execution_time': context.get('execution_time', 0.0),
+        }
+
+        # ✅ Adiciona coordenadas dos nós
+        context['node_coords'] = [
+            (float(m['latitude']), float(m['longitude']))
+            for m in mercados_enriquecidos
+            if m.get('latitude') is not None and m.get('longitude') is not None
+        ]
+
+        # ✅ Adiciona user_lat e user_lon ao contexto (para uso no template)
+        context['user_lat'] = avg_lat
+        context['user_lon'] = avg_lon
+        logger.warning(f"🧭 Coordenadas médias: lat={avg_lat}, lon={avg_lon}")
+        #print(context)
+
+        return render(request, 'lista.html', context)
 
     elif task_result.state == 'FAILURE':
-        # Erro inesperado na tarefa Celery
         messages.error(request, "Ocorreu um erro inesperado ao processar sua solicitação. Por favor, tente novamente.")
         return redirect('localizacao')
-    
-    else: # PENDING, RETRY, etc.
-        # A tarefa ainda está em processamento
+
+    else:
         messages.info(request, "Sua busca ainda está em processamento. Aguarde um momento e a página de resultados aparecerá.")
-        # Pode redirecionar para uma página de "aguarde" ou para a busca novamente
         return redirect('localizacao')
