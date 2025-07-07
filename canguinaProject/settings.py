@@ -92,7 +92,10 @@ else:
 # ========================
 from urllib.parse import urlparse
 
-REDIS_ENV_VAR = 'REDIS_URL_PROD' if not DEBUG else 'REDIS_URL'
+FORCE_RAILWAY_REDIS = config("FORCE_RAILWAY_REDIS", default="0") == "1"
+
+REDIS_ENV_VAR = 'REDIS_URL' if FORCE_RAILWAY_REDIS else ('REDIS_URL_PROD' if not DEBUG else 'REDIS_URL')
+
 full_redis_url = config(REDIS_ENV_VAR, default='redis://127.0.0.1:6379').strip()
 
 parsed = urlparse(full_redis_url)
