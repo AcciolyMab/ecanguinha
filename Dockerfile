@@ -5,8 +5,8 @@ FROM python:3.10-slim AS builder
 
 WORKDIR /app
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -25,24 +25,30 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV DJANGO_SETTINGS_MODULE=canguinaProject.settings
+# 🔧 Variáveis padrão para ambiente de produção
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DJANGO_SETTINGS_MODULE=canguinaProject.settings \
+    ENVIRONMENT=production
 
-# Instala apenas o necessário
+# 📦 Instala dependências Python
 COPY --from=builder /wheels /wheels
 COPY --from=builder /app/requirements.txt .
-RUN pip install --no-cache /wheels/*
+RUN pip install --no-cache-dir /wheels/*
 
-# Copia todo o projeto
-COPY . .
+# 🔒 Copia apenas os diretórios essenciais (mais seguro e performático)
+COPY ecanguinha/ ./ecanguinha/
+COPY canguinaProject/ ./canguinaProject/
+COPY manage.py .
+COPY templates/ ./templates/
+COPY static/ ./static/
+COPY entrypoint.sh /entrypoint.sh
 
-# Copia e torna o entrypoint executável
-COPY ./entrypoint.sh /entrypoint.sh
+# 🔧 Permissão de execução
 RUN chmod +x /entrypoint.sh
 
-# Expõe a porta usada pelo Gunicorn
+# 🌐 Expõe a porta do Gunicorn
 EXPOSE 8000
 
-# Ponto de entrada padrão
+# 🚀 Entrypoint padrão
 ENTRYPOINT ["/entrypoint.sh"]

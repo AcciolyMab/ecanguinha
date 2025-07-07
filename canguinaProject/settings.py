@@ -90,12 +90,16 @@ else:
 # ========================
 # 🚀 REDIS & CACHE
 # ========================
+from urllib.parse import urlparse
 
 REDIS_ENV_VAR = 'REDIS_URL_PROD' if not DEBUG else 'REDIS_URL'
-RAW_REDIS_URL = config(REDIS_ENV_VAR, default='redis://127.0.0.1:6379').split("/", 3)[0]
+full_redis_url = config(REDIS_ENV_VAR, default='redis://127.0.0.1:6379').strip()
 
-if not RAW_REDIS_URL.startswith(('redis://', 'rediss://', 'unix://')):
-    raise ValueError(f"❌ {REDIS_ENV_VAR} inválida: {RAW_REDIS_URL}")
+parsed = urlparse(full_redis_url)
+if not parsed.hostname or not parsed.scheme:
+    raise ValueError(f"❌ {REDIS_ENV_VAR} inválida: {full_redis_url}")
+
+RAW_REDIS_URL = f"{parsed.scheme}://{parsed.hostname}:{parsed.port or 6379}"
 
 logger.warning(f"🛠️ Ambiente: {'PRODUÇÃO' if not DEBUG else 'DESENVOLVIMENTO'} | Redis em uso: {RAW_REDIS_URL}")
 
@@ -118,6 +122,7 @@ CACHES = {
         }
     }
 }
+
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 SESSION_CACHE_ALIAS = 'default'
