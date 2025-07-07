@@ -41,7 +41,6 @@ COPY ecanguinha/ ./ecanguinha/
 COPY canguinaProject/ ./canguinaProject/
 COPY manage.py .
 COPY templates/ ./templates/
-COPY static/ ./static/
 COPY entrypoint.sh /entrypoint.sh
 
 # 🔧 Permissão de execução
