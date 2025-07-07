@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   redis:
-    image: redis:6-alpine
+    image: redis:7.0
     container_name: canguinha_redis
     restart: always
     ports:
