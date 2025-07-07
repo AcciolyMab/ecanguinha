@@ -99,7 +99,11 @@ parsed = urlparse(full_redis_url)
 if not parsed.hostname or not parsed.scheme:
     raise ValueError(f"❌ {REDIS_ENV_VAR} inválida: {full_redis_url}")
 
-RAW_REDIS_URL = f"{parsed.scheme}://{parsed.hostname}:{parsed.port or 6379}"
+parsed_url = urlparse(full_redis_url)
+
+# ✅ LÓGICA CORRIGIDA (MANTÉM A AUTENTICAÇÃO):
+# O atributo `netloc` já contém "usuario:senha@hostname:porta"
+RAW_REDIS_URL = f"{parsed_url.scheme}://{parsed_url.netloc}"
 
 logger.warning(f"🛠️ Ambiente: {'PRODUÇÃO' if not DEBUG else 'DESENVOLVIMENTO'} | Redis em uso: {RAW_REDIS_URL}")
 
