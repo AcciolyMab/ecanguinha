@@ -147,227 +147,227 @@ def progresso_status(request):
 
     return JsonResponse({"porcentagem": progresso})
 
-def listar_produtos(request):
-    # --- INÍCIO DAS IMPORTAÇÕES TARDIA ---
-    # Mover todas as importações pesadas para dentro da função
-    from algorithms.alns_solver import alns_solve_tpp
-    from algorithms.sefaz_api import obter_produtos
-    from algorithms.tpplib_data import create_tpplib_data
-    import pandas as pd
-    import numpy as np
-    # --- FIM DAS IMPORTAÇÕES TARDIA ---
+# def listar_produtos(request):
+#     # --- INÍCIO DAS IMPORTAÇÕES TARDIA ---
+#     # Mover todas as importações pesadas para dentro da função
+#     from algorithms.alns_solver import alns_solve_tpp
+#     from algorithms.sefaz_api import obter_produtos
+#     from algorithms.tpplib_data import create_tpplib_data
+#     import pandas as pd
+#     import numpy as np
+#     # --- FIM DAS IMPORTAÇÕES TARDIA ---
 
-    if request.method != 'POST':
-        messages.error(request, "Método inválido. Apenas POST permitido.")
-        return redirect('localizacao')
+#     if request.method != 'POST':
+#         messages.error(request, "Método inválido. Apenas POST permitido.")
+#         return redirect('localizacao')
 
-    if not request.session.session_key:
-        request.session.save()
+#     if not request.session.session_key:
+#         request.session.save()
 
-    latitude = request.POST.get('latitude', -9.6658)
-    longitude = request.POST.get('longitude', -35.7350)
-    dias = request.POST.get('dias', 0)
-    raio = request.POST.get('raio', 0)
-    preco_combustivel = request.POST.get('precoCombustivel', 0.0)
-    item_list = request.POST.get('item_list')
+#     latitude = request.POST.get('latitude', -9.6658)
+#     longitude = request.POST.get('longitude', -35.7350)
+#     dias = request.POST.get('dias', 0)
+#     raio = request.POST.get('raio', 0)
+#     preco_combustivel = request.POST.get('precoCombustivel', 0.0)
+#     item_list = request.POST.get('item_list')
 
-    try:
-        latitude = float(latitude)
-        longitude = float(longitude)
-        preco_combustivel = float(preco_combustivel)
-        dias_slider = int(dias) # Renomeado para clareza
-        raio = int(raio)
-    except ValueError as e:
-        messages.error(request, f"Erro de conversão de dados: {e}")
-        return render(request, 'lista.html', {
-            'resultado': {'rota': [], 'purchases': {}, 'total_cost': 0.0, 'total_distance': 0.0, 'execution_time': 0.0},
-            'mercados_comprados': [],
-            'media_combustivel': preco_combustivel,
-            'user_lat': latitude,
-            'user_lon': longitude,
-            'dias': dias,
-            'raio': raio,
-            'item_list': []
-        })
+#     try:
+#         latitude = float(latitude)
+#         longitude = float(longitude)
+#         preco_combustivel = float(preco_combustivel)
+#         dias_slider = int(dias) # Renomeado para clareza
+#         raio = int(raio)
+#     except ValueError as e:
+#         messages.error(request, f"Erro de conversão de dados: {e}")
+#         return render(request, 'lista.html', {
+#             'resultado': {'rota': [], 'purchases': {}, 'total_cost': 0.0, 'total_distance': 0.0, 'execution_time': 0.0},
+#             'mercados_comprados': [],
+#             'media_combustivel': preco_combustivel,
+#             'user_lat': latitude,
+#             'user_lon': longitude,
+#             'dias': dias,
+#             'raio': raio,
+#             'item_list': []
+#         })
 
-    if not item_list:
-        messages.error(request, "Nenhum produto selecionado.")
-        # (código original mantido)
-        return render(request, 'lista.html', {
-            'resultado': {'rota': [], 'purchases': {}, 'total_cost': 0.0, 'total_distance': 0.0, 'execution_time': 0.0},
-            'mercados_comprados': [],
-            'media_combustivel': preco_combustivel,
-            'user_lat': latitude,
-            'user_lon': longitude,
-            'dias': dias,
-            'raio': raio,
-            'item_list': []
-        })
+#     if not item_list:
+#         messages.error(request, "Nenhum produto selecionado.")
+#         # (código original mantido)
+#         return render(request, 'lista.html', {
+#             'resultado': {'rota': [], 'purchases': {}, 'total_cost': 0.0, 'total_distance': 0.0, 'execution_time': 0.0},
+#             'mercados_comprados': [],
+#             'media_combustivel': preco_combustivel,
+#             'user_lat': latitude,
+#             'user_lon': longitude,
+#             'dias': dias,
+#             'raio': raio,
+#             'item_list': []
+#         })
 
-    try:
-        item_list = json.loads(item_list) if isinstance(item_list, str) else item_list
-        gtin_list = [int(gtin) for gtin in item_list]
-    except (json.JSONDecodeError, TypeError, ValueError) as e:
-        # (código original mantido)
-        logger.error("Erro ao processar item_list: %s", e)
-        messages.error(request, "Erro ao processar a lista de produtos.")
-        return render(request, 'lista.html', {
-            'resultado': {'rota': [], 'purchases': {}, 'total_cost': 0.0, 'total_distance': 0.0, 'execution_time': 0.0},
-            'mercados_comprados': [],
-            'media_combustivel': preco_combustivel,
-            'user_lat': latitude,
-            'user_lon': longitude,
-            'dias': dias,
-            'raio': raio,
-            'item_list': []
-        })
+#     try:
+#         item_list = json.loads(item_list) if isinstance(item_list, str) else item_list
+#         gtin_list = [int(gtin) for gtin in item_list]
+#     except (json.JSONDecodeError, TypeError, ValueError) as e:
+#         # (código original mantido)
+#         logger.error("Erro ao processar item_list: %s", e)
+#         messages.error(request, "Erro ao processar a lista de produtos.")
+#         return render(request, 'lista.html', {
+#             'resultado': {'rota': [], 'purchases': {}, 'total_cost': 0.0, 'total_distance': 0.0, 'execution_time': 0.0},
+#             'mercados_comprados': [],
+#             'media_combustivel': preco_combustivel,
+#             'user_lat': latitude,
+#             'user_lon': longitude,
+#             'dias': dias,
+#             'raio': raio,
+#             'item_list': []
+#         })
         
-    # --- INÍCIO DA NOVA LÓGICA INSERIDA ---
-    try:
-        logger.info("Verificando status e atraso da API SEFAZ para produtos...")
-        dias_reais_sefaz = calcular_dias_validos_dinamicamente(
-            gtin_exemplo=gtin_list[0],
-            tipo_combustivel=2,
-            raio=raio,
-            lat=latitude,
-            lon=longitude,
-            max_dias=10
-        )
+#     # --- INÍCIO DA NOVA LÓGICA INSERIDA ---
+#     try:
+#         logger.info("Verificando status e atraso da API SEFAZ para produtos...")
+#         dias_reais_sefaz = calcular_dias_validos_dinamicamente(
+#             gtin_exemplo=gtin_list[0],
+#             tipo_combustivel=2,
+#             raio=raio,
+#             lat=latitude,
+#             lon=longitude,
+#             max_dias=10
+#         )
 
-        if dias_reais_sefaz > 10:
-            messages.error(request, "A API da SEFAZ parece estar fora do ar ou com dados muito desatualizados. Tente novamente mais tarde.")
-            return redirect('localizacao')
+#         if dias_reais_sefaz > 10:
+#             messages.error(request, "A API da SEFAZ parece estar fora do ar ou com dados muito desatualizados. Tente novamente mais tarde.")
+#             return redirect('localizacao')
 
-        # Decide qual valor de dias usar, conforme a regra de negócio
-        dias_para_consulta = max(dias_slider, dias_reais_sefaz)
-        logger.info(f"Slider: {dias_slider}d. Atraso SEFAZ: {dias_reais_sefaz}d. Usando: {dias_para_consulta}d para a consulta.")
+#         # Decide qual valor de dias usar, conforme a regra de negócio
+#         dias_para_consulta = max(dias_slider, dias_reais_sefaz)
+#         logger.info(f"Slider: {dias_slider}d. Atraso SEFAZ: {dias_reais_sefaz}d. Usando: {dias_para_consulta}d para a consulta.")
 
-    except IndexError:
-        messages.error(request, "A lista de produtos está vazia.")
-        return redirect('localizacao')
-    # --- FIM DA NOVA LÓGICA ---
+#     except IndexError:
+#         messages.error(request, "A lista de produtos está vazia.")
+#         return redirect('localizacao')
+#     # --- FIM DA NOVA LÓGICA ---
 
-    progress_id = request.POST.get('progress_id') or str(uuid.uuid4())
-    session_key = request.session.session_key
-    cache_key = f"progresso_{session_key}_{progress_id}"
-    cache.set(cache_key, 0, timeout=600)
+#     progress_id = request.POST.get('progress_id') or str(uuid.uuid4())
+#     session_key = request.session.session_key
+#     cache_key = f"progresso_{session_key}_{progress_id}"
+#     cache.set(cache_key, 0, timeout=600)
 
-    logger.warning(f"🔁 Progresso iniciado para sessão {session_key}")
+#     logger.warning(f"🔁 Progresso iniciado para sessão {session_key}")
 
-    try:
-        # A chamada agora usa a variável 'dias_para_consulta'
-        df = obter_produtos(session_key, gtin_list, raio, latitude, longitude, dias_para_consulta, progress_id)
+#     try:
+#         # A chamada agora usa a variável 'dias_para_consulta'
+#         df = obter_produtos(session_key, gtin_list, raio, latitude, longitude, dias_para_consulta, progress_id)
 
-        if df.empty:
-            messages.warning(request, "Nenhum dado foi retornado pela API para os produtos e localização selecionados.")
-            return render(request, 'lista.html', {
-                'resultado': {'rota': [], 'purchases': {}, 'total_cost': 0.0, 'total_distance': 0.0, 'execution_time': 0.0},
-                'mercados_comprados': [],
-                'media_combustivel': preco_combustivel,
-                'user_lat': latitude,
-                'user_lon': longitude,
-                'dias': dias_para_consulta, # Usando a variável correta
-                'raio': raio,
-                'item_list': gtin_list
-            })
+#         if df.empty:
+#             messages.warning(request, "Nenhum dado foi retornado pela API para os produtos e localização selecionados.")
+#             return render(request, 'lista.html', {
+#                 'resultado': {'rota': [], 'purchases': {}, 'total_cost': 0.0, 'total_distance': 0.0, 'execution_time': 0.0},
+#                 'mercados_comprados': [],
+#                 'media_combustivel': preco_combustivel,
+#                 'user_lat': latitude,
+#                 'user_lon': longitude,
+#                 'dias': dias_para_consulta, # Usando a variável correta
+#                 'raio': raio,
+#                 'item_list': gtin_list
+#             })
 
-        avg_lat = df["LAT"].mean() if "LAT" in df.columns else latitude
-        avg_lon = df["LONG"].mean() if "LONG" in df.columns else longitude
+#         avg_lat = df["LAT"].mean() if "LAT" in df.columns else latitude
+#         avg_lon = df["LONG"].mean() if "LONG" in df.columns else longitude
 
-        tpplib_data = create_tpplib_data(df, avg_lat, avg_lon, media_preco=preco_combustivel)
-        resultado_solver = alns_solve_tpp(tpplib_data, 10000, 100)
+#         tpplib_data = create_tpplib_data(df, avg_lat, avg_lon, media_preco=preco_combustivel)
+#         resultado_solver = alns_solve_tpp(tpplib_data, 10000, 100)
 
-        if not resultado_solver:
-            # (código original mantido)
-            messages.error(request, "Não foi possível encontrar uma solução viável.")
-            return render(request, 'lista.html', {
-                'resultado': {'rota': [], 'purchases': {}, 'total_cost': 0.0, 'total_distance': 0.0, 'execution_time': 0.0},
-                'mercados_comprados': [],
-                'media_combustivel': preco_combustivel,
-                'user_lat': avg_lat,
-                'user_lon': avg_lon,
-                'dias': dias_para_consulta, # Usando a variável correta
-                'raio': raio,
-                'item_list': gtin_list
-            })
+#         if not resultado_solver:
+#             # (código original mantido)
+#             messages.error(request, "Não foi possível encontrar uma solução viável.")
+#             return render(request, 'lista.html', {
+#                 'resultado': {'rota': [], 'purchases': {}, 'total_cost': 0.0, 'total_distance': 0.0, 'execution_time': 0.0},
+#                 'mercados_comprados': [],
+#                 'media_combustivel': preco_combustivel,
+#                 'user_lat': avg_lat,
+#                 'user_lon': avg_lon,
+#                 'dias': dias_para_consulta, # Usando a variável correta
+#                 'raio': raio,
+#                 'item_list': gtin_list
+#             })
         
-        route = [idx for idx in resultado_solver.get('route', []) if 1 <= idx <= len(resultado_solver.get('mercados_comprados', []))]
-        purchases = resultado_solver.get('purchases', {})
-        total_cost = resultado_solver.get('total_cost', 0.0)
-        total_distance = resultado_solver.get('total_distance', 0.0)
-        execution_time = resultado_solver.get('execution_time', 0.0)
-        mercados_raw = resultado_solver.get('mercados_comprados', [])
+#         route = [idx for idx in resultado_solver.get('route', []) if 1 <= idx <= len(resultado_solver.get('mercados_comprados', []))]
+#         purchases = resultado_solver.get('purchases', {})
+#         total_cost = resultado_solver.get('total_cost', 0.0)
+#         total_distance = resultado_solver.get('total_distance', 0.0)
+#         execution_time = resultado_solver.get('execution_time', 0.0)
+#         mercados_raw = resultado_solver.get('mercados_comprados', [])
 
-        node_coords = {
-            str(idx): [
-                float(m.get('latitude', avg_lat)), 
-                float(m.get('longitude', avg_lon))
-            ]
-            for idx, m in enumerate(mercados_raw, start=1)
-            if m.get('latitude') and m.get('longitude')
-        }
+#         node_coords = {
+#             str(idx): [
+#                 float(m.get('latitude', avg_lat)), 
+#                 float(m.get('longitude', avg_lon))
+#             ]
+#             for idx, m in enumerate(mercados_raw, start=1)
+#             if m.get('latitude') and m.get('longitude')
+#         }
 
-        # Fallback caso não haja coordenadas
-        if not node_coords:
-            node_coords = {0: [avg_lat, avg_lon]}  # Usando as coordenadas médias como fallback
+#         # Fallback caso não haja coordenadas
+#         if not node_coords:
+#             node_coords = {0: [avg_lat, avg_lon]}  # Usando as coordenadas médias como fallback
 
 
-        processed_purchases = {key.replace('Produtos comprados no ', ''): value for key, value in purchases.items()}
+#         processed_purchases = {key.replace('Produtos comprados no ', ''): value for key, value in purchases.items()}
 
-        subtotal_cesta_basica = sum(
-            float(item['preco']) for produtos in purchases.values() for item in produtos
-        )
+#         subtotal_cesta_basica = sum(
+#             float(item['preco']) for produtos in purchases.values() for item in produtos
+#         )
 
-        mercados_enriquecidos = []
-        # O for original tinha um erro de variável, corrigido para 'm'
-        for m in mercados_raw:
-            mercado = {
-                'nome': m.get('nome', 'Desconhecido'),
-                'endereco': m.get('endereco', 'N/A'),
-                'latitude': float(m.get('latitude', avg_lat)),
-                'longitude': float(m.get('longitude', avg_lon)),
-                'avaliacao': m.get('avaliacao'),
-                'distancia': m.get('distancia'),
-                'tipo': m.get('tipo', 'Mercado')
-            }
-            mercados_enriquecidos.append(mercado)
+#         mercados_enriquecidos = []
+#         # O for original tinha um erro de variável, corrigido para 'm'
+#         for m in mercados_raw:
+#             mercado = {
+#                 'nome': m.get('nome', 'Desconhecido'),
+#                 'endereco': m.get('endereco', 'N/A'),
+#                 'latitude': float(m.get('latitude', avg_lat)),
+#                 'longitude': float(m.get('longitude', avg_lon)),
+#                 'avaliacao': m.get('avaliacao'),
+#                 'distancia': m.get('distancia'),
+#                 'tipo': m.get('tipo', 'Mercado')
+#             }
+#             mercados_enriquecidos.append(mercado)
 
-        context = {
-            'resultado': {
-                'rota': route,
-                'purchases': processed_purchases,
-                'total_cost': float(total_cost),
-                'total_distance': float(total_distance),
-                'execution_time': float(execution_time)
-            },
-            'mercados_comprados': mercados_enriquecidos,
-            'node_coords': [(float(m['latitude']), float(m['longitude'])) for m in mercados_enriquecidos],
-            'user_lat': avg_lat,
-            'user_lon': avg_lon,
-            'dias': dias_para_consulta, # Usando a variável correta
-            'raio': raio,
-            'item_list': gtin_list,
-            'media_combustivel': preco_combustivel,
-            'subtotal_cesta_basica': subtotal_cesta_basica
-        }
+#         context = {
+#             'resultado': {
+#                 'rota': route,
+#                 'purchases': processed_purchases,
+#                 'total_cost': float(total_cost),
+#                 'total_distance': float(total_distance),
+#                 'execution_time': float(execution_time)
+#             },
+#             'mercados_comprados': mercados_enriquecidos,
+#             'node_coords': [(float(m['latitude']), float(m['longitude'])) for m in mercados_enriquecidos],
+#             'user_lat': avg_lat,
+#             'user_lon': avg_lon,
+#             'dias': dias_para_consulta, # Usando a variável correta
+#             'raio': raio,
+#             'item_list': gtin_list,
+#             'media_combustivel': preco_combustivel,
+#             'subtotal_cesta_basica': subtotal_cesta_basica
+#         }
 
-        logger.warning(f"🧭 Coordenadas médias: lat={avg_lat}, lon={avg_lon}")
-        #print(context)
-        return render(request, 'lista.html', context)
+#         logger.warning(f"🧭 Coordenadas médias: lat={avg_lat}, lon={avg_lon}")
+#         #print(context)
+#         return render(request, 'lista.html', context)
 
-    except Exception as e:
-        logger.exception("Erro ao processar a solicitação:")
-        # (código original mantido)
-        return render(request, 'lista.html', {
-            'resultado': {'rota': [], 'purchases': {}, 'total_cost': 0.0, 'total_distance': 0.0, 'execution_time': 0.0},
-            'mercados_comprados': [],
-            'media_combustivel': preco_combustivel,
-            'user_lat': latitude,
-            'user_lon': longitude,
-            'dias': dias,
-            'raio': raio,
-            'item_list': gtin_list if 'gtin_list' in locals() else []
-        })
+#     except Exception as e:
+#         logger.exception("Erro ao processar a solicitação:")
+#         # (código original mantido)
+#         return render(request, 'lista.html', {
+#             'resultado': {'rota': [], 'purchases': {}, 'total_cost': 0.0, 'total_distance': 0.0, 'execution_time': 0.0},
+#             'mercados_comprados': [],
+#             'media_combustivel': preco_combustivel,
+#             'user_lat': latitude,
+#             'user_lon': longitude,
+#             'dias': dias,
+#             'raio': raio,
+#             'item_list': gtin_list if 'gtin_list' in locals() else []
+#         })
 
 
 def calcular_distancia(lat1, lon1, lat2, lon2):
