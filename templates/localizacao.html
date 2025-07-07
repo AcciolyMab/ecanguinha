@@ -227,9 +227,15 @@
         }
 
         function buscarLocalPorCep(cep) {
-            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cep)}&countrycodes=br`)
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cep)}&countrycodes=br`, {
+                signal: controller.signal
+            })
                 .then(res => res.json())
                 .then(data => {
+                    clearTimeout(timeout);
                     if (data.length > 0) {
                         hiddenLatitude.value = data[0].lat;
                         hiddenLongitude.value = data[0].lon;
@@ -239,7 +245,11 @@
                         alert("CEP não encontrado.");
                     }
                 })
-                .catch(err => console.error("Erro ao buscar CEP:", err));
+                .catch(err => {
+                    clearTimeout(timeout);
+                    console.error("Erro ao buscar CEP:", err);
+                    alert("Não foi possível obter a localização. Tente novamente.");
+                });
         }
 
         function atualizarBotaoBuscar() {

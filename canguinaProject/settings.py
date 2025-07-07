@@ -220,7 +220,6 @@ if DEBUG:
     INSTALLED_APPS += ['django_extensions']
 
 
-
 # ========================
 # 🎯 CELERY CONFIG
 # ========================
@@ -274,6 +273,16 @@ LOGGING = {
             'handlers': ['console'],
             'level': 'DEBUG',
             'propagate': True,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'django.template': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
         },
         'urllib3': {
             'handlers': ['console'],
