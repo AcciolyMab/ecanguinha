@@ -11,6 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 from django.core.cache import cache
 from canguinaProject.utils import testar_redis_em_debug
+import dj_database_url
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "canguinaProject.settings")
 
@@ -89,11 +90,14 @@ TEMPLATES = [
 WSGI_APPLICATION = 'canguinaProject.wsgi.application'
 
 # # Banco de dados: atenção ao uso de SQLite em produção!
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(conn_max_age=600)
 }
 
 # REDIS_URL: pode ser ajustado via .env ou fallback local
