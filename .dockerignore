@@ -1,0 +1,27 @@
+# Ignorar virtualenv e arquivos locais desnecessários
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+db.sqlite3
+debug.log
+
+# Ignorar arquivos ocultos de sistema
+.env
+.env.*
+*.log
+
+# Ignorar arquivos de IDE/editor
+*.swp
+*.swo
+*.idea/
+.vscode/
+
+# Ignorar arquivos de testes
+.pytest_cache/
+.coverage
+
+# ⚠️ IMPORTANTE: NÃO ignore a pasta static!
+# Portanto, NÃO adicione: static/ ou ecanguinha/static

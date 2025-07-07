@@ -27,7 +27,7 @@ urlpatterns = [
     path('api/task-status/', views.get_task_status, name='get_task_status'),
     # URL para mostrar o resultado final
     path('resultado/<str:task_id>/', views.mostrar_resultado, name='mostrar_resultado'),
-    path("processar_combustivel/", views.processar_combustivel, name="processar_combustivel"),
+    path('processar-combustivel/', views.processar_combustivel, name='processar_combustivel')
     path('.well-known/appspecific/com.chrome.devtools.json', lambda request: JsonResponse({}, status=204)),
 ]
 

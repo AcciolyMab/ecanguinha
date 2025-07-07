@@ -433,20 +433,20 @@ def processar_combustivel(request):
         dias_ajustados_com_margem = dias_delay + 1
 
         # Usa o maior valor entre a seleção do usuário e o delay com margem
-        dias_reais = min(max(dias_usuario, dias_ajustados_com_margem), 10)
+        dias_final = min(max(dias_usuario, dias_ajustados_com_margem), 10)
         
-        logger.info(f"Dias do usuário: {dias_usuario}, Delay da API: {dias_delay}. Período de busca ajustado para: {dias_reais} dias.")
+        logger.info(f"Dias do usuário: {dias_usuario}, Delay da API: {dias_delay}. Período de busca ajustado para: {dias_final} dias.")
         # --- Fim da Lógica de Delay ---
 
         # O resto da função continua igual, usando 'dias_reais'
-        df = obter_combustiveis(tipo_combustivel, raio, latitude, longitude, dias_reais)
+        df = obter_combustiveis(tipo_combustivel, raio, latitude, longitude, dias_final)
 
         if df.empty:
             logger.warning("⚠️ Nenhum dado de combustível retornado pela API com o período ajustado.")
             return JsonResponse({"erro": "Não foram encontrados preços de combustível para esta região e período."}, status=404)
 
         # Remove registros com valor 0 ou nulo
-        df = df[df["VALOR"].apply(lambda x: isinstance(x, (int, float)) and x > 0)]
+        df = df[df["VALOR"].notnull() & (df["VALOR"] > 0)]
 
         if df.empty:
             logger.warning("⚠️ Todos os preços de combustível retornados estavam zerados ou inválidos")

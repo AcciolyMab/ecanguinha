@@ -155,7 +155,7 @@ X_FRAME_OPTIONS = 'DENY'
 # 📁 ARQUIVOS ESTÁTICOS E MÍDIA
 # ========================
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / "ecanguinha/static"]
+STATICFILES_DIRS = [BASE_DIR / "ecanguinha" / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 

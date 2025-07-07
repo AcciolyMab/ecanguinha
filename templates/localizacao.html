@@ -356,7 +356,7 @@
             const caminho = document.getElementById("caminho");
 
             const interval = setInterval(() => {
-                fetch(`/api/task-status/?task_id=${taskId}`)
+                fetch("{% url 'get_task_status' %}?task_id=" + taskId)
                 .then(res => res.json())
                 .then(data => {
                     let progresso = 0;
