@@ -5,7 +5,6 @@ import concurrent.futures
 import logging
 import psutil
 from django.contrib import messages
-from ecanguinha.services.combustivel import consultar_combustivel
 logger = logging.getLogger(__name__)
 
 def testar_redis_em_debug():
@@ -18,12 +17,6 @@ def testar_redis_em_debug():
     except Exception as e:
         print(f"❌ Falha ao acessar Redis em modo DEBUG: {e}")
 
-
-import logging
-from ecanguinha.services.combustivel import consultar_combustivel
-
-logger = logging.getLogger(__name__)
-
 # Função para calcular dinamicamente o número de dias válidos
 def calcular_dias_validos_dinamicamente(raio, tipo_combustivel, lat, lon, max_dias=10):
     """
@@ -31,6 +24,7 @@ def calcular_dias_validos_dinamicamente(raio, tipo_combustivel, lat, lon, max_di
     Itera do menor para o maior (2 até max_dias).
     Retorna None se não encontrar dados dentro do limite.
     """
+    from ecanguinha.services.combustivel import consultar_combustivel
     # Itera de 2 até o dia máximo para encontrar o menor atraso possível
     for dias in range(2, max_dias + 1):
         logger.info(f"Tentando obter dados de combustível com dias={dias}")
@@ -80,6 +74,7 @@ def obter_produtos(request, gtin_list, raio, my_lat, my_lon, dias):
     cache.set(session_key, 0, timeout=300)
 
     def worker(gtin):
+        from ecanguinha.services.combustivel import consultar_combustivel
         nonlocal concluídos
         try:
             resultado = consultar_combustivel(
