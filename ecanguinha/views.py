@@ -23,7 +23,6 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as ThreadTimeout
 from multiprocessing import Process, Queue
 from ecanguinha.services.combustivel import calcular_media_combustivel
 from algorithms.sefaz_api import calcular_dias_validos_dinamicamente
-from ecanguinha.tasks import processar_busca_produtos_task
 from random import randint
 from algorithms.sefaz_api import verificar_delay_sefaz # Importe a função
 from ecanguinha.tasks import buscar_ofertas_task
