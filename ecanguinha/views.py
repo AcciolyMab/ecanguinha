@@ -1,3 +1,5 @@
+# ecanguinha/views.py - VERSÃO CORRIGIDA
+
 import json
 import logging
 import re
@@ -12,39 +14,33 @@ from django.views.decorators.http import require_GET
 from django.shortcuts import render, redirect
 
 from celery.result import AsyncResult
-from django.contrib import messages  # Importe o messages framework
-from algorithms.alns_solver import alns_solve_tpp
-# Importações dos módulos personalizados
-from algorithms.sefaz_api import obter_produtos, obter_combustiveis
-from geopy.distance import geodesic  # Importação correta
-from django.shortcuts import render, redirect
+from django.contrib import messages
+# REMOVIDO: from algorithms.alns_solver import alns_solve_tpp
+# REMOVIDO: from algorithms.sefaz_api import obter_produtos, obter_combustiveis
+from algorithms.sefaz_api import obter_combustiveis # Manter obter_combustiveis se usado em outro lugar
+from geopy.distance import geodesic
 from django.views.decorators.csrf import csrf_exempt
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as ThreadTimeoutError
 from multiprocessing import Process, Queue
 from ecanguinha.services.combustivel import calcular_media_combustivel
 from algorithms.sefaz_api import calcular_dias_validos_dinamicamente
 from random import randint
-from algorithms.sefaz_api import verificar_delay_sefaz # Importe a função
+from algorithms.sefaz_api import verificar_delay_sefaz
 from ecanguinha.tasks import buscar_ofertas_task
-from ecanguinha.services.combustivel import (
-    calcular_media_combustivel,
-    obter_produtos
-)
 
-# Configuração de log para facilitar o debug
+# Configuração de log
 logger = logging.getLogger(__name__)
 
 # View para a página inicial
 from django.http import HttpResponse
-from django.contrib import messages
-import pandas as pd
-import numpy as np
+# REMOVIDO: import pandas as pd
+# REMOVIDO: import numpy as np
 
-
+# ... (as funções home, get_lat_long, localizacao, about, etc., não mudam) ...
 def home(request):
     if request.method == "GET":
         contexto = {
-            'Seja bem vindo!'  # Substitua pelo valor desejado ou obtenha dinamicamente
+            'Seja bem vindo!'
         }
         return render(request, 'localizacao.html', contexto)
     else:
@@ -151,8 +147,16 @@ def progresso_status(request):
 
     return JsonResponse({"porcentagem": progresso})
 
-
 def listar_produtos(request):
+    # --- INÍCIO DAS IMPORTAÇÕES TARDIA ---
+    # Mover todas as importações pesadas para dentro da função
+    from algorithms.alns_solver import alns_solve_tpp
+    from algorithms.sefaz_api import obter_produtos
+    from algorithms.tpplib_data import create_tpplib_data
+    import pandas as pd
+    import numpy as np
+    # --- FIM DAS IMPORTAÇÕES TARDIA ---
+
     if request.method != 'POST':
         messages.error(request, "Método inválido. Apenas POST permitido.")
         return redirect('localizacao')
@@ -269,7 +273,6 @@ def listar_produtos(request):
 
         avg_lat = df["LAT"].mean() if "LAT" in df.columns else latitude
         avg_lon = df["LONG"].mean() if "LONG" in df.columns else longitude
-        from algorithms.tpplib_data import create_tpplib_data
 
         tpplib_data = create_tpplib_data(df, avg_lat, avg_lon, media_preco=preco_combustivel)
         resultado_solver = alns_solve_tpp(tpplib_data, 10000, 100)
