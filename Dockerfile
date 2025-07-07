@@ -46,9 +46,6 @@ COPY . .
 COPY ./entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Coleta os arquivos estáticos
-RUN python manage.py collectstatic --noinput
-
 # Expõe a porta que o Gunicorn vai usar
 EXPOSE 8000
 

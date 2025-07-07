@@ -1,16 +1,20 @@
 #!/bin/sh
 
-# O entrypoint é um script que executa antes do comando principal do contêiner.
-# É útil para tarefas de inicialização, como esperar o banco de dados e aplicar migrações.
+set -e  # Interrompe em caso de erro
 
-# Neste exemplo simples, vamos apenas aplicar as migrações.
-# Em um projeto real, você adicionaria aqui um loop para esperar o banco de dados (Postgres, etc.)
-# ficar disponível antes de continuar.
+echo "⏳ Aguardando dependências estarem prontas..."
 
-echo "Aplicando migrações do banco de dados..."
+# (Opcional) Espera banco de dados PostgreSQL se necessário — descomente se usar DB externo
+# until nc -z $DB_HOST $DB_PORT; do
+#   echo "🔄 Aguardando banco de dados em $DB_HOST:$DB_PORT..."
+#   sleep 1
+# done
+
+echo "✅ Aplicando migrações do banco de dados..."
 python manage.py migrate --noinput
 
-# O comando 'exec "$@"' executa o comando que foi passado para o contêiner.
-# Por exemplo, no serviço 'web', ele executará 'gunicorn ...'
-# No serviço 'worker', ele executará 'celery ...'
+echo "📦 Coletando arquivos estáticos..."
+python manage.py collectstatic --noinput
+
+echo "🚀 Iniciando serviço: $@"
 exec "$@"
