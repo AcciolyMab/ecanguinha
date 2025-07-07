@@ -78,6 +78,8 @@ def processar_busca_produtos_task(
         atualizar_progresso(50, "Preparando dados para otimização...")
         avg_lat = df["LAT"].mean()
         avg_lon = df["LONG"].mean()
+        # IMPORTAÇÃO TARDIA APLICADA AQUI
+        from algorithms.tpplib_data import create_tpplib_data
         tpplib_data = create_tpplib_data(df, avg_lat, avg_lon, media_preco=float(preco_combustivel))
 
         # Etapa 3 — Executar ALNS
@@ -89,7 +91,7 @@ def processar_busca_produtos_task(
             return {'error': 'Não foi possível encontrar uma solução viável.'}
 
         # Etapa 4 — Formatar resultado
-        atualizar_progresso(95, "Finalizando...")
+        atualizar_progresso(100, "Concluido com ")
         subtotal_cesta_basica = sum(
             float(item['preco']) for produtos in resultado_solver.get('purchases', {}).values() for item in produtos
         )
@@ -184,8 +186,8 @@ def buscar_ofertas_task(self, gtin_list, raio, latitude, longitude, dias, preco_
 
         # --- ETAPA 3: PREPARAR DADOS E RODAR SOLVER ---
 
-        # ADICIONE A IMPORTAÇÃO AQUI
-        from algorithms.tpplib_data import create_tpplib_data 
+        # IMPORTAÇÃO TARDIA APLICADA AQUI
+        from algorithms.tpplib_data import create_tpplib_data
         update_progress(70, "Preparando dados para o otimizador...")
         avg_lat = df["LAT"].mean()
         avg_lon = df["LONG"].mean()
