@@ -1,10 +1,4 @@
 from celery import shared_task, current_task
-from algorithms.sefaz_api import obter_produtos, verificar_delay_sefaz
-from algorithms.alns_solver import alns_solve_tpp
-from ecanguinha.services.combustivel import (
-    obter_preco_combustivel_por_gtin,
-    update_progresso_cache
-)
 import logging
 import json
 from django.core.cache import cache
@@ -56,6 +50,8 @@ def processar_busca_produtos_task(
     Task Celery para processar a busca de produtos de forma assíncrona.
     Atualiza progresso tanto via `self.update_state` (Celery) quanto via Redis.
     """
+    from algorithms.alns_solver import alns_solve_tpp
+    from algorithms.sefaz_api import obter_produtos, verificar_delay_sefaz
     try:
         task_id = self.request.id
         progress_key = f"progresso_{session_key}_{task_id}" if session_key else f"progresso_{task_id}"
@@ -114,13 +110,13 @@ def processar_busca_produtos_task(
         atualizar_progresso(100, "Concluído com sucesso ✅")
 
         # Resultado formatado no formato que o frontend espera
-        return format_result_for_celery(
-            solution=resultado_solver,
-            best_cost=resultado_solver.get("total_cost", 0.0),
-            execution_time=resultado_solver.get("execution_time", 0.0),
-            data=tpplib_data
-        )
-
+        # return format_result_for_celery(
+        #     solution=resultado_solver,
+        #     best_cost=resultado_solver.get("total_cost", 0.0),
+        #     execution_time=resultado_solver.get("execution_time", 0.0),
+        #     data=tpplib_data
+        # )
+        return resultado_final
     except Exception as e:
         logger.exception("❌ Erro na task processar_busca_produtos_task")
         self.update_state(state='FAILURE', meta={
@@ -138,6 +134,8 @@ def buscar_ofertas_task(self, gtin_list, raio, latitude, longitude, dias, preco_
     Esta tarefa executa todo o processo de busca e otimização de rota,
     verificando o delay da API da SEFAZ antes de começar.
     """
+    from algorithms.alns_solver import alns_solve_tpp
+    from algorithms.sefaz_api import obter_produtos, verificar_delay_sefaz
     try:
         task_id = self.request.id
         progress_key = f"progresso_{session_key}_{task_id}" if session_key else f"progresso_{task_id}"
@@ -216,6 +214,9 @@ def task_consultar_combustivel(self, gtin, tipo_combustivel, raio, latitude, lon
     Returns:
         tuple: (preco_float, dict_detalhes)
     """
+    from ecanguinha.services.combustivel import (
+    update_progresso_cache
+)
     preco, detalhes = consultar_combustivel_sync(
         gtin=gtin,
         tipo_combustivel=tipo_combustivel,
@@ -234,6 +235,9 @@ def consultar_combustivel_sync(gtin, tipo_combustivel, raio, latitude, longitude
     """
     Consulta o preço do combustível por GTIN, de forma síncrona.
     """
+    from ecanguinha.services.combustivel import (
+    obter_preco_combustivel_por_gtin
+)
     preco, detalhes = obter_preco_combustivel_por_gtin(
         gtin=gtin,
         tipo_combustivel=tipo_combustivel,

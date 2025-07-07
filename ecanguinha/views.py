@@ -521,32 +521,39 @@ def iniciar_busca_produtos(request):
 
 def get_task_status(request):
     task_id = request.GET.get('task_id')
+    session_key = request.session.session_key
+
     if not task_id:
         return JsonResponse({'error': 'task_id não fornecido'}, status=400)
-        
+
     task_result = AsyncResult(task_id)
-    
+
+    # 🔑 Chave usada na task
+    cache_key = f"progresso_{session_key}_{task_id}" if session_key else f"progresso_{task_id}"
+    progresso_cache = cache.get(cache_key, 0)
+
     response_data = {
         'task_id': task_id,
         'status': task_result.state,
-        'result': None, # Será preenchido se a tarefa terminou
-        'progress': 0,
+        'result': None,
+        'progress': progresso_cache,
         'step': ''
     }
 
     if task_result.state == 'SUCCESS':
-        # --- MUDANÇA PRINCIPAL ---
-        # Se a tarefa terminou, incluímos o resultado dela na resposta.
-        response_data['result'] = task_result.result 
-    
-    elif task_result.state == 'PROGRESS':
-        response_data['progress'] = task_result.info.get('progress', 0)
-        response_data['step'] = task_result.info.get('step', '')
-        
-    elif task_result.state == 'FAILURE':
-        # Guardamos a informação do erro para o frontend.
-        response_data['result'] = {'error': 'A tarefa falhou inesperadamente.'}
+        response_data['result'] = task_result.result
 
+    elif task_result.state == 'PROGRESS':
+        # Fallback para caso Redis ainda não esteja sincronizado
+        response_data['progress'] = task_result.info.get('progress', progresso_cache)
+        response_data['step'] = task_result.info.get('step', '')
+
+    elif task_result.state == 'FAILURE':
+        response_data['result'] = {
+            'error': str(task_result.result)
+        }
+
+    logger.info(f"📥 Requisição status da task {task_id} | Estado: {task_result.state} | Progresso: {response_data['progress']}%")
     return JsonResponse(response_data)
 
 def sum_precos(produtos):
