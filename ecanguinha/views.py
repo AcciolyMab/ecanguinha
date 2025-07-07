@@ -88,9 +88,12 @@ def get_lat_long(request):
 
 
 def localizacao(request):
-    if not request.session.session_key:
-        request.session.save()
-    return render(request, 'localizacao.html')
+    import time
+    inicio = time.time()
+    logger.debug("🌐 View localizacao() acessada via GET")
+    response = render(request, 'localizacao.html')
+    logger.debug(f"⏱️ View localizacao renderizada em {time.time() - inicio:.2f}s")
+    return response
 
 
 def about(request):
