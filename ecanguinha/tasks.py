@@ -112,7 +112,14 @@ def processar_busca_produtos_task(
         }
 
         atualizar_progresso(100, "Concluído com sucesso ✅")
-        return resultado_final
+
+        # Resultado formatado no formato que o frontend espera
+        return format_result_for_celery(
+            solution=resultado_solver,
+            best_cost=resultado_solver.get("total_cost", 0.0),
+            execution_time=resultado_solver.get("execution_time", 0.0),
+            data=tpplib_data
+        )
 
     except Exception as e:
         logger.exception("❌ Erro na task processar_busca_produtos_task")
@@ -160,28 +167,6 @@ def buscar_ofertas_task(self, gtin_list, raio, latitude, longitude, dias, preco_
         if df.empty:
             update_progress(100, "Nenhum dado retornado pela API da SEFAZ.")
             return {'error': 'Nenhum produto encontrado para os itens selecionados no período e raio definidos. Tente aumentar o raio.'}
-
-        # # --- ETAPA 2: CONSULTAR COMBUSTÍVEL POR GTIN ---
-        # update_progress(50, "Consultando preços de combustível...")
-        # gtins_combustivel = cache.get(f"{session_key}_gtins", []) or []
-
-        # precos_combustivel = []
-        # for posicao, gtin in enumerate(gtins_combustivel):
-        #     preco, _ = task_consultar_combustivel(
-        #         gtin=gtin,
-        #         tipo_combustivel=int(preco_combustivel),
-        #         raio=float(raio),
-        #         latitude=float(latitude),
-        #         longitude=float(longitude),
-        #         dias=dias_reais,
-        #         posicao=posicao,
-        #         session_key=session_key
-        #     )
-        #     if preco > 0:
-        #         precos_combustivel.append(preco)
-
-        # media_combustivel = round(sum(precos_combustivel) / len(precos_combustivel), 2) if precos_combustivel else 0.0
-        # logger.info(f"📊 Preço médio do combustível calculado: R$ {media_combustivel:.2f}")
 
         # --- ETAPA 3: PREPARAR DADOS E RODAR SOLVER ---
 
