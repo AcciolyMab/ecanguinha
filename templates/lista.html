@@ -1,35 +1,24 @@
+{% extends 'base.html' %}
 {% load custom_filters %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resultados da Busca</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+{% block title %}Resultados da Busca - Canguinha{% endblock %}
+
+{% block styles %}
+    {#-- Links e estilos específicos para a página de resultados --#}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js"></script>
-    <!-- Roteamento Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
-    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
-    <!-- CSS  -->
-    <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}">
+
     <style>
-          body.loading {
-            all: unset;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f2f4f5;
-        }
+        /* Remove o fundo e a fonte padrão do body, pois são herdados do base.html */
         .flex-container {
             display: flex;
             gap: 15px;
             padding: 15px;
-            transform: scale(0.95);
-            transform-origin: top left;
+            /* Opcional: ajustar escala se necessário, ou remover */
+            /* transform: scale(0.95); */
+            /* transform-origin: top left; */
         }
         .table-container {
             flex: 1;
@@ -59,13 +48,9 @@
             font-weight: bold;
             color: #084c41;
         }
-        .mercado-endereco {
+        .mercado-endereco, .mercado-meta {
             font-size: 12px;
             color: #666;
-        }
-        .mercado-meta {
-            font-size: 12px;
-            color: #444;
         }
         .mercado-preco {
             font-size: 18px;
@@ -105,7 +90,7 @@
             color: #333;
         }
         .botao-oferta {
-            background-color: #238a4a; /* verde escuro */
+            background-color: #238a4a;
             color: white;
             border: none;
             border-radius: 25px;
@@ -117,15 +102,15 @@
             gap: 8px;
             font-size: 16px;
         }
-
         .botao-oferta:hover {
-            background-color: #1e7a42; /* tom mais escuro ao passar o mouse */
+            background-color: #1e7a42;
             text-decoration: none;
             color: white;
         }
     </style>
-</head>
-<body>
+{% endblock %}
+
+{% block content %}
     <div class="flex-container">
         <div class="table-container">
             <h3 style="color: #084c41;">Lista de mercados</h3>
@@ -137,26 +122,15 @@
                         <div>
                             <div class="mercado-nome">
                                 {{ mercado.nome }}
-                                <span class="status-aberto" 
-                                    data-nome="{{ mercado.nome|escapejs }}" 
-                                    data-endereco="{{ mercado.endereco|escapejs }}">
-                                </span>
+                                <span class="status-aberto" data-nome="{{ mercado.nome|escapejs }}" data-endereco="{{ mercado.endereco|escapejs }}"></span>
                             </div>
                             <div class="mercado-endereco">
                                 <i class="fa fa-map-marker"></i> {{ mercado.endereco }}
                             </div>
                             <div class="mercado-meta">
-                                {% if mercado.avaliacao %}
-                                    ⭐ {{ mercado.avaliacao|floatformat:1 }}
-                                {% else %}
-                                    ⭐ N/A
-                                {% endif %}
+                                ⭐ {{ mercado.avaliacao|floatformat:1|default:"N/A" }}
                                 &nbsp;&nbsp;
-                                {% if mercado.distancia %}
-                                    📍 {{ mercado.distancia|floatformat:2 }}
-                                {% else %}
-                                    📍 N/A
-                                {% endif %}
+                                📍 {{ mercado.distancia|floatformat:2|default:"N/A" }}
                             </div>
                         </div>
                         {% with resultado.purchases|dict_get:mercado.nome as produtos_mercado %}
@@ -189,9 +163,7 @@
             <div class="summary-container" style="background-color:rgb(255, 255, 255); border: 2px solid #168f53; border-radius: 8px; padding: 20px; margin-top: 20px;">
                 <table class="table table-bordered">
                     <thead style="background-color: #c2f2e6; text-align: center;">
-                        <tr>
-                            <th colspan="2">Resumo</th>
-                        </tr>
+                        <tr><th colspan="2">Resumo</th></tr>
                     </thead>
                     <tbody>
                         <tr>
@@ -214,13 +186,8 @@
                 </table>
             </div>
 
-
-            <!-- ✅ Container separado só para os logos -->
             <div style="margin-top: 30px; background-color: #d1f0e3; border: 2px solid #168f53; border-radius: 8px; padding: 15px; display: flex; justify-content: space-between; align-items: center;">
-                <!-- Logo Canguinha -->
                 <img src="{% static 'ecanguinha/img/canguinhalogo_oficial.png' %}" alt="Logo Canguinha" style="height: 100px;">
-
-                <!-- Texto + Logo SEFAZ -->
                 <div style="text-align: center;">
                     <span style="font-weight: bold; color: #084c41;">Apoio:</span><br>
                     <img src="{% static 'ecanguinha/img/sefaz.png' %}" alt="Logo SEFAZ" style="height: 70px;">
@@ -234,6 +201,7 @@
         <div id="map"></div>
     </div>
 
+    {#-- Dados para o JavaScript --#}
     {{ user_lat|json_script:"user-latitude" }}
     {{ user_lon|json_script:"user-longitude" }}
     {{ user_lat|json_script:"user-latitude" }}
@@ -244,109 +212,79 @@
     {% endfor %}
     {{ mercados_comprados|json_script:"mercados-data" }}
 
+{% endblock %}
 
 
-
+{% block scripts %}
+    {#-- Scripts específicos para a página de resultados --#}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-        const userLat = JSON.parse(document.getElementById("user-latitude").textContent);
-        const userLon = JSON.parse(document.getElementById("user-longitude").textContent);
+            const userLat = JSON.parse(document.getElementById("user-latitude").textContent);
+            const userLon = JSON.parse(document.getElementById("user-longitude").textContent);
 
-        // ✅ Validação: se coordenadas inválidas, avisa e interrompe
-        if (!userLat || !userLon || userLat === 0 || userLon === 0) {
-            alert("❌ Coordenadas inválidas do usuário. Verifique se a localização foi corretamente capturada.");
-            console.warn("🛑 userLat ou userLon inválidos:", userLat, userLon);
-            return;
-        }
-
-        const map = L.map('map', {
-            zoomControl: true,
-            attributionControl: false
-        }).setView([userLat, userLon], 14);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 18
-        }).addTo(map);
-
-        const userMarker = L.AwesomeMarkers.icon({ icon: 'home', markerColor: 'green', prefix: 'fa' });
-        const userPopupContent = `<b>Sua Localização</b><br>Lat: ${userLat}<br>Lon: ${userLon}`;
-        const userMarkerObj = L.marker([userLat, userLon], { icon: userMarker })
-            .addTo(map)
-            .bindTooltip(userPopupContent, {
-                direction: 'top',
-                offset: [0, -10],
-                opacity: 0.9
-            })
-            .bindPopup(userPopupContent);
-
-        const mercadosData = JSON.parse(document.getElementById("mercados-data").textContent);
-        const mercadoIcon = L.AwesomeMarkers.icon({ icon: 'shopping-cart', markerColor: 'blue', prefix: 'fa' });
-        const waypoints = [L.latLng(userLat, userLon)];
-
-        mercadosData.forEach(function (mercado) {
-            const lat = parseFloat(mercado.latitude);
-            const lon = parseFloat(mercado.longitude);
-
-            if (!isNaN(lat) && !isNaN(lon)) {
-                const mercadoPopupContent = `<b>${mercado.nome}</b><br>${mercado.endereco}`;
-
-                const mercadoMarker = L.marker([lat, lon], { icon: mercadoIcon })
-                    .addTo(map)
-                    .bindTooltip(mercadoPopupContent, {
-                        direction: 'top',
-                        offset: [0, -10],
-                        opacity: 0.9
-                    })
-                    .bindPopup(mercadoPopupContent);
-
-                waypoints.push(L.latLng(lat, lon));
+            if (!userLat || !userLon || userLat === 0 || userLon === 0) {
+                alert("❌ Coordenadas inválidas do usuário. Verifique se a localização foi corretamente capturada.");
+                console.warn("🛑 userLat ou userLon inválidos:", userLat, userLon);
+                return;
             }
-        });
 
-        waypoints.push(L.latLng(userLat, userLon));  // retorno ao início
+            const map = L.map('map', {
+                zoomControl: true,
+                attributionControl: false
+            }).setView([userLat, userLon], 14);
 
-        // ✅ Só cria a rota se houver pelo menos 2 mercados + usuário
-        if (waypoints.length > 2) {
-            L.Routing.control({
-                waypoints: waypoints,
-                routeWhileDragging: false,
-                showAlternatives: false,
-                createMarker: function (i, waypoint, n) {
-                    return L.marker(waypoint.latLng, {
-                        icon: i === 0 || i === n - 1 ? userMarker : mercadoIcon
-                    });
-                },
-                lineOptions: {
-                    styles: [{ color: 'red', opacity: 0.9, weight: 6 }]
-                },
-                router: L.Routing.osrmv1({
-                    serviceUrl: 'https://router.project-osrm.org/route/v1'
-                }),
-                addWaypoints: false,
-                fitSelectedRoutes: true,
-                show: false
-            }).on('routeselected', function (e) {
-                const containers = document.getElementsByClassName('leaflet-routing-container');
-                for (const container of containers) {
-                    container.style.display = 'none';
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
+
+            const userMarkerIcon = L.AwesomeMarkers.icon({ icon: 'home', markerColor: 'green', prefix: 'fa' });
+            L.marker([userLat, userLon], { icon: userMarkerIcon })
+                .addTo(map)
+                .bindTooltip(`<b>Sua Localização</b>`, { direction: 'top', offset: [0, -10], opacity: 0.9 });
+
+            const mercadosData = JSON.parse(document.getElementById("mercados-data").textContent);
+            const mercadoIcon = L.AwesomeMarkers.icon({ icon: 'shopping-cart', markerColor: 'blue', prefix: 'fa' });
+            const waypoints = [L.latLng(userLat, userLon)];
+
+            mercadosData.forEach(function (mercado) {
+                const lat = parseFloat(mercado.latitude);
+                const lon = parseFloat(mercado.longitude);
+
+                if (!isNaN(lat) && !isNaN(lon)) {
+                    L.marker([lat, lon], { icon: mercadoIcon })
+                        .addTo(map)
+                        .bindTooltip(`<b>${mercado.nome}</b><br>${mercado.endereco}`, { direction: 'top', offset: [0, -10], opacity: 0.9 });
+                    waypoints.push(L.latLng(lat, lon));
                 }
-            }).addTo(map);
-        } else {
-            console.warn("🚫 Roteamento cancelado: número de pontos insuficiente.");
-        }
-    });
+            });
 
-        const spans = document.querySelectorAll(".status-aberto");
+            waypoints.push(L.latLng(userLat, userLon));
+
+            if (waypoints.length > 2) {
+                L.Routing.control({
+                    waypoints: waypoints,
+                    routeWhileDragging: false,
+                    showAlternatives: false,
+                    addWaypoints: false,
+                    fitSelectedRoutes: true,
+                    show: false, // Esconde as instruções de rota
+                    createMarker: function() { return null; }, // Não cria marcadores duplicados
+                    lineOptions: { styles: [{ color: 'red', opacity: 0.9, weight: 6 }] },
+                    router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1' })
+                }).addTo(map);
+            } else {
+                console.warn("🚫 Roteamento cancelado: número de pontos insuficiente.");
+            }
+
+            // Lógica para status Aberto/Fechado
+            const spans = document.querySelectorAll(".status-aberto");
             const now = new Date();
             const currentHour = now.getHours();
 
             spans.forEach(span => {
                 const nome = span.dataset.nome;
-                const endereco = span.dataset.endereco;
-
-                const is24h = nome.includes("Especiarya Industria e Comercio Ltda") &&
-                            endereco.includes("Rua Deputado José Lages");
+                const is24h = nome.toLowerCase().includes("24h") || (nome.includes("Especiarya Industria e Comercio Ltda") && span.dataset.endereco.includes("Rua Deputado José Lages"));
 
                 if (is24h) {
                     span.textContent = "Aberto 24h";
@@ -359,6 +297,6 @@
                     span.style.backgroundColor = "#dc3545"; // Vermelho
                 }
             });
+        });
     </script>
-</body>
-</html>
+{% endblock %}
