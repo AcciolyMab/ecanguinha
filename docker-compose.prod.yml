@@ -1,0 +1,10 @@
+version: "3.9"
+
+services:
+  web:
+    env_file:
+      - .env.prod
+
+  worker:
+    env_file:
+      - .env.prod

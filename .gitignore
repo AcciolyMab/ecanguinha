@@ -1,6 +1,7 @@
 # Ambientes Virtuais
 venv/
 .env
+.env.prod
 *.venv
 env/
 .env.*

@@ -1,10 +1,15 @@
 #!/bin/sh
 
-set -e  # Encerra o script ao primeiro erro
+# Encerra o script imediatamente se um comando falhar.
+set -e
 
-echo "⏳ Aguardando serviços dependentes estarem prontos..."
+echo "⏳ Preparando o ambiente da aplicação..."
 
-# (Opcional) Espera por PostgreSQL, se estiver usando
+# A lógica abaixo (comentada) é uma ótima prática para aguardar
+# por serviços como banco de dados ou Redis. Para usá-la,
+# garanta que 'netcat' esteja instalado no seu Dockerfile final.
+# Ex: RUN apt-get update && apt-get install -y netcat-traditional && rm -rf /var/lib/apt/lists/*
+#
 # if [ -n "$DB_HOST" ] && [ -n "$DB_PORT" ]; then
 #   until nc -z "$DB_HOST" "$DB_PORT"; do
 #     echo "🔄 Aguardando banco de dados em $DB_HOST:$DB_PORT..."
@@ -12,21 +17,14 @@ echo "⏳ Aguardando serviços dependentes estarem prontos..."
 #   done
 # fi
 
-# (Opcional) Espera pelo Redis (se quiser aguardar explicitamente)
-# if [ -n "$REDIS_URL" ]; then
-#   REDIS_HOST=$(echo $REDIS_URL | sed -E 's|redis://([^:/]+).*|\1|')
-#   REDIS_PORT=$(echo $REDIS_URL | sed -E 's|.*:([0-9]+)/[0-9]+|\1|')
-#   until nc -z "$REDIS_HOST" "$REDIS_PORT"; do
-#     echo "🔄 Aguardando Redis em $REDIS_HOST:$REDIS_PORT..."
-#     sleep 1
-#   done
-# fi
-
-echo "✅ Aplicando migrações do banco de dados..."
+echo "📦 Aplicando migrações do banco de dados..."
 python manage.py migrate --noinput
 
-echo "📦 Coletando arquivos estáticos..."
-python manage.py collectstatic --noinput
+# A flag --clear garante que arquivos estáticos antigos sejam removidos.
+echo "🎯 Coletando arquivos estáticos..."
+python manage.py collectstatic --noinput --clear
 
-echo "🚀 Iniciando serviço: $@"
+echo "✅ Ambiente pronto. Iniciando a aplicação..."
+
+# Executa o comando principal passado para o contêiner (gunicorn, celery, etc.).
 exec "$@"
