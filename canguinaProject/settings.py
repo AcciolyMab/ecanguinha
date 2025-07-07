@@ -116,7 +116,7 @@ logger.warning(
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': REDIS_URL,
+        'LOCATION': f"{REDIS_URL}/1",
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
 
@@ -216,9 +216,16 @@ if DEBUG:
 # ========================
 # 🎯 CELERY CONFIG
 # ========================
-CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://127.0.0.1:6379/0')
-CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://127.0.0.1:6379/0')
+# Define a URL base do Redis, removendo qualquer número de banco de dados no final.
+# Isso garante que tanto o Broker quanto o Backend usem a mesma conexão raiz.
+REDIS_URL_BASE = config('REDIS_URL', 'redis://127.0.0.1:6379').rsplit('/', 1)[0]
 
+# Unifica o Broker e o Backend de Resultados no mesmo banco de dados (DB 0)
+# para garantir comunicação consistente.
+CELERY_BROKER_URL = f"{REDIS_URL_BASE}/0"
+CELERY_RESULT_BACKEND = f"{REDIS_URL_BASE}/0"
+
+# --- Restante da configuração do Celery (sem alterações) ---
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -226,12 +233,14 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutos
 
+# Validação defensiva para garantir que a URL final é válida
 if not CELERY_BROKER_URL.startswith(('redis://', 'rediss://')):
     raise ValueError(f"❌ CELERY_BROKER_URL inválido: {CELERY_BROKER_URL}")
 
 if not CELERY_RESULT_BACKEND.startswith(('redis://', 'rediss://')):
     raise ValueError(f"❌ CELERY_RESULT_BACKEND inválido: {CELERY_RESULT_BACKEND}")
 
+# Logs para confirmar as URLs em uso
 logger.info(f"🚀 Celery Broker: {CELERY_BROKER_URL}")
 logger.info(f"🗄️ Celery Backend: {CELERY_RESULT_BACKEND}")
 
