@@ -1,6 +1,5 @@
 from celery import shared_task, current_task
 from algorithms.sefaz_api import obter_produtos, verificar_delay_sefaz
-from algorithms.tpplib_data import create_tpplib_data
 from algorithms.alns_solver import alns_solve_tpp
 from ecanguinha.services.combustivel import (
     obter_preco_combustivel_por_gtin,
