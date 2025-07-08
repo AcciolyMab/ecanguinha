@@ -21,15 +21,17 @@
             /* transform-origin: top left; */
         }
         .table-container {
-            flex: 1;
-            max-width: 850px;
+            flex: 0 0 30%;
+            max-width: 30%;
         }
+
         #map {
-            flex: 1;
-            height: auto;
+            flex: 0 0 70%;
+            max-width: 70%;
             min-height: 900px;
             border-radius: 8px;
         }
+
         .mercado-card {
             background: #fff;
             border-radius: 10px;
@@ -107,6 +109,16 @@
             text-decoration: none;
             color: white;
         }
+        @media (max-width: 768px) {
+            .flex-container {
+                flex-direction: column;
+            }
+            .table-container, #map {
+                max-width: 100%;
+                flex: 1 1 100%;
+            }
+        }
+
     </style>
 {% endblock %}
 

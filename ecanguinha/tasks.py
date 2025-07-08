@@ -136,6 +136,7 @@ def buscar_ofertas_task(self, gtin_list, raio, latitude, longitude, dias, preco_
     """
     from algorithms.alns_solver import alns_solve_tpp
     from algorithms.sefaz_api import obter_produtos, verificar_delay_sefaz
+    import time
     try:
         task_id = self.request.id
         progress_key = f"progresso_{session_key}_{task_id}" if session_key else f"progresso_{task_id}"
@@ -170,12 +171,19 @@ def buscar_ofertas_task(self, gtin_list, raio, latitude, longitude, dias, preco_
 
         # IMPORTAÇÃO TARDIA APLICADA AQUI
         from algorithms.tpplib_data import create_tpplib_data
-        update_progress(70, "Preparando dados para o otimizador...")
+        start_etapa = time.time()
+        update_progress(70, "Procurando as melhores ofertas...")
         avg_lat = df["LAT"].mean()
         avg_lon = df["LONG"].mean()
+
+        update_progress(73, "Buscando os melhores mercados...")
+        # Se create_tpplib_data já inclui isso, pode ser indicado neste ponto
+
+        update_progress(76, "Criando a sua rota de custo mínimo...")
         tpplib_data = create_tpplib_data(df, avg_lat, avg_lon, media_preco=preco_combustivel)
 
-        update_progress(85, "Calculando a melhor rota...")
+
+        update_progress(85, "Construindo o mapa...")
         resultado_solver = alns_solve_tpp(tpplib_data, 10000, 100)
 
         if not resultado_solver:
