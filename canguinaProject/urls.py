@@ -7,7 +7,6 @@ from ecanguinha import views
 from django.http import JsonResponse
 from ecanguinha.views import listar_arquivos_static
 
-
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.localizacao, name='localizacao'),
