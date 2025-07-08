@@ -129,23 +129,20 @@ def agradecimento(request):
     return render(request, 'agradecimento.html')
 
 def progresso_status(request):
-    session_key = request.session.session_key
-    if not session_key:
-        logger.warning("⚠️ Sessão inválida ou inexistente na requisição.")
-        return JsonResponse({"porcentagem": 0})
+    # A view agora usa 'task_id', que é o mesmo que o seu 'progress_id' no frontend
+    task_id = request.GET.get("task_id") 
+    if not task_id:
+        logger.warning("⚠️ task_id ausente na requisição de progresso.")
+        return JsonResponse({"progress": 0})
 
-    progress_id = request.GET.get("progress_id")  # Corrigido aqui
-    if not progress_id:
-        logger.warning("⚠️ progress_id ausente na requisição.")
-        return JsonResponse({"porcentagem": 0})
-
-    cache_key = f"progresso_{session_key}_{progress_id}"
+    # ✅ CORREÇÃO: Usa a chave simplificada que a task vai escrever.
+    cache_key = f"progress:{task_id}"
     progresso = cache.get(cache_key, 0)
 
-    logger.warning(f"📥 Requisição progresso_status | session_key={session_key}")
-    logger.warning(f"🔍 Lendo da chave: {cache_key}, Progresso: {progresso}")
+    logger.info(f"🔍 Lendo progresso da chave: {cache_key}, Progresso: {progresso}")
 
-    return JsonResponse({"porcentagem": progresso})
+    # Retorna a chave 'progress' que o JavaScript espera.
+    return JsonResponse({"progress": progresso})
 
 def listar_produtos(request):
     # --- INÍCIO DAS IMPORTAÇÕES TARDIA ---
@@ -412,9 +409,11 @@ def safe_consultar_combustivel(tipo_combustivel, raio, lat, lon, dias, timeout=1
         return {"error": "Tempo limite atingido para a consulta à SEFAZ."}
     return result.get("result", {"error": "Falha na consulta à SEFAZ."})
 #----------------------------------------------------------------------------------------------------------------------#
+# ecanguinha/views.py
+
 @csrf_exempt
 def processar_combustivel(request):
-    from algorithms.sefaz_api import verificar_delay_sefaz
+    # A importação de 'verificar_delay_sefaz' foi REMOVIDA
     from ecanguinha.services.combustivel import calcular_media_combustivel
     if request.method != "POST":
         return JsonResponse({"erro": "Método não permitido"}, status=405)
@@ -426,38 +425,26 @@ def processar_combustivel(request):
         latitude = float(data.get("latitude"))
         longitude = float(data.get("longitude"))
         raio = int(data.get("raio"))
-        dias_usuario = int(data.get("dias"))
+        # Não precisamos mais dos 'dias' do usuário aqui, usamos um valor fixo.
         tipo_combustivel = int(data.get("tipoCombustivel"))
 
-       # --- Lógica de Delay ---
-        logger.info("Verificando delay da API da SEFAZ...")
-        dias_delay = verificar_delay_sefaz(latitude, longitude, raio)
+        # --- LÓGICA SIMPLIFICADA E RÁPIDA ---
+        # Buscamos sempre nos últimos 3 dias. É rápido e suficiente para uma média.
+        dias_para_media = 3
+        logger.info(f"Buscando preços de combustível nos últimos {dias_para_media} dias.")
+        # --- FIM DA LÓGICA SIMPLIFICADA ---
 
-        if dias_delay > 10:
-            # ... (código mantido igual)
-            return JsonResponse({"erro": "API da SEFAZ muito desatualizada."}, status=424)
-
-        # AJUSTE PARA MAIOR ROBUSTEZ: Adiciona +1 dia de margem de segurança
-        dias_ajustados_com_margem = dias_delay + 1
-
-        # Usa o maior valor entre a seleção do usuário e o delay com margem
-        dias_final = min(max(dias_usuario, dias_ajustados_com_margem), 10)
-        
-        logger.info(f"Dias do usuário: {dias_usuario}, Delay da API: {dias_delay}. Período de busca ajustado para: {dias_final} dias.")
-        # --- Fim da Lógica de Delay ---
-
-        # O resto da função continua igual, usando 'dias_reais'
-        df = obter_combustiveis(tipo_combustivel, raio, latitude, longitude, dias_final)
+        df = obter_combustiveis(tipo_combustivel, raio, latitude, longitude, dias_para_media)
 
         if df.empty:
-            logger.warning("⚠️ Nenhum dado de combustível retornado pela API com o período ajustado.")
-            return JsonResponse({"erro": "Não foram encontrados preços de combustível para esta região e período."}, status=404)
+            logger.warning("⚠️ Nenhum dado de combustível retornado pela API.")
+            return JsonResponse({"erro": "Não foram encontrados preços de combustível para esta região."}, status=404)
 
         # Remove registros com valor 0 ou nulo
         df = df[df["VALOR"].notnull() & (df["VALOR"] > 0)]
 
         if df.empty:
-            logger.warning("⚠️ Todos os preços de combustível retornados estavam zerados ou inválidos")
+            logger.warning("⚠️ Todos os preços de combustível retornados estavam zerados.")
             return JsonResponse({"erro": "Preços de combustível indisponíveis ou inválidos na região."}, status=404)
 
         media = calcular_media_combustivel(df)
@@ -474,7 +461,6 @@ def processar_combustivel(request):
     except Exception as e:
         logger.exception(f"❌ Erro interno ao processar combustível: {e}")
         return JsonResponse({"erro": f"Erro interno: {str(e)}"}, status=500)
-
 
 @csrf_exempt
 def iniciar_busca_produtos(request):
@@ -527,39 +513,41 @@ def iniciar_busca_produtos(request):
         logger.exception("❌ Erro interno ao iniciar a busca de produtos.")
         return JsonResponse({'error': f'Erro interno: {str(e)}'}, status=500)
 
+# ecanguinha/views.py
+
 def get_task_status(request):
     task_id = request.GET.get('task_id')
-    session_key = request.session.session_key
-
     if not task_id:
         return JsonResponse({'error': 'task_id não fornecido'}, status=400)
 
     task_result = AsyncResult(task_id)
 
-    # 🔑 Chave usada na task
-    cache_key = f"progresso_{session_key}_{task_id}" if session_key else f"progresso_{task_id}"
-    progresso_cache = cache.get(cache_key, 0)
+    # ✅ CORREÇÃO: Usa a nova chave de cache simplificada
+    progress_key = f"progress:{task_id}"
+    progresso_cache = cache.get(progress_key, 0)
 
+    # Pega o progresso da task Celery como um fallback
+    progresso_celery = task_result.info.get('progress', 0) if isinstance(task_result.info, dict) else 0
+    
     response_data = {
         'task_id': task_id,
         'status': task_result.state,
         'result': None,
-        'progress': progresso_cache,
-        'step': ''
+        # Usa o progresso do cache se for maior, garantindo a atualização mais recente
+        'progress': max(progresso_cache, progresso_celery),
+        'step': task_result.info.get('step', '') if isinstance(task_result.info, dict) else ''
     }
 
     if task_result.state == 'SUCCESS':
         response_data['result'] = task_result.result
-
-    elif task_result.state == 'PROGRESS':
-        # Fallback para caso Redis ainda não esteja sincronizado
-        response_data['progress'] = task_result.info.get('progress', progresso_cache)
-        response_data['step'] = task_result.info.get('step', '')
-
+        # Garante que o progresso seja 100% no sucesso
+        response_data['progress'] = 100 
+        
     elif task_result.state == 'FAILURE':
         response_data['result'] = {
             'error': str(task_result.result)
         }
+        response_data['progress'] = 100 # Em caso de falha, completa a barra visualmente
 
     logger.info(f"📥 Requisição status da task {task_id} | Estado: {task_result.state} | Progresso: {response_data['progress']}%")
     return JsonResponse(response_data)

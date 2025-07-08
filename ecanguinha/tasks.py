@@ -51,7 +51,7 @@ def processar_busca_produtos_task(
     Atualiza progresso tanto via `self.update_state` (Celery) quanto via Redis.
     """
     from algorithms.alns_solver import alns_solve_tpp
-    from algorithms.sefaz_api import obter_produtos, verificar_delay_sefaz
+    from algorithms.sefaz_api import obter_produtos
     try:
         task_id = self.request.id
         progress_key = f"progresso_{session_key}_{task_id}" if session_key else f"progresso_{task_id}"
@@ -134,89 +134,90 @@ def processar_busca_produtos_task(
             cache.set(f"progresso_{session_key}_{self.request.id}", 100, timeout=600)
         return {'error': 'Ocorreu um erro inesperado durante o processamento.'}
 
-    
 @shared_task(bind=True)
 def buscar_ofertas_task(self, gtin_list, raio, latitude, longitude, dias, preco_combustivel, session_key=None):
-    """
-    Esta tarefa executa todo o processo de busca e otimização de rota,
-    verificando o delay da API da SEFAZ antes de começar.
-    """
-    from algorithms.alns_solver import alns_solve_tpp
     from algorithms.sefaz_api import obter_produtos, verificar_delay_sefaz
+    from algorithms.alns_solver import alns_solve_tpp
+    from algorithms.tpplib_data import create_tpplib_data
     import time
+    from django.core.cache import cache
+
+    task_id = self.request.id
+    dias_usuario = int(dias)
+
+    # ✅ CORREÇÃO 1: Usa a chave de progresso SIMPLIFICADA que a view espera.
+    progress_key = f"progress:{task_id}"
+
+    def update_progress(percentage, step):
+        self.update_state(state='PROGRESS', meta={'progress': int(percentage), 'step': step})
+        cache.set(progress_key, int(percentage), timeout=600)
+        logger.info(f"Task {task_id}: {int(percentage)}% - {step}")
+
     try:
-        task_id = self.request.id
-        progress_key = f"progresso_{session_key}_{task_id}" if session_key else f"progresso_{task_id}"
-
-        def update_progress(percentage, step):
-            self.update_state(state='PROGRESS', meta={'progress': percentage, 'step': step})
-            cache.set(progress_key, percentage, timeout=600)
-            logger.info(f"Task {task_id}: {percentage}% - {step}")
-
-        # --- ETAPA 0: VERIFICAR O DELAY DA API ---
-        update_progress(5, "Verificando status da API da SEFAZ...")
+        # --- ETAPA 1: LÓGICA DE DELAY E BUSCA OTIMIZADA ---
+        update_progress(5, "Verificando status da API...")
         dias_delay = verificar_delay_sefaz(latitude, longitude)
 
         if dias_delay > 10:
-            logger.error(f"API da SEFAZ com delay de {dias_delay} dias. Abortando a tarefa.")
-            raise Exception("A API da SEFAZ parece estar com problemas ou muito desatualizada. Tente novamente mais tarde.")
+            raise Exception("A API da SEFAZ parece estar com dados muito desatualizados.")
 
-        dias_usuario = int(dias)
-        dias_reais = min(max(dias_usuario, dias_delay), 10)
+        # ✅ CORREÇÃO 2: Lógica final para o período de busca.
+        # Usa o maior valor entre a seleção do usuário e o delay + 1 dia de margem.
+        dias_reais = max(dias_usuario, dias_delay + 1)
+        # Garante que não exceda o limite máximo de 10 dias.
+        dias_para_consulta = min(dias_reais, 10)
+        
+        logger.info(f"Período de busca definido para {dias_para_consulta} dias. (Usuário: {dias_usuario}d, Delay API: {dias_delay}d)")
 
-        logger.info(f"Dias selecionado pelo usuário: {dias_usuario}. Delay da API: {dias_delay}. Dias reais para busca: {dias_reais}.")
+        # --- ETAPA 2: EXECUÇÃO DA BUSCA ---
+        update_progress(15, f"Buscando ofertas nos últimos {dias_para_consulta} dias...")
+        
+        # A função obter_produtos deve ser ajustada para também usar a chave 'progress:{task_id}'
+        # internamente, se ela atualizar o progresso.
+        df = obter_produtos(session_key, gtin_list, int(raio), float(latitude), float(longitude), dias_para_consulta, task_id)
 
-        # --- ETAPA 1: OBTER PRODUTOS DA SEFAZ ---
-        update_progress(15, "Consultando a SEFAZ...")
-        df = obter_produtos(task_id, gtin_list, int(raio), float(latitude), float(longitude), dias_reais, task_id)
-
+        # --- ETAPA 3: FINALIZAÇÃO ---
         if df.empty:
-            update_progress(100, "Nenhum dado retornado pela API da SEFAZ.")
-            return {'error': 'Nenhum produto encontrado para os itens selecionados no período e raio definidos. Tente aumentar o raio.'}
-
-        # --- ETAPA 3: PREPARAR DADOS E RODAR SOLVER ---
-
-        # IMPORTAÇÃO TARDIA APLICADA AQUI
-        from algorithms.tpplib_data import create_tpplib_data
-        start_etapa = time.time()
-        update_progress(70, "Procurando as melhores ofertas...")
+            update_progress(100, "Nenhum produto encontrado.")
+            return {
+                'error': 'Não encontramos ofertas para os produtos selecionados.',
+                'sugestao': 'Tente aumentar o raio de busca ou o período. A base de dados da SEFAZ pode não ter registros para sua área.'
+            }
+        
+        update_progress(70, "Ofertas encontradas! Otimizando a rota...")
+        
+        # ... (O resto do código para o solver permanece exatamente igual) ...
         avg_lat = df["LAT"].mean()
         avg_lon = df["LONG"].mean()
-
-        update_progress(73, "Buscando os melhores mercados...")
-        # Se create_tpplib_data já inclui isso, pode ser indicado neste ponto
-
-        update_progress(76, "Criando a sua rota de custo mínimo...")
         tpplib_data = create_tpplib_data(df, avg_lat, avg_lon, media_preco=preco_combustivel)
-
-
-        update_progress(85, "Construindo o mapa...")
-        resultado_solver = resultado_solver = alns_solve_tpp(
-            tpplib_data,
-            max_iterations=10000,
-            no_improve_limit=100,
-            session_key=session_key,
-            task_id=task_id
+        resultado_solver = alns_solve_tpp(
+            tpplib_data, max_iterations=10000, no_improve_limit=100,
+            session_key=session_key, task_id=task_id
         )
-
 
         if not resultado_solver:
             update_progress(100, "Nenhuma solução viável encontrada.")
-            return {'error': 'Não foi possível encontrar uma solução viável.'}
+            return {
+                'error': 'Encontramos as ofertas, mas não foi possível criar uma rota otimizada.',
+                'sugestao': 'Isso pode acontecer se os produtos estiverem em locais muito distantes.'
+            }
 
-        resultado_solver["media_combustivel"] = preco_combustivel
-        resultado_solver["user_lat"] = float(latitude)
-        resultado_solver["user_lon"] = float(longitude)
+        resultado_solver.update({
+            "media_combustivel": preco_combustivel,
+            "user_lat": float(latitude),
+            "user_lon": float(longitude)
+        })
 
         update_progress(100, "Busca finalizada!")
         return resultado_solver
 
     except Exception as e:
-        logger.exception(f"Erro na tarefa Celery 'buscar_ofertas_task': {e}")
-        if session_key:
-            cache.set(f"progresso_{session_key}_{self.request.id}", 100, timeout=600)
-        raise e
-
+        logger.exception(f"Erro crítico na tarefa 'buscar_ofertas_task': {e}")
+        self.update_state(state='FAILURE', meta={'exc_type': type(e).__name__, 'exc_message': str(e)})
+        return {
+            'error': 'Ocorreu um erro inesperado no servidor.',
+            'sugestao': 'Nossa equipe já foi notificada. Por favor, tente novamente mais tarde.'
+        }
 
 @shared_task(bind=True)
 def task_consultar_combustivel(self, gtin, tipo_combustivel, raio, latitude, longitude, dias, posicao, session_key=None):

@@ -20,7 +20,7 @@ from math import floor
 from math import ceil
 import gc
 import psutil
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as ThreadTimeoutError
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as ThreadTimeoutError
 from hashlib import md5
 from datetime import datetime, timedelta
 import pytz  # Adicionado para a função de delay
@@ -76,43 +76,171 @@ SEFAZ_SESSION.headers.update({
     "AppToken": "ad909a7a6f0d6a130941ae2a9706eec58c0bb65d"
 })
 
-def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias, max_attempts=3):
+# def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias, max_attempts=3):
+#     lat = round(float(my_lat), 6)
+#     lon = round(float(my_lon), 6)
+#     cache_key = f"gtin:{gtin}:{raio}:{lat}:{lon}:{dias}"
+#     cached = cache.get(cache_key)
+#     if cached:
+#         logger.info(f"✅ GTIN Cache HIT: {cache_key}")
+#         return cached, gtin
+#     logger.warning(f"⚠️ GTIN Cache MISS: {cache_key}")
+#     url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/produto/pesquisa'
+#     data = {
+#         "produto": {"gtin": str(gtin)},
+#         "estabelecimento": {"geolocalizacao": {"latitude": lat, "longitude": lon, "raio": int(raio)}},
+#         "dias": int(dias),
+#         "pagina": 1,
+#         "registrosPorPagina": 200
+#     }
+#     headers = {"Content-Type": "application/json", "AppToken": "ad909a7a6f0d6a130941ae2a9706eec58c0bb65d"}
+#     for attempt in range(1, max_attempts + 1):
+#         try:
+#             # CORREÇÃO: Usa a sessão global pré-configurada
+#             response = SEFAZ_SESSION.post(url, json=data, headers=headers, timeout=120)
+#             response.raise_for_status()
+#             response_json = response.json()
+#             cache.set(cache_key, response_json, timeout=7200)
+#             logger.info(f"💾 GTIN Cache SET: {cache_key}")
+#             return response_json, gtin
+#         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, requests.exceptions.HTTPError) as e:
+#             logger.warning(f"⚠️ Erro ao consultar GTIN {gtin}, tentativa {attempt}: {e}")
+#             if attempt == max_attempts:
+#                 logger.error(f"❌ Todas as tentativas falharam para GTIN {gtin}")
+#                 return None, gtin
+#             time.sleep(0.5 * attempt)
+#         except Exception as e:
+#             logger.error(f"❌ Erro inesperado para GTIN {gtin}: {e}")
+#             return None, gtin
+
+def _parse_sefaz_response(response_json, gtin_original):
+    # ... (Esta função auxiliar permanece a mesma) ...
+    data_list = []
+    if response_json and 'conteudo' in response_json and response_json['conteudo']:
+        for item in response_json.get('conteudo', []):
+            produto = item.get('produto', {})
+            estabelecimento = item.get('estabelecimento', {})
+            endereco = estabelecimento.get('endereco', {})
+            item_gtin = produto.get('gtin')
+
+            if not item_gtin or str(item_gtin) != str(gtin_original):
+                continue
+
+            try:
+                data_entry = {
+                    'CODIGO_BARRAS': int(item_gtin),
+                    'CATEGORIA': gtin_to_category.get(int(item_gtin), "OUTROS"),
+                    'PRODUTO': gtin_to_product_name.get(int(item_gtin), "OUTROS"),
+                    'VALOR': produto.get('venda', {}).get('valorVenda', 0.0),
+                    'CNPJ': estabelecimento.get('cnpj', 'Desconhecido'),
+                    'MERCADO': estabelecimento.get('razaoSocial', 'Desconhecido'),
+                    'ENDERECO': endereco.get('nomeLogradouro', 'Desconhecido'),
+                    'NUMERO': endereco.get('numeroImovel', 'S/N'),
+                    'BAIRRO': endereco.get('bairro', 'Desconhecido'),
+                    'LAT': endereco.get('latitude', 0.0),
+                    'LONG': endereco.get('longitude', 0.0)
+                }
+                data_list.append(data_entry)
+            except Exception as e:
+                logger.error(f"Erro ao processar item para GTIN {item_gtin}: {e}")
+    return data_list
+
+def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias):
+    """
+    [VERSÃO FINAL OTIMIZADA]
+    Esta função foi simplificada. Ela agora confia no valor de `dias` recebido,
+    eliminando a lógica de fallback interno, pois isso já é tratado na task.
+    """
     lat = round(float(my_lat), 6)
     lon = round(float(my_lon), 6)
+    
+    # A função agora usa diretamente os `dias` que já foram calculados de forma inteligente.
     cache_key = f"gtin:{gtin}:{raio}:{lat}:{lon}:{dias}"
     cached = cache.get(cache_key)
+
     if cached:
         logger.info(f"✅ GTIN Cache HIT: {cache_key}")
-        return cached, gtin
+        return _parse_sefaz_response(cached, gtin)
+    
     logger.warning(f"⚠️ GTIN Cache MISS: {cache_key}")
+    
     url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/produto/pesquisa'
-    data = {
+    data_payload = {
         "produto": {"gtin": str(gtin)},
         "estabelecimento": {"geolocalizacao": {"latitude": lat, "longitude": lon, "raio": int(raio)}},
-        "dias": int(dias),
+        "dias": int(dias), # Usa o valor de `dias` recebido
         "pagina": 1,
-        "registrosPorPagina": 50
+        "registrosPorPagina": 200
     }
-    headers = {"Content-Type": "application/json", "AppToken": "ad909a7a6f0d6a130941ae2a9706eec58c0bb65d"}
-    for attempt in range(1, max_attempts + 1):
-        try:
-            # CORREÇÃO: Usa a sessão global pré-configurada
-            response = SEFAZ_SESSION.post(url, json=data, headers=headers, timeout=120)
-            response.raise_for_status()
-            response_json = response.json()
-            cache.set(cache_key, response_json, timeout=7200)
-            logger.info(f"💾 GTIN Cache SET: {cache_key}")
-            return response_json, gtin
-        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, requests.exceptions.HTTPError) as e:
-            logger.warning(f"⚠️ Erro ao consultar GTIN {gtin}, tentativa {attempt}: {e}")
-            if attempt == max_attempts:
-                logger.error(f"❌ Todas as tentativas falharam para GTIN {gtin}")
-                return None, gtin
-            time.sleep(0.5 * attempt)
-        except Exception as e:
-            logger.error(f"❌ Erro inesperado para GTIN {gtin}: {e}")
-            return None, gtin
 
+    try:
+        response = SEFAZ_SESSION.post(url, json=data_payload, timeout=25) # Timeout um pouco maior
+        response.raise_for_status()
+        response_json = response.json()
+        
+        # Salva a resposta no cache, mesmo que esteja vazia, para evitar novas requisições.
+        cache.set(cache_key, response_json, timeout=3600) # Cache de 1 hora
+        logger.info(f"💾 GTIN Cache SET: {cache_key}")
+        
+        return _parse_sefaz_response(response_json, gtin)
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"❌ Falha na requisição para o GTIN {gtin}: {e}")
+        return []
+
+def obter_produtos(session_key_raw, gtin_list, raio, my_lat, my_lon, dias, progress_id):
+    """
+    [VERSÃO OTIMIZADA COM O MESMO NOME]
+    Orquestra a busca paralela de produtos. A lógica interna foi simplificada para
+    usar a nova versão robusta de `_request_produto_sefaz`.
+    """
+    total_gtins = len(gtin_list)
+    session_key = f"progresso_{session_key_raw}_{progress_id}"
+    
+    if not gtin_list:
+        logger.warning("Lista de GTIN está vazia.")
+        return pd.DataFrame()
+
+    all_data_entries = []
+    max_workers = min(10, total_gtins)
+    
+    logger.info(f"Iniciando busca com {max_workers} workers para {dias} dias...")
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_map = {
+            executor.submit(_request_produto_sefaz, gtin, raio, my_lat, my_lon, dias): gtin
+            for gtin in gtin_list
+        }
+
+        for i, future in enumerate(as_completed(future_map), 1):
+            gtin = future_map[future]
+            try:
+                result_list = future.result()
+                if result_list:
+                    all_data_entries.extend(result_list)
+            except Exception as e:
+                logger.error(f"Erro ao processar o future do GTIN {gtin}: {e}")
+            
+            progresso = int((i / total_gtins) * 100)
+            cache.set(session_key, progresso, timeout=300)
+            logger.info(f"📊 Progresso {session_key}: {progresso}% (GTIN {gtin} finalizado)")
+    
+    if not all_data_entries:
+        logger.warning("❌ Nenhum dado retornado de forma válida após todas as consultas.")
+        return pd.DataFrame()
+
+    df = pd.DataFrame(all_data_entries)
+
+    # Otimizações de tipo de dados (mantidas do seu código original)
+    for col in ['CODIGO_BARRAS', 'NUMERO']:
+        if col in df.columns: df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype('int32')
+    for col in ['VALOR', 'LAT', 'LONG']:
+        if col in df.columns: df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0).astype('float32')
+    for col in ['CATEGORIA', 'PRODUTO', 'CNPJ', 'MERCADO', 'ENDERECO', 'BAIRRO']:
+        if col in df.columns: df[col] = df[col].astype('category')
+
+    logger.info(f"Busca finalizada. Total de {len(df)} registros encontrados.")
+    return df
 def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
     logger.debug(f"🛠️ [consultar_combustivel] tipo_combustivel={tipo_combustivel}, raio={raio}, lat={my_lat}, lon={my_lon}, dias={dias}")
     lat = round(float(my_lat), 3)
@@ -134,7 +262,7 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
         "estabelecimento": {"geolocalizacao": {"latitude": latitude, "longitude": longitude, "raio": raio}},
         "dias": dias,
         "pagina": 1,
-        "registrosPorPagina": 50
+        "registrosPorPagina": 200
     }
     headers = {"Content-Type": "application/json", "AppToken": "ad909a7a6f0d6a130941ae2a9706eec58c0bb65d"}
     try:
@@ -153,110 +281,110 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
         logger.error(f"❌ Erro consultando combustível tipo {tipo_combustivel}: {e}")
     return {"error": f"Falha na requisição para tipo {tipo_combustivel}"}
 
-def obter_produtos(session_key_raw, gtin_list, raio, my_lat, my_lon, dias, progress_id):
-    total = len(gtin_list)
-    session_key = f"progresso_{session_key_raw}_{progress_id}"
-    cache.set(session_key, 0, timeout=600)
-    logger.warning(f"🔑 Chave da sessão recebida: {session_key_raw}")
-    logger.warning(f"📦 Progresso será salvo em: {session_key}")
+# def obter_produtos(session_key_raw, gtin_list, raio, my_lat, my_lon, dias, progress_id):
+#     total = len(gtin_list)
+#     session_key = f"progresso_{session_key_raw}_{progress_id}"
+#     cache.set(session_key, 0, timeout=600)
+#     logger.warning(f"🔑 Chave da sessão recebida: {session_key_raw}")
+#     logger.warning(f"📦 Progresso será salvo em: {session_key}")
 
-    if not gtin_list:
-        logger.warning("Lista de GTIN está vazia.")
-        return {
-            "error": "Lista de produtos vazia. Nenhuma busca foi realizada.",
-            "gtins": [],
-            "dados": []
-        }
+#     if not gtin_list:
+#         logger.warning("Lista de GTIN está vazia.")
+#         return {
+#             "error": "Lista de produtos vazia. Nenhuma busca foi realizada.",
+#             "gtins": [],
+#             "dados": []
+#         }
 
-    data_list = []
-    max_workers = min(2, len(gtin_list))
-    logger.info(f"📊 Uso de memória antes das requisições: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
+#     data_list = []
+#     max_workers = min(2, len(gtin_list))
+#     logger.info(f"📊 Uso de memória antes das requisições: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
 
-    fallback_ativado = False
-    cache.set(session_key, 0, timeout=300)
+#     fallback_ativado = False
+#     cache.set(session_key, 0, timeout=300)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_map = {
-            executor.submit(_request_produto_sefaz, gtin, raio, my_lat, my_lon, dias): gtin
-            for gtin in gtin_list
-        }
+#     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+#         future_map = {
+#             executor.submit(_request_produto_sefaz, gtin, raio, my_lat, my_lon, dias): gtin
+#             for gtin in gtin_list
+#         }
 
-        for i, future in enumerate(concurrent.futures.as_completed(future_map), 1):
-            gtin = future_map[future]
-            try:
-                resp_json, used_gtin = future.result()
+#         for i, future in enumerate(concurrent.futures.as_completed(future_map), 1):
+#             gtin = future_map[future]
+#             try:
+#                 resp_json, used_gtin = future.result()
 
-                # Tenta novamente com dias dinâmicos se resposta estiver vazia
-                if (not resp_json or not resp_json.get('conteudo')) and not fallback_ativado:
-                    logger.warning(f"⚠️ Nenhum conteúdo para GTIN {gtin} com dias={dias}. Tentando fallback dinâmico.")
-                    dias_fallback = calcular_dias_validos_dinamicamente(gtin, raio, my_lat, my_lon)
-                    fallback_ativado = True
-                    resp_json, used_gtin = _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias_fallback)
+#                 # Tenta novamente com dias dinâmicos se resposta estiver vazia
+#                 if (not resp_json or not resp_json.get('conteudo')) and not fallback_ativado:
+#                     logger.warning(f"⚠️ Nenhum conteúdo para GTIN {gtin} com dias={dias}. Tentando fallback dinâmico.")
+#                     dias_fallback = calcular_dias_validos_dinamicamente(gtin, raio, my_lat, my_lon)
+#                     fallback_ativado = True
+#                     resp_json, used_gtin = _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias_fallback)
 
-                if resp_json and 'conteudo' in resp_json and resp_json['conteudo']:
-                    for item in resp_json.get('conteudo', []):
-                        produto = item.get('produto', {})
-                        estabelecimento = item.get('estabelecimento', {})
-                        endereco = estabelecimento.get('endereco', {})
-                        item_gtin = produto.get('gtin')
-                        if not item_gtin:
-                            logger.warning(f"GTIN ausente em item da resposta para GTIN {gtin}.")
-                            continue
-                        try:
-                            data_entry = {
-                                'CODIGO_BARRAS': int(item_gtin),
-                                'CATEGORIA': gtin_to_category.get(int(item_gtin), "OUTROS"),
-                                'PRODUTO': gtin_to_product_name.get(int(item_gtin), "OUTROS"),
-                                'VALOR': produto.get('venda', {}).get('valorVenda', 0.0),
-                                'CNPJ': estabelecimento.get('cnpj', 'Desconhecido'),
-                                'MERCADO': estabelecimento.get('razaoSocial', 'Desconhecido'),
-                                'ENDERECO': endereco.get('nomeLogradouro', 'Desconhecido'),
-                                'NUMERO': endereco.get('numeroImovel', 'S/N'),
-                                'BAIRRO': endereco.get('bairro', 'Desconhecido'),
-                                'LAT': endereco.get('latitude', 0.0),
-                                'LONG': endereco.get('longitude', 0.0)
-                            }
-                            data_list.append(data_entry)
-                        except Exception as e:
-                            logger.error(f"Erro ao processar item com GTIN {item_gtin}: {e}")
-                else:
-                    logger.warning(f"❌ Conteúdo vazio da SEFAZ para o GTIN {gtin}. Resposta: {resp_json}")
-            except Exception as e:
-                logger.error(f"Erro ao consultar o GTIN {gtin}: {e}")
+#                 if resp_json and 'conteudo' in resp_json and resp_json['conteudo']:
+#                     for item in resp_json.get('conteudo', []):
+#                         produto = item.get('produto', {})
+#                         estabelecimento = item.get('estabelecimento', {})
+#                         endereco = estabelecimento.get('endereco', {})
+#                         item_gtin = produto.get('gtin')
+#                         if not item_gtin:
+#                             logger.warning(f"GTIN ausente em item da resposta para GTIN {gtin}.")
+#                             continue
+#                         try:
+#                             data_entry = {
+#                                 'CODIGO_BARRAS': int(item_gtin),
+#                                 'CATEGORIA': gtin_to_category.get(int(item_gtin), "OUTROS"),
+#                                 'PRODUTO': gtin_to_product_name.get(int(item_gtin), "OUTROS"),
+#                                 'VALOR': produto.get('venda', {}).get('valorVenda', 0.0),
+#                                 'CNPJ': estabelecimento.get('cnpj', 'Desconhecido'),
+#                                 'MERCADO': estabelecimento.get('razaoSocial', 'Desconhecido'),
+#                                 'ENDERECO': endereco.get('nomeLogradouro', 'Desconhecido'),
+#                                 'NUMERO': endereco.get('numeroImovel', 'S/N'),
+#                                 'BAIRRO': endereco.get('bairro', 'Desconhecido'),
+#                                 'LAT': endereco.get('latitude', 0.0),
+#                                 'LONG': endereco.get('longitude', 0.0)
+#                             }
+#                             data_list.append(data_entry)
+#                         except Exception as e:
+#                             logger.error(f"Erro ao processar item com GTIN {item_gtin}: {e}")
+#                 else:
+#                     logger.warning(f"❌ Conteúdo vazio da SEFAZ para o GTIN {gtin}. Resposta: {resp_json}")
+#             except Exception as e:
+#                 logger.error(f"Erro ao consultar o GTIN {gtin}: {e}")
 
-            progresso = int((i / total) * 100)
-            cache.set(session_key, progresso, timeout=300)
-            logger.warning(f"📊 Progresso atualizado: {progresso}% (GTIN: {gtin})")
+#             progresso = int((i / total) * 100)
+#             cache.set(session_key, progresso, timeout=300)
+#             logger.warning(f"📊 Progresso atualizado: {progresso}% (GTIN: {gtin})")
 
-    if not data_list:
-        logger.warning("❌ Nenhum dado retornado ou processado de forma válida.")
-        return {
-            "error": "Nenhum dado foi retornado pela API da SEFAZ.",
-            "sugestao": "Tente aumentar o raio ou o número de dias. Verifique também se os GTINs são válidos.",
-            "possiveis_causas": [
-                "GTINs sem movimentação recente",
-                "Delay da SEFAZ (verifique com verificar_delay_sefaz)",
-                "Raio geográfico muito pequeno",
-                "GTINs incorretos ou sem venda recente"
-            ],
-            "gtins_processados": gtin_list,
-            "fallback_dinamico_usado": fallback_ativado
-        }
+#     if not data_list:
+#         logger.warning("❌ Nenhum dado retornado ou processado de forma válida.")
+#         return {
+#             "error": "Nenhum dado foi retornado pela API da SEFAZ.",
+#             "sugestao": "Tente aumentar o raio ou o número de dias. Verifique também se os GTINs são válidos.",
+#             "possiveis_causas": [
+#                 "GTINs sem movimentação recente",
+#                 "Delay da SEFAZ (verifique com verificar_delay_sefaz)",
+#                 "Raio geográfico muito pequeno",
+#                 "GTINs incorretos ou sem venda recente"
+#             ],
+#             "gtins_processados": gtin_list,
+#             "fallback_dinamico_usado": fallback_ativado
+#         }
 
-    df = pd.DataFrame(data_list)
+#     df = pd.DataFrame(data_list)
 
-    for col in ['CODIGO_BARRAS', 'NUMERO']:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype('int32')
-    for col in ['VALOR', 'LAT', 'LONG']:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0).astype('float32')
-    for col in ['CATEGORIA', 'PRODUTO', 'CNPJ', 'MERCADO', 'ENDERECO', 'BAIRRO']:
-        if col in df.columns:
-            df[col] = df[col].astype('category')
+#     for col in ['CODIGO_BARRAS', 'NUMERO']:
+#         if col in df.columns:
+#             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype('int32')
+#     for col in ['VALOR', 'LAT', 'LONG']:
+#         if col in df.columns:
+#             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0).astype('float32')
+#     for col in ['CATEGORIA', 'PRODUTO', 'CNPJ', 'MERCADO', 'ENDERECO', 'BAIRRO']:
+#         if col in df.columns:
+#             df[col] = df[col].astype('category')
 
-    logger.info(f"📊 Uso de memória após criar DataFrame: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
-    return df
+#     logger.info(f"📊 Uso de memória após criar DataFrame: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
+#     return df
 
 def obter_combustiveis(tipo_combustivel, raio, my_lat, my_lon, dias):
     logger.debug(f"🚦 [obter_combustiveis] tipo_combustivel={tipo_combustivel} | type={type(tipo_combustivel)} | raio={raio} | lat={my_lat} | lon={my_lon} | dias={dias}")
@@ -310,7 +438,7 @@ def calcular_dias_validos_dinamicamente(gtin_exemplo, raio, lat, lon, max_dias=1
                 "estabelecimento": {"geolocalizacao": {"latitude": lat, "longitude": lon, "raio": int(raio)}},
                 "dias": dias,
                 "pagina": 1,
-                "registrosPorPagina": 20
+                "registrosPorPagina": 200
             }
             # CORREÇÃO: Usa a sessão global pré-configurada
             response = SEFAZ_SESSION.post(

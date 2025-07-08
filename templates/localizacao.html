@@ -402,51 +402,59 @@
         });
 
         function iniciarProgressoReal(taskId) {
-            const texto = document.getElementById("textoProgresso");
-            const caipira = document.getElementById("caipiraIcon");
+            const textoProgresso = document.getElementById("textoProgresso");
+            const caipiraIcon = document.getElementById("caipiraIcon");
             const caminho = document.getElementById("caminho");
 
-            const interval = setInterval(() => {
-                fetch("{% url 'get_task_status' %}?task_id=" + taskId)
-                .then(res => res.json())
-                .then(data => {
-                    let progresso = 0;
-                    if (data.status === 'SUCCESS' || data.status === 'FAILURE') {
-                        progresso = 100;
-                    } else if (data.status === 'PROGRESS') {
-                        progresso = data.progress || 0;
-                    }
+            // --- Intervalo para a BARRA DE PROGRESSO VISUAL ---
+            const progressInterval = setInterval(() => {
+                // ✅ CORREÇÃO: Chama a sua view 'progresso_status' existente.
+                fetch(`{% url 'progresso_status' %}?task_id=${taskId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        // ✅ CORREÇÃO: A sua view retorna 'progress' ou 'porcentagem'.
+                        // Este código agora funciona com ambos.
+                        const progresso = data.progress || data.porcentagem || 0;
+                        
+                        // Lógica para mover o ícone
+                        const larguraCaminho = caminho.offsetWidth;
+                        const larguraCaipira = caipiraIcon.offsetWidth;
+                        const posicao = (larguraCaminho - larguraCaipira) * (progresso / 100);
+                        caipiraIcon.style.left = `${posicao}px`;
+                    })
+                    .catch(err => console.error("Erro no polling de progresso:", err));
+            }, 1000); // Roda a cada 1 segundo
 
-                    const larguraCaminho = caminho.offsetWidth;
-                    const larguraCaipira = caipira.offsetWidth;
-                    const offset = 0.05; // 5% para evitar que fique colado no início
-                    const posicao = ((larguraCaminho - larguraCaipira) * (progresso / 100 + offset));
-                    caipira.style.left = `${posicao}px`;
+            // --- Intervalo para o STATUS FINAL DA TAREFA ---
+            const statusInterval = setInterval(() => {
+                fetch(`{% url 'get_task_status' %}?task_id=${taskId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        // Atualiza o texto com o passo atual vindo do Celery
+                        textoProgresso.textContent = `${Math.round(data.progress)}% - ${data.step || 'Processando...'}`;
 
-                    if (data.status === 'SUCCESS') {
-                        clearInterval(interval);
-                        if (data.result && data.result.error) {
-                            alert("Busca finalizada com um aviso: " + data.result.error);
-                            window.location.reload();
-                        } else {
-                            texto.textContent = "100% - Busca finalizada! Redirecionando...";
-                            window.location.href = `/resultado/${taskId}/`;
+                        if (data.status === 'SUCCESS' || data.status === 'FAILURE') {
+                            clearInterval(progressInterval);
+                            clearInterval(statusInterval);
+
+                            if (data.status === 'SUCCESS' && data.result && !data.result.error) {
+                                textoProgresso.textContent = "100% - Busca finalizada! Redirecionando...";
+                                window.location.href = `/resultado/${data.task_id}/`;
+                            } else {
+                                const errorMsg = data.result?.error || "Ocorreu um erro.";
+                                const sugestaoMsg = data.result?.sugestao || "Tente novamente.";
+                                alert(`${errorMsg}\n\n${sugestaoMsg}`);
+                                window.location.reload();
+                            }
                         }
-                    } else if (data.status === 'FAILURE') {
-                        clearInterval(interval);
-                        alert("A busca falhou: " + (data.error || "Erro inesperado no servidor."));
+                    })
+                    .catch(err => {
+                        clearInterval(progressInterval);
+                        clearInterval(statusInterval);
+                        alert("Erro de comunicação com o servidor. Verifique o console.");
                         window.location.reload();
-                    } else {
-                        texto.textContent = `${Math.round(progresso)}% - ${data.step || 'Processando...'}`;
-                    }
-                })
-                .catch(err => {
-                    console.error("Erro ao consultar progresso:", err);
-                    clearInterval(interval);
-                    alert("Não foi possível verificar o status da busca. Verifique o console.");
-                    window.location.reload();
-                });
-            }, 2000);
+                    });
+            }, 2500); // Roda a cada 2.5 segundos
         }
 
         // --- 4. INICIALIZAÇÃO DA PÁGINA ---
