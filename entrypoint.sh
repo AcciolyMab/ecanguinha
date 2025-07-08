@@ -5,27 +5,16 @@ set -e
 
 echo "⏳ Preparando o ambiente da aplicação..."
 
-# 🐢 (Opcional) Aguarda serviços como banco/redis
-# if [ -n "$DB_HOST" ] && [ -n "$DB_PORT" ]; then
-#   until nc -z "$DB_HOST" "$DB_PORT"; do
-#     echo "🔄 Aguardando banco de dados em $DB_HOST:$DB_PORT..."
-#     sleep 1
-#   done
-# fi
-
 echo "📦 Aplicando migrações do banco de dados..."
 python manage.py migrate --noinput
 
-echo "🧼 Limpando arquivos estáticos antigos..."
-rm -rf /app/staticfiles/
-
-echo "📁 Garantindo diretório STATIC_ROOT (/app/staticfiles)..."
-mkdir -p /app/staticfiles/
-
-echo "🎯 Coletando arquivos estáticos com --clear..."
+echo "🎯 Coletando arquivos estáticos..."
+# O comando --clear já lida com a limpeza do diretório de destino de forma segura.
+# Remover os comandos 'rm' e 'mkdir' manuais torna o processo mais robusto.
 python manage.py collectstatic --noinput --clear
 
 echo "📂 Verificando arquivos coletados..."
+# Esta verificação continua sendo uma boa prática.
 find /app/staticfiles -type f | sort | grep -E 'canguinhalogo_oficial|styles.css|\.png|\.css|\.js' || echo "⚠️ Nenhum arquivo estático encontrado!"
 
 echo "✅ Ambiente pronto! Iniciando o servidor..."
