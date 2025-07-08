@@ -5,73 +5,118 @@
 
 {% block styles %}
 <style>
-        /* --- ESTILOS PARA GARANTIR A CENTRALIZAÇÃO --- */
+/* --- ESTILOS PARA GARANTIR A CENTRALIZAÇÃO --- */
+/* 1. O contêiner principal do progresso: ocupa a tela toda e centraliza seu conteúdo */
+#progressContainer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    padding: 2rem;
+}
 
-        /* 1. O contêiner principal do progresso: ocupa a tela toda e centraliza seu conteúdo */
-        #progressContainer {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(255, 255, 255, 0.9); /* Fundo branco semi-transparente */
-            display: flex; /* Essencial para a centralização */
-            justify-content: center; /* Centraliza horizontalmente */
-            align-items: center;     /* Centraliza verticalmente */
-            z-index: 9999;
-            padding: 2rem;
-        }
+/* 2. O 'wrapper': agrupa a barra e o texto, e define a largura */
+.caipira-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    max-width: 600px;
+}
 
-        /* 2. O 'wrapper': agrupa a barra e o texto, e define a largura */
-        .caipira-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1rem;
-            width: 100%;
-            max-width: 600px;
-        }
+/* 3. A 'moldura': a barra/trilho por onde o ícone vai andar */
+.caipira-moldura {
+    width: 800px;
+    height: 80px;
+    background-color: rgb(245, 248, 183);
+    border: 2px solid #004d26;
+    border-radius: 10px;
+    position: relative;
+}
 
-        /* 3. A 'moldura': a barra/trilho por onde o ícone vai andar */
-        .caipira-moldura {
-            width: 800px;
-            height: 80px;
-            background-color:rgb(245, 248, 183);
-            border: 2px solid #004d26;
-            border-radius: 10px;
-            position: relative;
-        }
+/* 4. O 'caminho': um container interno para o ícone */
+.caipira-caminho {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
 
-        /* 4. O 'caminho': um container interno para o ícone */
-        .caipira-caminho {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
+/* 5. O ícone 'caipira' que se move */
+.emoji-caipira {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    left: 0;
+    width: 180px;
+    height: 180px;
+    transition: left 0.5s linear;
+}
 
-        /* 5. O ícone 'caipira' que se move */
-        .emoji-caipira {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            left: 0;
-            width: 180px;
-            height: 180px;
-            transition: left 0.5s linear;
-        }
+/* 6. O texto de status do progresso */
+.texto-status {
+    font-size: 1.2rem;
+    color: #333;
+    font-weight: 500;
+}
 
-        /* 6. O texto de status do progresso */
-        .texto-status {
-            font-size: 1.2rem;
-            color: #333;
-            font-weight: 500;
-        }
-    </style>
+/* Estilos adicionais para o layout centralizado */
+.main-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+.section-card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    height: 100%;
+}
+
+.fuel-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+    .fuel-options {
+        grid-template-columns: 1fr;
+    }
+    .product-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 576px) {
+    .product-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
 {% endblock %}
 
 {% block content %}
+<!-- Progress Container -->
 <div id="progressContainer" style="display: none;">
     <div class="caipira-wrapper">
         <div class="caipira-moldura">
@@ -86,9 +131,9 @@
     </div>
 </div>
 
-<div id="containerGeral">
+<div id="containerGeral" class="main-container">
     <h1 class="mb-4 text-center display-6">Canguinha: Localização do Comprador</h1>
-
+    
     {% if messages %}
         {% for message in messages %}
             <div class="alert alert-warning alert-dismissible fade show" role="alert">
@@ -100,410 +145,399 @@
 
     <form id="locationForm" method="post">
         {% csrf_token %}
-        <div class="row g-4">
-            <div class="col-lg-3">
-                <div class="p-4 border rounded shadow-sm h-100">
-                    <h5 class="text-primary mb-3"><i class="bi bi-geo-alt-fill"></i> Localização</h5>
+        
+        <!-- Primeira linha: Localização e Mapa lado a lado -->
+        <div class="row g-4 mb-4">
+            <!-- Seção de Localização -->
+            <div class="col-lg-6">
+                <div class="section-card">
+                    <h5 class="text-primary mb-3">
+                        <i class="bi bi-geo-alt-fill"></i> Localização
+                    </h5>
+                    
                     <div class="mb-3">
                         <label for="cep" class="form-label">CEP da Sua Localização</label>
-                        
-                        <div class="input-group mb-3" style="max-width: 300px;">
-                                    <input type="text"
-                                        class="form-control"
-                                        id="cep"
-                                        name="cep"
-                                        value="57020-040"
-                                        placeholder="57000-000"
-                                        maxlength="9"
-                                        style="height: 60px; width: 100px; font-size: 14px;">
-                                        
-                                <button type="button"
-                                        class="btn btn-outline-primary"
-                                        id="btnBuscarCep"
-                                        style="height: 60px; font-size: 14px; padding: 6px 16px;">
-                                    Buscar
-                                </button>
-                            </div>
+                        <div class="input-group">
+                            <input type="text"
+                                   class="form-control"
+                                   id="cep"
+                                   name="cep"
+                                   value="57020-040"
+                                   placeholder="57000-000"
+                                   maxlength="9"
+                                   style="height: 50px; font-size: 14px;">
+                            <button type="button"
+                                    class="btn btn-outline-primary"
+                                    id="btnBuscarCep"
+                                    style="height: 50px; font-size: 14px;">
+                                Buscar
+                            </button>
+                        </div>
                     </div>
+                    
                     <div class="mb-3">
-                        <label for="raioSlider" class="form-label">Raio de Busca: <span id="raioValue" class="fw-bold">1 km</span></label>
+                        <label for="raioSlider" class="form-label">
+                            Raio de Busca: <span id="raioValue" class="fw-bold">1 km</span>
+                        </label>
                         <input type="range" class="form-range" id="raioSlider" name="raio" min="1" max="6" value="1">
                     </div>
+                    
                     <div>
-                        <label for="diasSlider" class="form-label">Período de Análise: <span id="diasValue" class="fw-bold">1 dia(s)</span></label>
+                        <label for="diasSlider" class="form-label">
+                            Período de Análise: <span id="diasValue" class="fw-bold">1 dia(s)</span>
+                        </label>
                         <input type="range" class="form-range" id="diasSlider" name="dias" min="1" max="10" value="1">
                     </div>
                 </div>
             </div>
-
-            <div class="col-lg-4">
-                <div class="p-4 border rounded shadow-sm h-100">
-                    <h5 class="text-success text-center mb-3"><i class="bi bi-map-fill"></i> Mapa da Região</h5>
-                    <div id="map" style="height: 350px; border-radius: 8px; background-color: #eee;"></div>
+            
+            <!-- Seção do Mapa -->
+            <div class="col-lg-6">
+                <div class="section-card">
+                    <h5 class="text-success text-center mb-3">
+                        <i class="bi bi-map-fill"></i> Mapa da Região
+                    </h5>
+                    <div id="map" style="height: 300px; border-radius: 8px; background-color: #eee;"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Combustível -->
-        <div class="row mt-4">
-            <div class="col-12 col-lg-7">
-                <div class="p-4 border rounded shadow-sm">
-                <h5 class="text-warning mb-3">
-                    <i class="bi bi-fuel-pump-fill"></i> Combustível
-                </h5>
-                <p>Selecione o tipo de combustível para calcular o custo de deslocamento.</p>
-                <div class="row g-3">
-                    <div class="col-12 col-sm-6 col-md-4">
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="tipoCombustivel" id="gasolina-comum" value="1" required>
-                        <label class="form-check-label" for="gasolina-comum">Gasolina Comum</label>
-                    </div>
-                    </div>
-                    <div class="col-12 col-sm-6 col-md-4">
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="tipoCombustivel" id="gasolina-aditivada" value="2">
-                        <label class="form-check-label" for="gasolina-aditivada">Gasolina Aditivada</label>
-                    </div>
-                    </div>
-                    <div class="col-12 col-sm-6 col-md-4">
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="tipoCombustivel" id="alcool" value="3">
-                        <label class="form-check-label" for="alcool">Álcool</label>
-                    </div>
-                    </div>
-                    <div class="col-12 col-sm-6 col-md-4">
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="tipoCombustivel" id="diesel-comum" value="4">
-                        <label class="form-check-label" for="diesel-comum">Diesel Comum</label>
-                    </div>
-                    </div>
-                    <div class="col-12 col-sm-6 col-md-4">
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="tipoCombustivel" id="diesel-aditivado" value="5">
-                        <label class="form-check-label" for="diesel-aditivado">Diesel Aditivado (S10)</label>
-                    </div>
-                    </div>
-                    <div class="col-12 col-sm-6 col-md-4">
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="tipoCombustivel" id="gnv" value="6">
-                        <label class="form-check-label" for="gnv">GNV</label>
-                    </div>
+        <!-- Segunda linha: Combustível e Produtos lado a lado -->
+        <div class="row g-4 mb-4">
+            <!-- Seção de Combustível -->
+            <div class="col-lg-6">
+                <div class="section-card">
+                    <h5 class="text-info mb-3 text-center">
+                        <i class="bi bi-fuel-pump-fill"></i> Combustível
+                    </h5>
+                    <p class="text-center">Selecione o tipo de combustível para calcular o custo de deslocamento.</p>
+                    
+                    <div class="fuel-options">
+                        <div class="form-check text-center">
+                            <input class="form-check-input" type="radio" name="tipoCombustivel" id="gasolina-comum" value="1" required>
+                            <label class="form-check-label" for="gasolina-comum">Gasolina Comum</label>
+                        </div>
+                        <div class="form-check text-center">
+                            <input class="form-check-input" type="radio" name="tipoCombustivel" id="gasolina-aditivada" value="2">
+                            <label class="form-check-label" for="gasolina-aditivada">Gasolina Aditivada</label>
+                        </div>
+                        <div class="form-check text-center">
+                            <input class="form-check-input" type="radio" name="tipoCombustivel" id="alcool" value="3">
+                            <label class="form-check-label" for="alcool">Álcool</label>
+                        </div>
+                        <div class="form-check text-center">
+                            <input class="form-check-input" type="radio" name="tipoCombustivel" id="diesel-comum" value="4">
+                            <label class="form-check-label" for="diesel-comum">Diesel Comum</label>
+                        </div>
+                        <div class="form-check text-center">
+                            <input class="form-check-input" type="radio" name="tipoCombustivel" id="diesel-aditivado" value="5">
+                            <label class="form-check-label" for="diesel-aditivado">Diesel Aditivado (S10)</label>
+                        </div>
+                        <div class="form-check text-center">
+                            <input class="form-check-input" type="radio" name="tipoCombustivel" id="gnv" value="6">
+                            <label class="form-check-label" for="gnv">GNV</label>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        </div>
-
-        <!-- Produtos -->
-        <div class="row mt-4" id="productSection" style="display: none;">
-            <div class="col-12 col-lg-7">
-                <div class="p-4 border rounded shadow-sm">
-                <h5 class="text-info mb-3">
-                    <i class="bi bi-basket-fill"></i> Selecionar Produtos
-                </h5>
-                <div class="form-check mb-3">
-                    <input type="checkbox" class="form-check-input" id="selectAllCheckbox">
-                    <label class="form-check-label" for="selectAllCheckbox">Selecionar/Desmarcar Todos</label>
+            <div class="col-lg-6">
+                <div class="section-card">
+                    <span style="font-weight: bold; color: #084c41;">Apoio:</span><br>
+                    <img src="{% static 'ecanguinha/img/sefaz.png' %}" alt="Logo SEFAZ" style="height: 180px;" style="width: 180px;">
                 </div>
-                <div id="categoryCheckboxes" class="checkbox-group"></div>
+            </div>
+
+            <!-- Seção de Produtos -->
+            <div class="col-lg-6" id="productSection" style="display: none;">
+                <div class="section-card">
+                    <h5 class="text-info mb-3 text-center">
+                        <i class="bi bi-basket-fill"></i> Selecionar Produtos
+                    </h5>
+                    
+                    <div class="text-center mb-3">
+                        <div class="form-check d-inline-block">
+                            <input type="checkbox" class="form-check-input" id="selectAllCheckbox">
+                            <label class="form-check-label" for="selectAllCheckbox">Selecionar / Desmarcar Todos</label>
+                        </div>
+                    </div>
+                    
+                    <div id="categoryCheckboxes" class="product-grid"></div>
                 </div>
             </div>
         </div>
 
-
-        <!-- Inputs e botão de envio -->
+        <!-- Inputs ocultos -->
         <input type="hidden" id="hiddenLatitude" name="latitude">
         <input type="hidden" id="hiddenLongitude" name="longitude">
         <input type="hidden" id="item_list" name="item_list">
         <input type="hidden" id="precoCombustivel" name="precoCombustivel">
         <input type="hidden" id="csrfTokenGlobal" value="{{ csrf_token }}">
 
-        <div class="form-buttons mt-4 d-flex justify-content-center" id="btnBuscarWrapper" style="display: none;">
-            <button type="submit" class="btn btn-success btn-lg" id="btnBuscar" disabled>
-                <i class="bi bi-search"></i> Buscar Ofertas
-            </button>
+        <!-- Botão de envio centralizado -->
+        <div class="row justify-content-center">
+            <div class="col-auto">
+                <div id="btnBuscarWrapper" style="display: none;">
+                    <button type="submit" class="btn btn-success btn-lg" id="btnBuscar" disabled>
+                        <i class="bi bi-search"></i> Buscar Ofertas
+                    </button>
+                </div>
+            </div>
         </div>
-
     </form>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        // --- 1. REFERÊNCIAS AOS ELEMENTOS DA TELA ---
-        const hiddenLatitude = document.getElementById("hiddenLatitude");
-        const hiddenLongitude = document.getElementById("hiddenLongitude");
-        const locationForm = document.getElementById("locationForm");
-        const progressContainer = document.getElementById("progressContainer");
-        const csrfToken = document.getElementById("csrfTokenGlobal")?.value;
-        const btnBuscar = document.getElementById("btnBuscar");
-        const productSection = document.getElementById("productSection");
-        const btnBuscarWrapper = document.getElementById("btnBuscarWrapper");
-        const cepInput = document.getElementById("cep");
-        const btnBuscarCep = document.getElementById("btnBuscarCep");
-        const raioSlider = document.getElementById("raioSlider");
-        const raioValue = document.getElementById("raioValue");
-        const diasSlider = document.getElementById("diasSlider");
-        const diasValue = document.getElementById("diasValue");
-        const checkboxContainer = document.getElementById("categoryCheckboxes");
-        const selectAllCheckbox = document.getElementById("selectAllCheckbox");
+document.addEventListener("DOMContentLoaded", function () {
+    // --- 1. REFERÊNCIAS AOS ELEMENTOS DA TELA ---
+    const hiddenLatitude = document.getElementById("hiddenLatitude");
+    const hiddenLongitude = document.getElementById("hiddenLongitude");
+    const locationForm = document.getElementById("locationForm");
+    const progressContainer = document.getElementById("progressContainer");
+    const csrfToken = document.getElementById("csrfTokenGlobal")?.value;
+    const btnBuscar = document.getElementById("btnBuscar");
+    const productSection = document.getElementById("productSection");
+    const btnBuscarWrapper = document.getElementById("btnBuscarWrapper");
+    const cepInput = document.getElementById("cep");
+    const btnBuscarCep = document.getElementById("btnBuscarCep");
+    const raioSlider = document.getElementById("raioSlider");
+    const raioValue = document.getElementById("raioValue");
+    const diasSlider = document.getElementById("diasSlider");
+    const diasValue = document.getElementById("diasValue");
+    const checkboxContainer = document.getElementById("categoryCheckboxes");
+    const selectAllCheckbox = document.getElementById("selectAllCheckbox");
+    let map = null;
+    let marcadorUsuario = null;
 
-        let map = null;
-        let marcadorUsuario = null;
+    // --- 2. FUNÇÕES ---
+    function inicializarMapa(lat, lon) {
+        if (!L) {
+            console.error("Biblioteca Leaflet (L) não foi encontrada! Verifique se ela está no base.html.");
+            return;
+        }
+        if (!map) {
+            map = L.map('map').setView([lat, lon], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        } else {
+            map.setView([lat, lon], 15);
+        }
+        if (marcadorUsuario) {
+            map.removeLayer(marcadorUsuario);
+        }
+        marcadorUsuario = L.marker([lat, lon]).addTo(map).bindPopup('Sua localização!').openPopup();
+    }
 
-        // --- 2. FUNÇÕES ---
+    function buscarLocalPorCep(cep) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cep)}&countrycodes=br`, {
+            signal: controller.signal
+        })
+            .then(res => res.json())
+            .then(data => {
+                clearTimeout(timeout);
+                if (data.length > 0) {
+                    hiddenLatitude.value = data[0].lat;
+                    hiddenLongitude.value = data[0].lon;
+                    inicializarMapa(data[0].lat, data[0].lon);
+                    atualizarBotaoBuscar();
+                } else {
+                    alert("CEP não encontrado.");
+                }
+            })
+            .catch(err => {
+                clearTimeout(timeout);
+                console.error("Erro ao buscar CEP:", err);
+                alert("Não foi possível obter a localização. Tente novamente.");
+            });
+    }
 
-        function inicializarMapa(lat, lon) {
-            if (!L) {
-                console.error("Biblioteca Leaflet (L) não foi encontrada! Verifique se ela está no base.html.");
-                return;
+    function atualizarBotaoBuscar() {
+        const algumProdutoSelecionado = document.querySelectorAll('input[name="category"]:checked').length > 0;
+        const combustivelSelecionado = document.querySelector('input[name="tipoCombustivel"]:checked');
+        const localizacaoValida = hiddenLatitude.value && hiddenLongitude.value;
+        const habilitar = algumProdutoSelecionado && combustivelSelecionado && localizacaoValida;
+        btnBuscar.disabled = !habilitar;
+    }
+
+    // --- 3. EVENT LISTENERS ---
+    raioSlider.addEventListener("input", e => {
+        raioValue.textContent = `${e.target.value} km`;
+    });
+
+    diasSlider.addEventListener("input", e => {
+        diasValue.textContent = `${e.target.value} dia(s)`;
+    });
+
+    btnBuscarCep.addEventListener("click", () => {
+        const cep = cepInput.value.trim();
+        if (!cep || cep.length < 8) {
+            alert("Digite um CEP válido.");
+            return;
+        }
+        buscarLocalPorCep(cep);
+    });
+
+    document.querySelectorAll('input[name="tipoCombustivel"]').forEach(radio => {
+        radio.addEventListener("change", function () {
+            productSection.style.display = "block";
+            btnBuscarWrapper.style.display = "flex";
+            atualizarBotaoBuscar();
+        });
+    });
+
+    locationForm.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        btnBuscar.disabled = true;
+        document.getElementById('containerGeral').style.display = 'none';
+        progressContainer.style.display = "flex";
+
+        // --- ETAPA 1: BUSCAR PREÇO DO COMBUSTÍVEL ---
+        let precoCombustivelValor = '0.0';
+        try {
+            const payloadCombustivel = {
+                tipoCombustivel: parseInt(document.querySelector('input[name="tipoCombustivel"]:checked').value),
+                raio: parseInt(raioSlider.value),
+                dias: parseInt(diasSlider.value),
+                latitude: parseFloat(hiddenLatitude.value),
+                longitude: parseFloat(hiddenLongitude.value),
+            };
+            const responseCombustivel = await fetch("{% url 'processar_combustivel' %}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify(payloadCombustivel)
+            });
+            if (!responseCombustivel.ok) {
+                const errorData = await responseCombustivel.json();
+                throw new Error(errorData.erro || 'Falha ao obter preço do combustível.');
             }
-            if (!map) {
-                map = L.map('map').setView([lat, lon], 15);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-            } else {
-                map.setView([lat, lon], 15);
-            }
-            if (marcadorUsuario) {
-                map.removeLayer(marcadorUsuario);
-            }
-            marcadorUsuario = L.marker([lat, lon]).addTo(map).bindPopup('Sua localização!').openPopup();
+            const dataCombustivel = await responseCombustivel.json();
+            precoCombustivelValor = dataCombustivel.media_preco;
+        } catch (error) {
+            console.error("Erro na etapa de busca de combustível:", error);
+            alert("Erro: " + error.message);
+            document.getElementById('containerGeral').style.display = 'block';
+            progressContainer.style.display = "none";
+            btnBuscar.disabled = false;
+            return;
         }
 
-        function buscarLocalPorCep(cep) {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
+        // --- ETAPA 2: INICIAR A BUSCA PRINCIPAL DE PRODUTOS ---
+        document.getElementById('precoCombustivel').value = precoCombustivelValor;
+        const todosBarcodes = [...document.querySelectorAll('input[name="category"]:checked')].flatMap(cb => JSON.parse(cb.value));
+        document.getElementById("item_list").value = JSON.stringify(todosBarcodes);
+        const formData = new FormData(locationForm);
+        try {
+            const response = await fetch("{% url 'iniciar_busca_produtos' %}", {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRFToken': csrfToken }
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'O servidor retornou um erro.');
+            }
+            const data = await response.json();
+            iniciarProgressoReal(data.task_id);
+        } catch (error) {
+            alert("Falha ao iniciar a busca principal: " + error.message);
+            document.getElementById('containerGeral').style.display = 'block';
+            progressContainer.style.display = "none";
+            btnBuscar.disabled = false;
+        }
+    });
 
-            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cep)}&countrycodes=br`, {
-                signal: controller.signal
-            })
+    function iniciarProgressoReal(taskId) {
+        const textoProgresso = document.getElementById("textoProgresso");
+        const caipiraIcon = document.getElementById("caipiraIcon");
+        const caminho = document.getElementById("caminho");
+
+        const progressInterval = setInterval(() => {
+            fetch(`{% url 'progresso_status' %}?task_id=${taskId}`)
                 .then(res => res.json())
                 .then(data => {
-                    clearTimeout(timeout);
-                    if (data.length > 0) {
-                        hiddenLatitude.value = data[0].lat;
-                        hiddenLongitude.value = data[0].lon;
-                        inicializarMapa(data[0].lat, data[0].lon);
-                        atualizarBotaoBuscar();
-                    } else {
-                        alert("CEP não encontrado.");
+                    const progresso = data.progress || data.porcentagem || 0;
+                    const larguraCaminho = caminho.offsetWidth;
+                    const larguraCaipira = caipiraIcon.offsetWidth;
+                    const posicao = (larguraCaminho - larguraCaipira) * (progresso / 100);
+                    caipiraIcon.style.left = `${posicao}px`;
+                })
+                .catch(err => console.error("Erro no polling de progresso:", err));
+        }, 1000);
+
+        const statusInterval = setInterval(() => {
+            fetch(`{% url 'get_task_status' %}?task_id=${taskId}`)
+                .then(res => res.json())
+                .then(data => {
+                    textoProgresso.textContent = `${Math.round(data.progress)}% - ${data.step || 'Processando...'}`;
+                    if (data.status === 'SUCCESS' || data.status === 'FAILURE') {
+                        clearInterval(progressInterval);
+                        clearInterval(statusInterval);
+                        if (data.status === 'SUCCESS' && data.result && !data.result.error) {
+                            textoProgresso.textContent = "100% - Busca finalizada! Redirecionando...";
+                            window.location.href = `/resultado/${data.task_id}/`;
+                        } else {
+                            const errorMsg = data.result?.error || "Ocorreu um erro.";
+                            const sugestaoMsg = data.result?.sugestao || "Tente novamente.";
+                            alert(`${errorMsg}\n\n${sugestaoMsg}`);
+                            window.location.reload();
+                        }
                     }
                 })
                 .catch(err => {
-                    clearTimeout(timeout);
-                    console.error("Erro ao buscar CEP:", err);
-                    alert("Não foi possível obter a localização. Tente novamente.");
+                    clearInterval(progressInterval);
+                    clearInterval(statusInterval);
+                    alert("Erro de comunicação com o servidor. Verifique o console.");
+                    window.location.reload();
                 });
-        }
+        }, 2500);
+    }
 
-        function atualizarBotaoBuscar() {
-            const algumProdutoSelecionado = document.querySelectorAll('input[name="category"]:checked').length > 0;
-            const combustivelSelecionado = document.querySelector('input[name="tipoCombustivel"]:checked');
-            const localizacaoValida = hiddenLatitude.value && hiddenLongitude.value;
-            const habilitar = algumProdutoSelecionado && combustivelSelecionado && localizacaoValida;
-            btnBuscar.disabled = !habilitar;
-        }
+    // --- 4. INICIALIZAÇÃO DA PÁGINA ---
+    const categorias = {
+        'FEIJÃO Kg': ["7896006744115", "7893500007715", "7898383101000", "7898907040969", "7898902735167"],
+        'ARROZ Kg': ["7896006716112", "7893500024996", "7896012300213", "7898018160082", "7896084700027"],
+        'MACARRÃO 400g': ["7896213005184", "7896532701576", "7896022200879", "7896005030530", "7896016411021"],
+        'FARINHA MANDIOCA Kg': ["7898994092216", "7898902735099", "7898272919211", "7898272919068", "7898277160021"],
+        'CAFÉ 250g': ["7896005800027", "7898286200039", "7897443410250", "7898286200060", "7898945133012"],
+        'BOLACHA': ["7896213006266", "7896005030356", "7898657832173", "7896003738636", "7891962014982"],
+        'FLOCÃO MILHO 500g': ["7896481130106", "7891091010718", "7898366932973", "7898932426042", "7898366930023"],
+        'MARGARINA 250g': ["7894904271733", "7893000979932", "7894904929108", "7891152506815", "7891515901066"],
+        'MANTEIGA 200g': ["7898912485496", "7896596000059", "7896010400885", "7898939253399", "7898043230798"],
+        'LEITE PÓ 200g': ["7898215152330", "7896051130079", "7898949565017", "7896259410133", "7898403780918"],
+        'LEITE UHT Lt': ["7896259412861", "7898118390860", "7898403782394", "7898387120380", "7896085393488"],
+        'ÓLEO DE SOJA 900ml': ["7891107101621", "7892300001428", "7898247780075", "7896036090244", "7892300030060"],
+        'AÇÚCAR CRISTAL Kg': ["7896065200072", "7896215300591", "7896065200065", "7897261800011", "7897154430103"],
+        'OVOS 30un': ["7898644760175", "7898903159078", "7897146402064", "7898968933156", "7897146401067"],
+        'SARDINHA 125g': ["7891167021013", "7891167023017", "7891167023024", "7896009301063", "7891167021075"]
+    };
 
-        // --- 3. EVENT LISTENERS ---
+    for (const [nome, codigos] of Object.entries(categorias)) {
+        const div = document.createElement("div");
+        div.className = "form-check text-center";
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.className = "form-check-input";
+        input.name = "category";
+        input.id = `cat-${nome.replace(/\s+/g, '')}`;
+        input.value = JSON.stringify(codigos);
+        input.addEventListener("change", atualizarBotaoBuscar);
+        const label = document.createElement("label");
+        label.className = "form-check-label";
+        label.setAttribute('for', input.id);
+        label.innerText = nome;
+        div.appendChild(input);
+        div.appendChild(label);
+        checkboxContainer.appendChild(div);
+    }
 
-        raioSlider.addEventListener("input", e => {
-            raioValue.textContent = `${e.target.value} km`;
-        });
-
-        diasSlider.addEventListener("input", e => {
-            diasValue.textContent = `${e.target.value} dia(s)`;
-        });
-
-        btnBuscarCep.addEventListener("click", () => {
-            const cep = cepInput.value.trim();
-            if (!cep || cep.length < 8) {
-                alert("Digite um CEP válido.");
-                return;
-            }
-            buscarLocalPorCep(cep);
-        });
-
-
-        document.querySelectorAll('input[name="tipoCombustivel"]').forEach(radio => {
-            radio.addEventListener("change", function () {
-                productSection.style.display = "block";
-                btnBuscarWrapper.style.display = "flex";
-                atualizarBotaoBuscar();
-            });
-        });
-
-        locationForm.addEventListener("submit", async function (e) {
-            e.preventDefault();
-            btnBuscar.disabled = true;
-            document.getElementById('containerGeral').style.display = 'none';
-            progressContainer.style.display = "flex";
-            
-            // --- ETAPA 1: BUSCAR PREÇO DO COMBUSTÍVEL (COM TRATAMENTO DE ERRO) ---
-            let precoCombustivelValor = '0.0';
-            try {
-                const payloadCombustivel = {
-                    tipoCombustivel: parseInt(document.querySelector('input[name="tipoCombustivel"]:checked').value),
-                    raio: parseInt(raioSlider.value),
-                    dias: parseInt(diasSlider.value),
-                    latitude: parseFloat(hiddenLatitude.value),
-                    longitude: parseFloat(hiddenLongitude.value),
-                };
-                const responseCombustivel = await fetch("{% url 'processar_combustivel' %}", {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-                    body: JSON.stringify(payloadCombustivel)
-                });
-                
-                if (!responseCombustivel.ok) {
-                    const errorData = await responseCombustivel.json();
-                    throw new Error(errorData.erro || 'Falha ao obter preço do combustível.');
-                }
-                
-                const dataCombustivel = await responseCombustivel.json();
-                precoCombustivelValor = dataCombustivel.media_preco;
-
-            } catch (error) {
-                console.error("Erro na etapa de busca de combustível:", error);
-                alert("Erro: " + error.message);
-                
-                document.getElementById('containerGeral').style.display = 'block';
-                progressContainer.style.display = "none";
-                btnBuscar.disabled = false;
-                return; // Interrompe a submissão
-            }
-
-            // --- ETAPA 2: INICIAR A BUSCA PRINCIPAL DE PRODUTOS ---
-            document.getElementById('precoCombustivel').value = precoCombustivelValor;
-
-            const todosBarcodes = [...document.querySelectorAll('input[name="category"]:checked')].flatMap(cb => JSON.parse(cb.value));
-            document.getElementById("item_list").value = JSON.stringify(todosBarcodes);
-            
-            const formData = new FormData(locationForm);
-
-            try {
-                const response = await fetch("{% url 'iniciar_busca_produtos' %}", {
-                    method: 'POST',
-                    body: formData,
-                    headers: { 'X-CSRFToken': csrfToken } // Adicionar CSRF Token para FormData
-                });
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'O servidor retornou um erro.');
-                }
-                const data = await response.json();
-                iniciarProgressoReal(data.task_id);
-            } catch (error) {
-                alert("Falha ao iniciar a busca principal: " + error.message);
-                document.getElementById('containerGeral').style.display = 'block';
-                progressContainer.style.display = "none";
-                btnBuscar.disabled = false;
-            }
-        });
-
-        function iniciarProgressoReal(taskId) {
-            const textoProgresso = document.getElementById("textoProgresso");
-            const caipiraIcon = document.getElementById("caipiraIcon");
-            const caminho = document.getElementById("caminho");
-
-            // --- Intervalo para a BARRA DE PROGRESSO VISUAL ---
-            const progressInterval = setInterval(() => {
-                // ✅ CORREÇÃO: Chama a sua view 'progresso_status' existente.
-                fetch(`{% url 'progresso_status' %}?task_id=${taskId}`)
-                    .then(res => res.json())
-                    .then(data => {
-                        // ✅ CORREÇÃO: A sua view retorna 'progress' ou 'porcentagem'.
-                        // Este código agora funciona com ambos.
-                        const progresso = data.progress || data.porcentagem || 0;
-                        
-                        // Lógica para mover o ícone
-                        const larguraCaminho = caminho.offsetWidth;
-                        const larguraCaipira = caipiraIcon.offsetWidth;
-                        const posicao = (larguraCaminho - larguraCaipira) * (progresso / 100);
-                        caipiraIcon.style.left = `${posicao}px`;
-                    })
-                    .catch(err => console.error("Erro no polling de progresso:", err));
-            }, 1000); // Roda a cada 1 segundo
-
-            // --- Intervalo para o STATUS FINAL DA TAREFA ---
-            const statusInterval = setInterval(() => {
-                fetch(`{% url 'get_task_status' %}?task_id=${taskId}`)
-                    .then(res => res.json())
-                    .then(data => {
-                        // Atualiza o texto com o passo atual vindo do Celery
-                        textoProgresso.textContent = `${Math.round(data.progress)}% - ${data.step || 'Processando...'}`;
-
-                        if (data.status === 'SUCCESS' || data.status === 'FAILURE') {
-                            clearInterval(progressInterval);
-                            clearInterval(statusInterval);
-
-                            if (data.status === 'SUCCESS' && data.result && !data.result.error) {
-                                textoProgresso.textContent = "100% - Busca finalizada! Redirecionando...";
-                                window.location.href = `/resultado/${data.task_id}/`;
-                            } else {
-                                const errorMsg = data.result?.error || "Ocorreu um erro.";
-                                const sugestaoMsg = data.result?.sugestao || "Tente novamente.";
-                                alert(`${errorMsg}\n\n${sugestaoMsg}`);
-                                window.location.reload();
-                            }
-                        }
-                    })
-                    .catch(err => {
-                        clearInterval(progressInterval);
-                        clearInterval(statusInterval);
-                        alert("Erro de comunicação com o servidor. Verifique o console.");
-                        window.location.reload();
-                    });
-            }, 2500); // Roda a cada 2.5 segundos
-        }
-
-        // --- 4. INICIALIZAÇÃO DA PÁGINA ---
-
-        const categorias = {
-            'FEIJÃO Kg': ["7896006744115", "7893500007715", "7898383101000", "7898907040969", "7898902735167"],
-            'ARROZ Kg': ["7896006716112", "7893500024996", "7896012300213", "7898018160082", "7896084700027"],
-            'MACARRÃO 400g': ["7896213005184", "7896532701576", "7896022200879", "7896005030530", "7896016411021"],
-            'FARINHA MANDIOCA Kg': ["7898994092216", "7898902735099", "7898272919211", "7898272919068", "7898277160021"],
-            'CAFÉ 250g': ["7896005800027", "7898286200039", "7897443410250", "7898286200060", "7898945133012"],
-            'BOLACHA': ["7896213006266", "7896005030356", "7898657832173", "7896003738636", "7891962014982"],
-            'FLOCÃO MILHO 500g': ["7896481130106", "7891091010718", "7898366932973", "7898932426042", "7898366930023"],
-            'MARGARINA 250g': ["7894904271733", "7893000979932", "7894904929108", "7891152506815", "7891515901066"],
-            'MANTEIGA 200g': ["7898912485496", "7896596000059", "7896010400885", "7898939253399", "7898043230798"],
-            'LEITE PÓ 200g': ["7898215152330", "7896051130079", "7898949565017", "7896259410133", "7898403780918"],
-            'LEITE UHT Lt': ["7896259412861", "7898118390860", "7898403782394", "7898387120380", "7896085393488"],
-            'ÓLEO DE SOJA 900ml': ["7891107101621", "7892300001428", "7898247780075", "7896036090244", "7892300030060"],
-            'AÇÚCAR CRISTAL Kg': ["7896065200072", "7896215300591", "7896065200065", "7897261800011", "7897154430103"],
-            'OVOS 30un': ["7898644760175", "7898903159078", "7897146402064", "7898968933156", "7897146401067"],
-            'SARDINHA 125g': ["7891167021013", "7891167023017", "7891167023024", "7896009301063", "7891167021075"]
-        };
-        
-        for (const [nome, codigos] of Object.entries(categorias)) {
-            const div = document.createElement("div");
-            div.className = "form-check";
-            const input = document.createElement("input");
-            input.type = "checkbox";
-            input.className = "form-check-input";
-            input.name = "category";
-            input.id = `cat-${nome.replace(/\s+/g, '')}`;
-            input.value = JSON.stringify(codigos);
-            input.addEventListener("change", atualizarBotaoBuscar);
-            const label = document.createElement("label");
-            label.className = "form-check-label";
-            label.setAttribute('for', input.id);
-            label.innerText = nome;
-            div.appendChild(input);
-            div.appendChild(label);
-            checkboxContainer.appendChild(div);
-        }
-
-        selectAllCheckbox.addEventListener("change", (e) => {
-            document.querySelectorAll('input[name="category"]').forEach(cb => cb.checked = e.target.checked);
-            atualizarBotaoBuscar();
-        });
-
-        //buscarLocalPorCep(cepInput.value || "57020-040");
-        buscarLocalPorCep(cepInput.value || "57020-040");
-
+    selectAllCheckbox.addEventListener("change", (e) => {
+        document.querySelectorAll('input[name="category"]').forEach(cb => cb.checked = e.target.checked);
+        atualizarBotaoBuscar();
     });
+
+    buscarLocalPorCep(cepInput.value || "57020-040");
+});
 </script>
 {% endblock %}
