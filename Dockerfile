@@ -51,6 +51,3 @@ USER app
 
 # Expõe a porta
 EXPOSE 8000
-
-# Define o entrypoint
-ENTRYPOINT ["/app/entrypoint.sh"]
