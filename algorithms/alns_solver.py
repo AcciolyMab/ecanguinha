@@ -37,7 +37,9 @@ class Route:
         return copy.deepcopy(self)
 
 
-def alns_solve_tpp(data: Dict, max_iterations: int, no_improve_limit: int):
+def alns_solve_tpp(data: Dict, max_iterations: int, no_improve_limit: int,
+                   session_key: Optional[str] = None,
+                   task_id: Optional[str] = None):
     # Extrair dados
     K = data['K']           # Conjunto de produtos
     M = data['M']           # Conjunto de mercados
@@ -93,6 +95,16 @@ def alns_solve_tpp(data: Dict, max_iterations: int, no_improve_limit: int):
 
     while iteration < max_iterations and no_improve_best < no_improve_limit and infeasible_count < max_infeasible_solutions:
         iteration += 1
+        if session_key and task_id and iteration % 100 == 0:
+            from django.core.cache import cache
+            progresso_base = 76  # início da fase do solver
+            progresso_max = 99   # limite antes do 100 final
+            progresso = progresso_base + int((iteration / max_iterations) * (progresso_max - progresso_base))
+            progresso = min(progresso, progresso_max)
+            cache_key = f"progresso_{session_key}_{task_id}"
+            cache.set(cache_key, progresso, timeout=600)
+            logger.info(f"📈 Progresso solver atualizado: {progresso}% (iteração {iteration})")
+
 
         destroy_operator = random.choices(destroy_operators, weights=weights_destroy)[0]
         repair_operator = random.choices(repair_operators, weights=weights_repair)[0]

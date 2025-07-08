@@ -79,7 +79,14 @@ def processar_busca_produtos_task(
 
         # Etapa 3 — Executar ALNS
         atualizar_progresso(75, "Calculando a melhor rota...")
-        resultado_solver = alns_solve_tpp(tpplib_data, 10000, 100)
+        resultado_solver =resultado_solver = alns_solve_tpp(
+            tpplib_data,
+            max_iterations=10000,
+            no_improve_limit=100,
+            session_key=session_key,
+            task_id=task_id
+        )
+
 
         if not resultado_solver:
             atualizar_progresso(100, "Nenhuma solução encontrada.")
@@ -184,7 +191,14 @@ def buscar_ofertas_task(self, gtin_list, raio, latitude, longitude, dias, preco_
 
 
         update_progress(85, "Construindo o mapa...")
-        resultado_solver = alns_solve_tpp(tpplib_data, 10000, 100)
+        resultado_solver = resultado_solver = alns_solve_tpp(
+            tpplib_data,
+            max_iterations=10000,
+            no_improve_limit=100,
+            session_key=session_key,
+            task_id=task_id
+        )
+
 
         if not resultado_solver:
             update_progress(100, "Nenhuma solução viável encontrada.")

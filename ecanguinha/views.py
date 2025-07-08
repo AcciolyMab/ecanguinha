@@ -276,7 +276,14 @@ def listar_produtos(request):
         avg_lon = df["LONG"].mean() if "LONG" in df.columns else longitude
 
         tpplib_data = create_tpplib_data(df, avg_lat, avg_lon, media_preco=preco_combustivel)
-        resultado_solver = alns_solve_tpp(tpplib_data, 10000, 100)
+        resultado_solver = alns_solve_tpp(
+            tpplib_data,
+            max_iterations=10000,
+            no_improve_limit=100,
+            session_key=session_key,
+            task_id=progress_id
+        )
+
 
         if not resultado_solver:
             # (código original mantido)
