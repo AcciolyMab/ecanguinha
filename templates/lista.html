@@ -207,9 +207,6 @@
     {{ user_lat|json_script:"user-latitude" }}
     {{ user_lon|json_script:"user-longitude" }}
     {{ resultado.route|json_script:"rota-data" }}
-    {% for coord in node_coords %}
-        <p>Latitude: {{ coord.0 }}, Longitude: {{ coord.1 }}</p>
-    {% endfor %}
     {{ mercados_comprados|json_script:"mercados-data" }}
 
 {% endblock %}
