@@ -19,6 +19,9 @@ python manage.py migrate --noinput
 echo "🧼 Limpando arquivos estáticos antigos..."
 rm -rf /app/staticfiles/
 
+echo "📁 Garantindo diretório STATIC_ROOT (/app/staticfiles)..."
+mkdir -p /app/staticfiles/
+
 echo "🎯 Coletando arquivos estáticos com --clear..."
 python manage.py collectstatic --noinput --clear
 
