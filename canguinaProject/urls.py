@@ -5,6 +5,7 @@ from django.conf.urls.static import static
 from django.views.generic import RedirectView
 from ecanguinha import views
 from django.http import JsonResponse
+from ecanguinha.views import listar_arquivos_static
 
 
 urlpatterns = [
@@ -29,6 +30,7 @@ urlpatterns = [
     path('resultado/<str:task_id>/', views.mostrar_resultado, name='mostrar_resultado'),
     path('processar-combustivel/', views.processar_combustivel, name='processar_combustivel'),
     path('.well-known/appspecific/com.chrome.devtools.json', lambda request: JsonResponse({}, status=204)),
+    path("debug/static/", listar_arquivos_static),
 ]
 
 # Configuração para arquivos estáticos em modo DEBUG

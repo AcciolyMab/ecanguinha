@@ -4,6 +4,7 @@ import json
 import logging
 import re
 import threading
+import os
 import math
 import uuid
 import requests
@@ -631,3 +632,17 @@ def mostrar_resultado(request, task_id):
     else:
         messages.info(request, "Sua busca ainda está em processamento. Aguarde um momento e a página de resultados aparecerá.")
         return redirect('localizacao')
+    
+
+from django.conf import settings
+
+def listar_arquivos_static(request):
+    static_root = settings.STATIC_ROOT
+    if not os.path.isdir(static_root):
+        return JsonResponse({"erro": "STATIC_ROOT não encontrado", "path": static_root})
+
+    conteudo = {}
+    for root, dirs, files in os.walk(static_root):
+        rel_root = os.path.relpath(root, static_root)
+        conteudo[rel_root] = files
+    return JsonResponse(conteudo)
