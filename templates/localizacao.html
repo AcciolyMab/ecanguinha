@@ -150,8 +150,43 @@
                 <div class="p-4 border rounded shadow-sm">
                     <h5 class="text-warning mb-3"><i class="bi bi-fuel-pump-fill"></i> Combustível</h5>
                     <p>Selecione o tipo de combustível para calcular o custo de deslocamento.</p>
-                    <div class="d-flex flex-wrap gap-3">
-                        <!-- ... seus inputs ... -->
+                    <div class="row g-3">
+                        <div class="col-md-4 col-sm-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="tipoCombustivel" id="gasolina-comum" value="1" required>
+                                <label class="form-check-label" for="gasolina-comum">Gasolina Comum</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-sm-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="tipoCombustivel" id="gasolina-aditivada" value="2">
+                                <label class="form-check-label" for="gasolina-aditivada">Gasolina Aditivada</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-sm-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="tipoCombustivel" id="alcool" value="3">
+                                <label class="form-check-label" for="alcool">Álcool</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-sm-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="tipoCombustivel" id="diesel-comum" value="4">
+                                <label class="form-check-label" for="diesel-comum">Diesel Comum</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-sm-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="tipoCombustivel" id="diesel-aditivado" value="5">
+                                <label class="form-check-label" for="diesel-aditivado">Diesel Aditivado (S10)</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-sm-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="tipoCombustivel" id="gnv" value="6">
+                                <label class="form-check-label" for="gnv">GNV</label>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
