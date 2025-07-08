@@ -51,3 +51,9 @@ USER app
 
 # Expõe a porta
 EXPOSE 8000
+
+# Define o entrypoint que prepara o ambiente
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+# Define o comando padrão que o entrypoint irá executar
+CMD ["gunicorn", "canguinaProject.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--threads", "2", "--timeout", "120"]

@@ -3,21 +3,16 @@
 # Encerra o script imediatamente se um comando falhar.
 set -e
 
-echo "⏳ Preparando o ambiente da aplicação..."
+echo "--- EXECUTANDO ENTRYPOINT ---"
 
-echo "📦 Aplicando migrações do banco de dados..."
+echo "--> Aplicando migrações do banco de dados..."
 python manage.py migrate --noinput
 
-echo "🎯 Coletando arquivos estáticos..."
-# O comando --clear já lida com a limpeza do diretório de destino de forma segura.
-# Remover os comandos 'rm' e 'mkdir' manuais torna o processo mais robusto.
+echo "--> Coletando arquivos estáticos..."
+# A opção --clear garante que o diretório de destino seja limpo antes da coleta.
 python manage.py collectstatic --noinput --clear
 
-echo "📂 Verificando arquivos coletados..."
-# Esta verificação continua sendo uma boa prática.
-find /app/staticfiles -type f | sort | grep -E 'canguinhalogo_oficial|styles.css|\.png|\.css|\.js' || echo "⚠️ Nenhum arquivo estático encontrado!"
+echo "--- ENTRYPOINT FINALIZADO. INICIANDO O SERVIDOR... ---"
 
-echo "✅ Ambiente pronto! Iniciando o servidor..."
-
-# Executa o comando principal (gunicorn, celery, etc.)
+# Executa o comando passado como argumentos para este script (o CMD do Dockerfile)
 exec "$@"
