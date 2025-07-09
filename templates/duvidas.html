@@ -1,0 +1,409 @@
+{% extends 'base.html' %}
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Dúvidas Frequentes - Canguinha Alagoas{% endblock %}</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}" />
+    <link rel="icon" href="{% static 'ecanguinha/favicon.ico' %}" type="image/x-icon" />
+
+    {% block styles %}
+    <style>
+        body {
+            margin-top: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .faq-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .faq-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            color: rgb(44, 80, 74);
+        }
+        .faq-header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, rgb(102, 234, 115) 0%, rgb(75, 162, 127) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .faq-header p {
+            font-size: 1.1rem;
+            color: #6c757d;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .accordion-item {
+            border: none;
+            margin-bottom: 1rem;
+            border-radius: 15px !important;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        .accordion-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        .accordion-button {
+            background: linear-gradient(45deg, rgb(102, 234, 115) 0%, rgb(75, 162, 127) 100%);
+            color: #fff;
+            font-weight: 600;
+        }
+        .accordion-button:not(.collapsed) {
+            background: linear-gradient(45deg, rgb(102, 142, 234) 0%, rgb(75, 129, 162) 100%);
+            color: white;
+            box-shadow: none;
+        }
+        .accordion-button:focus {
+            box-shadow: 0 0 0 0.25rem rgba(102, 234, 164, 0.25);
+            border-color: transparent;
+        }
+        .accordion-button::after { /* Remove a seta padrão do Bootstrap */
+            display: none;
+        }
+        .question-icon {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        .rotate-icon {
+            transition: transform 0.35s ease;
+            font-size: 1.2rem;
+            margin-left: auto;
+        }
+        .accordion-button:not(.collapsed) .rotate-icon {
+            transform: rotate(180deg);
+        }
+        .accordion-body {
+            background: white;
+            padding: 2rem;
+        }
+        .contact-info {
+            background: linear-gradient(145deg, rgb(102, 234, 115) 0%, rgb(75, 162, 127) 100%);
+            color: white;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-top: 1.5rem;
+        }
+        .btn-custom {
+            border: none;
+            color: white;
+            padding: 0.75rem 2rem;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 0.5rem;
+        }
+        .btn-custom:hover {
+            transform: translateY(-2px);
+            color: white;
+        }
+        #btnOpenAll, #btnCollapseAll {
+            background: linear-gradient(145deg, rgb(102, 234, 115) 0%, rgb(75, 162, 127) 100%);
+        }
+        #btnOpenAll:hover, #btnCollapseAll:hover {
+             box-shadow: 0 8px 25px rgba(102, 234, 203, 0.3);
+        }
+        .search-box {
+            background: white;
+            border-radius: 25px;
+            padding: 0.5rem 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        .search-input {
+            border: none;
+            outline: none;
+            box-shadow: none;
+            width: 100%;
+            font-size: 1rem;
+            background-color: transparent;
+        }
+        .search-input:focus {
+            border: none;
+            outline: none;
+            box-shadow: none;
+        }
+        .stats-section {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-top: 3rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: rgb(102, 106, 234);
+        }
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+    </style>
+    {% endblock %}
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Canguinha Alagoas</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item"><a class="nav-link" href="{% url 'localizacao' %}">Localização</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'about' %}">Sobre</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'contact' %}">Contato</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'duvidas' %}">Dúvidas Frequentes</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container-fluid py-4">
+        {% block content %}
+        <div class="faq-container">
+
+            <div class="faq-header">
+                <h1><i class="bi bi-question-circle-fill me-3"></i>Dúvidas Frequentes</h1>
+                <p>Encontre respostas para as perguntas mais comuns sobre o Canguinha Alagoas. Se não encontrar o que procura, entre em contato conosco!</p>
+            </div>
+
+            <div class="search-box d-flex align-items-center">
+                <i class="bi bi-search text-muted me-3"></i>
+                <input type="text" class="search-input" placeholder="Pesquisar nas perguntas frequentes..." id="searchInput">
+            </div>
+
+            <div class="accordion" id="faqAccordion">
+
+                <div class="accordion-item" data-keywords="anunciar produtos sefaz nfce">
+                    <h2 class="accordion-header" id="heading1">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse1" aria-expanded="true" aria-controls="collapse1">
+                            <span class="question-icon"><i class="bi bi-shop"></i></span>
+                            Podemos anunciar produtos na plataforma?
+                            <i class="bi bi-chevron-down rotate-icon"></i>
+                        </button>
+                    </h2>
+                    <div id="collapse1" class="accordion-collapse collapse show" aria-labelledby="heading1" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            <p><strong>Não.</strong> As informações de preços apresentadas na plataforma são obtidas a partir de uma integração com a SEFAZ/AL (programa Economiza Alagoas). Os dados exibidos são processados a partir dos cupons fiscais (NFCe) registrados.</p>
+                            <div class="contact-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Dica:</strong> Os preços são baseados em dados dos últimos 10 dias e não são atualizados em tempo real.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item" data-keywords="preços cálculo custo-benefício sefaz">
+                    <h2 class="accordion-header" id="heading2">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse2" aria-expanded="false" aria-controls="collapse2">
+                            <span class="question-icon"><i class="bi bi-tags-fill"></i></span>
+                            De onde vêm os preços exibidos?
+                            <i class="bi bi-chevron-down rotate-icon"></i>
+                        </button>
+                    </h2>
+                    <div id="collapse2" class="accordion-collapse collapse" aria-labelledby="heading2" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            <p>Os preços apresentados são valores reais coletados diretamente da base pública da SEFAZ Alagoas, com base em cupons fiscais emitidos por mercados da sua região.</p>
+                            <p>O grande diferencial é que esses preços não são mostrados de forma aleatória, mas como resultado de um cálculo inteligente que analisa:</p>
+                            <ul>
+                                <li>O preço de cada produto nos mercados próximos;</li>
+                                <li>A distância entre você e esses mercados.</li>
+                            </ul>
+                            <div class="contact-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Dica:</strong> Com isso, o Canguinha mostra onde realmente vale a pena comprar, encontrando o melhor custo-benefício para a sua lista de produtos.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item" data-keywords="diferença preço real mercado deslocamento combustível">
+                    <h2 class="accordion-header" id="heading3">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse3" aria-expanded="false" aria-controls="collapse3">
+                            <span class="question-icon"><i class="bi bi-receipt-cutoff"></i></span>
+                            O preço mostrado é diferente do preço no mercado?
+                            <i class="bi bi-chevron-down rotate-icon"></i>
+                        </button>
+                    </h2>
+                    <div id="collapse3" class="accordion-collapse collapse" aria-labelledby="heading3" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            <p><strong>Não.</strong> O valor exibido para cada produto é exatamente o mesmo que foi registrado em cupons fiscais eletrônicos, emitidos pelo próprio mercado e disponibilizados publicamente pela SEFAZ Alagoas.</p>
+                            <p><strong>Importante:</strong> Ao calcular o valor total da compra, o Canguinha inclui um custo estimado de deslocamento (baseado na distância e no preço do combustível). Esse valor adicional aparece somado ao total para que você tenha uma visão completa do custo real da sua compra.</p>
+
+                            <div class="contact-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Dica:</strong> Se você encontrar diferenças significativas, pode ser devido a promoções ou descontos que não estão refletidos nos cupons fiscais. O CanguinhaAL sempre busca os preços mais recentes e confiáveis.
+                        </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item" data-keywords="cesta básica procon não perecíveis">
+                    <h2 class="accordion-header" id="heading4">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse4" aria-expanded="false" aria-controls="collapse4">
+                            <span class="question-icon"><i class="bi bi-basket-fill"></i></span>
+                            O que é a cesta básica exibida na plataforma?
+                            <i class="bi bi-chevron-down rotate-icon"></i>
+                        </button>
+                    </h2>
+                    <div id="collapse4" class="accordion-collapse collapse" aria-labelledby="heading4" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            <p>A cesta básica do CanguinhaAL é composta por produtos não perecíveis, selecionados com base nas recomendações e pesquisas mais recentes realizadas pelo Procon Alagoas.</p>
+                            <ul>
+                                <li>Ela representa uma amostra dos itens mais essenciais para o consumo das famílias.</li>
+                                <li>A seleção é atualizada conforme os estudos de mercado, garantindo uma comparação justa.</li>
+                                <li>O objetivo é oferecer uma estimativa confiável do custo da alimentação básica na região.</li>
+                            </ul>
+                             <div class="contact-info">
+                                <i class="bi bi-lightbulb me-2"></i>
+                                <strong>Dica:</strong> Os valores apresentados podem ser comparados com os divulgados em pesquisas do PROCON-AL.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item" data-keywords="cálculo preço final cesta deslocamento combustível">
+                    <h2 class="accordion-header" id="heading5">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse5" aria-expanded="false" aria-controls="collapse5">
+                            <span class="question-icon"><i class="bi bi-calculator-fill"></i></span>
+                            Como é calculado o preço final da cesta básica?
+                            <i class="bi bi-chevron-down rotate-icon"></i>
+                        </button>
+                    </h2>
+                    <div id="collapse5" class="accordion-collapse collapse" aria-labelledby="heading5" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                           <p>O preço final é o resultado de um cálculo que considera dois fatores principais:</p>
+                            <ul>
+                                <li><strong>Preço dos produtos:</strong> Valores reais obtidos dos cupons fiscais da SEFAZ.</li>
+                                <li><strong>Custo de deslocamento:</strong> O Canguinha calcula o caminho mais econômico para comprar os itens e estima o gasto com combustível, considerando distância, preço do combustível e consumo médio do veículo.</li>
+                           </ul>
+                           <div class="contact-info">
+                                <i class="bi bi-lightbulb me-2"></i>
+                                <strong>Dica:</strong> O custo total da cesta é a soma dos preços dos produtos mais o custo estimado de deslocamento.
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item" data-keywords="frequência atualização dados sefaz 24 horas">
+                    <h2 class="accordion-header" id="heading6">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse6" aria-expanded="false" aria-controls="collapse6">
+                            <span class="question-icon"><i class="bi bi-arrow-clockwise"></i></span>
+                            Com que frequência os dados são atualizados?
+                            <i class="bi bi-chevron-down rotate-icon"></i>
+                        </button>
+                    </h2>
+                    <div id="collapse6" class="accordion-collapse collapse" aria-labelledby="heading6" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            <p>Os preços são atualizados com base em dados públicos da SEFAZ Alagoas, coletados nos últimos 10 dias, com prioridade para os registros mais recentes.</p>
+                            <ul>
+                                <li>Por padrão, a plataforma considera os preços emitidos nas <strong>últimas 24 horas</strong>.</li>
+                                <li>Caso não haja dados suficientes, o sistema expande a busca gradualmente até o limite de 10 dias.</li>
+                            </ul>
+                            <div class="contact-info">
+                                <i class="bi bi-calendar-check me-2"></i>
+                                <strong>Dica:</strong> A disponibilidade de preços depende das atualizações na base de dados da SEFAZ/AL.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="text-center mt-4">
+                <button class="btn btn-custom" id="btnOpenAll"><i class="bi bi-arrows-expand me-2"></i>Abrir Todas</button>
+                <button class="btn btn-custom" id="btnCollapseAll"><i class="bi bi-arrows-collapse me-2"></i>Fechar Todas</button>
+            </div>
+
+            <div class="stats-section">
+                <div class="row">
+                    <div class="col-md-3 col-6 stat-item"><div class="stat-number">6</div><div class="stat-label">Perguntas</div></div>
+                    <div class="col-md-3 col-6 stat-item"><div class="stat-number">10 dias</div><div class="stat-label">Dados</div></div>
+                    <div class="col-md-3 col-6 stat-item"><div class="stat-number">6 Km</div><div class="stat-label">Busca</div></div>
+                    <div class="col-md-3 col-6 stat-item"><div class="stat-number">100%</div><div class="stat-label">Foco Local</div></div>
+                </div>
+            </div>
+
+        </div>
+        {% endblock %}
+    </main>
+
+    {% block scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            
+            const accordion = document.getElementById('faqAccordion');
+            if (accordion) {
+                const collapseElements = accordion.querySelectorAll('.accordion-collapse');
+                const accordionItems = accordion.querySelectorAll('.accordion-item');
+
+                // Instancia os componentes do Bootstrap
+                const collapseInstances = Array.from(collapseElements).map(el => {
+                    return bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
+                });
+
+                // Funções para abrir/fechar todos
+                const toggleAll = (action) => {
+                    collapseInstances.forEach(instance => {
+                        if (action === 'show') instance.show();
+                        else instance.hide();
+                    });
+                };
+
+                document.getElementById('btnOpenAll')?.addEventListener('click', () => toggleAll('show'));
+                document.getElementById('btnCollapseAll')?.addEventListener('click', () => toggleAll('hide'));
+
+                // Função de pesquisa
+                const searchInput = document.getElementById('searchInput');
+                searchInput?.addEventListener('input', function (e) {
+                    const searchTerm = e.target.value.toLowerCase().trim();
+                    
+                    accordionItems.forEach(item => {
+                        const keywords = (item.dataset.keywords || '').toLowerCase();
+                        const content = item.textContent.toLowerCase();
+                        
+                        const isMatch = searchTerm === '' || keywords.includes(searchTerm) || content.includes(searchTerm);
+                        item.style.display = isMatch ? 'block' : 'none';
+                    });
+                });
+            }
+        });
+    </script>
+    {% endblock %}
+
+</body>
+</html>

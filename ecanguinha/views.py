@@ -108,6 +108,8 @@ def contact(request):
 def avaliar(request):
     return render(request, 'avaliar.html')
 
+def duvidas(request):
+    return render(request, 'duvidas.html')
 
 def submit_feedback(request):
     if request.method == 'POST':

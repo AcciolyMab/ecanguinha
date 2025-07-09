@@ -12,6 +12,7 @@ urlpatterns = [
     path('', views.localizacao, name='localizacao'),
     path('home/', views.home, name='home'),
     path('localizacao/', views.localizacao, name='localizacao'),
+    path('duvidas/', views.duvidas, name='duvidas'),
     path('sobre/', views.about, name='about'),
     path('contato/', views.contact, name='contact'),
     path('api/get_lat_long/', views.get_lat_long, name='get_lat_long'),
