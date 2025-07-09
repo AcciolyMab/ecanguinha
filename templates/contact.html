@@ -1,56 +1,139 @@
+{% extends 'base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sobre - Canguinha Alagoas</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Seu CSS personalizado -->
-    <link rel="stylesheet" href="{% static 'ecanguinha/css/styles.css' %}">
-    <!-- Navbar Bootstrap -->
-    <nav class="navbar navbar-expand-lg">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">Canguinha Alagoas</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-                <ul class="navbar-nav">
-                    {% comment %} <li class="nav-item">
-                        <a class="nav-link active" aria-current="page" href="{% url 'localizacao' %}">Home</a>
-                    </li> {% endcomment %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'localizacao' %}">Localização</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'about' %}">Sobre</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'contact' %}">Contato</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'duvidas' %}">Dúvidas Frequentes</a>
-                    </li>
-                </ul>
-            </div>
+
+{# Define o título que aparecerá na aba do navegador #}
+{% block title %}Contato - Canguinha Alagoas{% endblock %}
+
+{# Bloco para os estilos CSS específicos desta página #}
+{% block styles %}
+<style>
+    /* Estilos para o container principal */
+    .contact-container {
+        /* O fundo e o alinhamento já estão aplicados aqui */
+        min-height: 100vh;
+        background: linear-gradient(145deg, rgb(102, 142, 234) 0%, rgb(75, 129, 162) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
+    
+    /* Estilos para o card de contato */
+    .contact-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        padding: 3rem;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        max-width: 500px;
+        width: 100%;
+        text-align: center;
+    }
+    
+    /* Todos os outros estilos específicos da página de contato */
+    .airplane-icon {
+        width: 60px; height: 60px; background: #667eea; border-radius: 50%; display: flex;
+        align-items: center; justify-content: center; margin: 0 auto 2rem; color: white; font-size: 24px;
+    }
+    .contact-title {
+        color: #333; font-size: 2rem; font-weight: 600; margin-bottom: 1rem;
+    }
+    .contact-subtitle {
+        color: #666; margin-bottom: 2.5rem; line-height: 1.6;
+    }
+    .form-group {
+        margin-bottom: 1.5rem; text-align: left;
+    }
+    .form-label {
+        color: #333; font-weight: 500; margin-bottom: 0.5rem; display: block;
+    }
+    .form-control {
+        border: none; border-bottom: 2px solid #ddd; border-radius: 0; padding: 0.75rem 0;
+        background: transparent; font-size: 1rem; transition: border-color 0.3s ease;
+    }
+    .form-control:focus {
+        box-shadow: none; border-color: #667eea; background: transparent;
+    }
+    .submit-btn {
+        background: white; color: #667eea; border: 2px solid #667eea; padding: 1rem 3rem; border-radius: 50px;
+        font-weight: 600; font-size: 1rem; letter-spacing: 1px; transition: all 0.3s ease; margin-top: 1rem; cursor: pointer;
+    }
+    .submit-btn:hover {
+        background: #667eea; color: white; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+    .social-icons {
+        margin-top: 2rem; display: flex; justify-content: center; gap: 1rem;
+    }
+    .social-icon {
+        width: 40px; height: 40px; border-radius: 50%; background: #f8f9fa; display: flex;
+        align-items: center; justify-content: center; color: #667eea; text-decoration: none; transition: all 0.3s ease;
+    }
+    .social-icon:hover {
+        background: #667eea; color: white; transform: translateY(-2px);
+    }
+</style>
+{% endblock styles %}
+
+{# Bloco que contém todo o HTML principal da sua página #}
+{% block content %}
+<div class="contact-container">
+    <div class="contact-card">
+        <div class="airplane-icon">
+            <i class="fas fa-paper-plane"></i>
         </div>
-    </nav>
-</head>
-<body>
-    <div class="container mt-5">
-        <h1 class="text-center">Sobre o Canguinha Alagoas</h1>
-        <p class="mt-4">
-            {% comment %} O <strong>Canguinha Alagoas</strong> Estamos em construção. Contato: marcelo.accioly@icloud.com {% endcomment %}
+        
+        <h1 class="contact-title">Vamos Manter Contato</h1>
+        <p class="contact-subtitle">
+            Preencha o formulário e seu programa de e-mail será aberto para que você possa nos enviar a mensagem.
         </p>
         
-        <!-- Link para retornar à página Home -->
-        <div class="text-center mt-4">
-            <a href="{% url 'localizacao' %}" class="btn btn-primary">Voltar para Home</a>
+        <form id="contact-form">
+            <div class="form-group">
+                <label class="form-label" for="name">Nome</label>
+                <input type="text" class="form-control" id="name" name="name" placeholder="Digite seu nome" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="email">Seu Email (para respondermos)</label>
+                <input type="email" class="form-control" id="email" name="email" placeholder="Digite um endereço de email válido" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="message">Mensagem</label>
+                <textarea class="form-control" id="message" name="message" rows="4" placeholder="Digite sua mensagem" required></textarea>
+            </div>
+            
+            <button type="submit" class="submit-btn">ABRIR PROGRAMA DE E-MAIL</button>
+        </form>
+        
+        <div class="social-icons">
+            <a href="#" class="social-icon" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+            <a href="#" class="social-icon" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+            <a href="#" class="social-icon" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+            <a href="#" class="social-icon" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
         </div>
     </div>
-    <!-- Bootstrap JS e dependências -->
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
-</body>
-</html>
+</div>
+{% endblock content %}
+
+{# Bloco para os scripts JavaScript específicos desta página #}
+{% block scripts %}
+<script>
+    document.getElementById('contact-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const emailDestino = 'marcelo.accioly01@gmail.com';
+        const nome = document.getElementById('name').value;
+        const emailRemetente = document.getElementById('email').value;
+        const mensagem = document.getElementById('message').value;
+        const assunto = encodeURIComponent(`Contato do site de ${nome}`);
+        const corpoEmail = encodeURIComponent(
+            `Nome: ${nome}\n\n` +
+            `Email do remetente: ${emailRemetente}\n\n` +
+            `Mensagem:\n${mensagem}`
+        );
+
+        const linkMailto = `mailto:${emailDestino}?subject=${assunto}&body=${corpoEmail}`;
+        window.location.href = linkMailto;
+    });
+</script>
+{% endblock scripts %}
