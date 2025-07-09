@@ -36,7 +36,7 @@
             font-size: 2.5rem;
             font-weight: 700;
             margin-bottom: 1rem;
-            background: linear-gradient(45deg, rgb(102, 234, 115) 0%, rgb(75, 162, 127) 100%);
+            background: linear-gradient(45deg, rgb(102, 142, 234) 0%, rgb(75, 129, 162) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -60,7 +60,7 @@
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
         }
         .accordion-button {
-            background: linear-gradient(45deg, rgb(102, 234, 115) 0%, rgb(75, 162, 127) 100%);
+            background: linear-gradient(45deg, rgb(102, 142, 234) 0%, rgb(75, 129, 162) 100%);
             color: #fff;
             font-weight: 600;
         }
@@ -101,7 +101,7 @@
             padding: 2rem;
         }
         .contact-info {
-            background: linear-gradient(145deg, rgb(102, 234, 115) 0%, rgb(75, 162, 127) 100%);
+            background: linear-gradient(145deg, rgb(102, 142, 234) 0%, rgb(75, 129, 162) 100%);
             color: white;
             padding: 1rem;
             border-radius: 10px;
@@ -121,7 +121,7 @@
             color: white;
         }
         #btnOpenAll, #btnCollapseAll {
-            background: linear-gradient(145deg, rgb(102, 234, 115) 0%, rgb(75, 162, 127) 100%);
+            background: linear-gradient(145deg, rgb(102, 142, 234) 0%, rgb(75, 129, 162) 100%);
         }
         #btnOpenAll:hover, #btnCollapseAll:hover {
              box-shadow: 0 8px 25px rgba(102, 234, 203, 0.3);
@@ -346,12 +346,24 @@
                 <button class="btn btn-custom" id="btnCollapseAll"><i class="bi bi-arrows-collapse me-2"></i>Fechar Todas</button>
             </div>
 
-            <div class="stats-section">
-                <div class="row">
-                    <div class="col-md-3 col-6 stat-item"><div class="stat-number">6</div><div class="stat-label">Perguntas</div></div>
+            <div class="stats-section" >
+                <div class="row" justify-content-center>
+                    {% comment %} <div class="col-md-3 col-6 stat-item"><div class="stat-number">6</div><div class="stat-label">Perguntas</div></div>
                     <div class="col-md-3 col-6 stat-item"><div class="stat-number">10 dias</div><div class="stat-label">Dados</div></div>
                     <div class="col-md-3 col-6 stat-item"><div class="stat-number">6 Km</div><div class="stat-label">Busca</div></div>
-                    <div class="col-md-3 col-6 stat-item"><div class="stat-number">100%</div><div class="stat-label">Foco Local</div></div>
+                    <div class="col-md-3 col-6 stat-item"><div class="stat-number">100%</div><div class="stat-label">Foco Local</div></div> {% endcomment %}
+                    <div class="col-md-3 col-6 stat-item">
+                        {% comment %} <span style="font-weight: bold; color: #084c41;">Direitos Reservados:</span><br> {% endcomment %}
+                        <img src="{% static 'ecanguinha/img/canguinhalogo_oficial.png' %}" alt="Logo Canguinha" style="height: 80px;">
+                    </div>
+                    <div class="col-md-3 col-6 stat-item">
+                        {% comment %} <span style="font-weight: bold; color: #084c41;">Apoio:</span><br> {% endcomment %}
+                        <img src="{% static 'ecanguinha/img/sefaz.png' %}" alt="Logo SEFAZ" style="height: 80px;">
+                    </div>
+                    <div class="col-md-3 col-6 stat-item">
+                        {% comment %} <span style="font-weight: bold; color: #084c41;">Apoio:</span><br> {% endcomment %}
+                        <img src="{% static 'ecanguinha/img/ufallogo.png' %}" alt="Logo UFAL" style="height: 80px;">
+                    </div>
                 </div>
             </div>
 
