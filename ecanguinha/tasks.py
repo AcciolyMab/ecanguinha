@@ -148,7 +148,7 @@ def buscar_ofertas_task(self, gtin_list, raio, latitude, longitude, dias, preco_
 
     try:
         # --- ETAPA 1: LÓGICA DE DELAY E BUSCA OTIMIZADA ---
-        update_progress(5, "Verificando status da API...")
+        update_progress(5, "Olá Canguinha vou verificar a sua lista de compras...")
         dias_delay = verificar_delay_sefaz(latitude, longitude)
 
         if dias_delay > 10:
@@ -178,15 +178,6 @@ def buscar_ofertas_task(self, gtin_list, raio, latitude, longitude, dias, preco_
                 'error': 'Não encontramos ofertas para os produtos selecionados.',
                 'sugestao': 'Tente aumentar o raio de busca ou o período. A base de dados da SEFAZ pode não ter registros para sua área.'
             }
-        update_progress(35, "Estamos pechinchando...")
-
-        update_progress(45, "Calma! A negociação é dura...")
-
-        update_progress(55, "Vai dar certo...")
-
-        update_progress(65, "Estamos quase lá...")
-
-        update_progress(70, "Ufa! Ofertas encontradas! Vamos construir seu mapa...")
         
         # ... (O resto do código para o solver permanece exatamente igual) ...
         avg_lat = df["LAT"].mean()
@@ -210,7 +201,7 @@ def buscar_ofertas_task(self, gtin_list, raio, latitude, longitude, dias, preco_
             "user_lon": float(longitude)
         })
 
-        update_progress(100, "Busca finalizada!")
+        update_progress(100, "Busca finalizada! Oxe! toma ai tua rota! 🚗")
         return resultado_solver
 
     except Exception as e:
