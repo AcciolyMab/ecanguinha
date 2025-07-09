@@ -116,13 +116,6 @@ def processar_busca_produtos_task(
 
         atualizar_progresso(100, "Concluído com sucesso ✅")
 
-        # Resultado formatado no formato que o frontend espera
-        # return format_result_for_celery(
-        #     solution=resultado_solver,
-        #     best_cost=resultado_solver.get("total_cost", 0.0),
-        #     execution_time=resultado_solver.get("execution_time", 0.0),
-        #     data=tpplib_data
-        # )
         return resultado_final
     except Exception as e:
         logger.exception("❌ Erro na task processar_busca_produtos_task")
@@ -170,7 +163,9 @@ def buscar_ofertas_task(self, gtin_list, raio, latitude, longitude, dias, preco_
         logger.info(f"Período de busca definido para {dias_para_consulta} dias. (Usuário: {dias_usuario}d, Delay API: {dias_delay}d)")
 
         # --- ETAPA 2: EXECUÇÃO DA BUSCA ---
-        update_progress(15, f"Buscando ofertas nos últimos {dias_para_consulta} dias...")
+        update_progress(15, f"Buscando mercados da região...")
+
+        update_progress(25, f"Buscando ofertas nos últimos {dias_para_consulta} dias...")
         
         # A função obter_produtos deve ser ajustada para também usar a chave 'progress:{task_id}'
         # internamente, se ela atualizar o progresso.
@@ -183,8 +178,15 @@ def buscar_ofertas_task(self, gtin_list, raio, latitude, longitude, dias, preco_
                 'error': 'Não encontramos ofertas para os produtos selecionados.',
                 'sugestao': 'Tente aumentar o raio de busca ou o período. A base de dados da SEFAZ pode não ter registros para sua área.'
             }
-        
-        update_progress(70, "Ofertas encontradas! Otimizando a rota...")
+        update_progress(35, "Estamos pechinchando...")
+
+        update_progress(45, "Calma! A negociação é dura...")
+
+        update_progress(55, "Vai dar certo...")
+
+        update_progress(65, "Estamos quase lá...")
+
+        update_progress(70, "Ufa! Ofertas encontradas! Vamos construir seu mapa...")
         
         # ... (O resto do código para o solver permanece exatamente igual) ...
         avg_lat = df["LAT"].mean()
