@@ -137,7 +137,7 @@ def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias):
     }
 
     try:
-        response = SEFAZ_SESSION.post(url, json=data_payload, timeout=25) # Timeout um pouco maior
+        response = SEFAZ_SESSION.post(url, json=data_payload, timeout=60) # Timeout um pouco maior
         response.raise_for_status()
         response_json = response.json()
         
