@@ -133,7 +133,7 @@ def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias):
         "estabelecimento": {"geolocalizacao": {"latitude": lat, "longitude": lon, "raio": int(raio)}},
         "dias": int(dias), # Usa o valor de `dias` recebido
         "pagina": 1,
-        "registrosPorPagina": 200
+        "registrosPorPagina": 3000
     }
 
     try:
@@ -225,7 +225,7 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
         "estabelecimento": {"geolocalizacao": {"latitude": latitude, "longitude": longitude, "raio": raio}},
         "dias": dias,
         "pagina": 1,
-        "registrosPorPagina": 200
+        "registrosPorPagina": 3000
     }
     headers = {"Content-Type": "application/json", "AppToken": "ad909a7a6f0d6a130941ae2a9706eec58c0bb65d"}
     try:
@@ -296,7 +296,7 @@ def calcular_dias_validos_dinamicamente(gtin_exemplo, raio, lat, lon, max_dias=1
                 "estabelecimento": {"geolocalizacao": {"latitude": lat, "longitude": lon, "raio": int(raio)}},
                 "dias": dias,
                 "pagina": 1,
-                "registrosPorPagina": 200
+                "registrosPorPagina": 3000
             }
             # CORREÇÃO: Usa a sessão global pré-configurada
             response = SEFAZ_SESSION.post(
