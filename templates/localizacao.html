@@ -328,7 +328,7 @@ document.addEventListener("DOMContentLoaded", function () {
         marcadorUsuario = L.marker([lat, lon]).addTo(map).bindPopup('Sua localização!').openPopup();
     }
 
-    function buscarLocalPorCep(cep) {
+    /*function buscarLocalPorCep(cep) {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
         fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cep)}&countrycodes=br`, {
@@ -351,6 +351,73 @@ document.addEventListener("DOMContentLoaded", function () {
                 console.error("Erro ao buscar CEP:", err);
                 alert("Não foi possível obter a localização. Tente novamente.");
             });
+    }*/
+    // CÓDIGO CORRIGIDO E RECOMENDADO
+    // CÓDIGO AINDA MAIS ROBUSTO E RECOMENDADO (use este)
+    async function buscarLocalPorCep(cep) {
+        const cepLimpo = cep.replace(/\D/g, '');
+        if (cepLimpo.length !== 8) {
+            alert("Formato de CEP inválido. O CEP deve conter 8 dígitos.");
+            return;
+        }
+
+        try {
+            // ETAPA 1: Buscar o endereço na ViaCEP (confiável)
+            const viaCepResponse = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+            if (!viaCepResponse.ok) throw new Error('Falha na comunicação com a API de CEP.');
+            
+            const enderecoData = await viaCepResponse.json();
+            if (enderecoData.erro) {
+                alert("CEP não encontrado na base de dados dos Correios.");
+                return;
+            }
+
+            // ETAPA 2: Construir uma lista de possíveis buscas para o Nominatim
+            const { logradouro, bairro, localidade, uf } = enderecoData;
+            const queries = [];
+
+            // Adiciona consultas à lista, da mais específica para a mais geral
+            if (localidade && uf) {
+                // Tentativa 1: Endereço completo com rua e bairro
+                if (logradouro) queries.push(`${logradouro}, ${bairro}, ${localidade}, ${uf}`);
+                
+                // Tentativa 2: Endereço com rua, mas sem bairro (muitas vezes funciona melhor)
+                if (logradouro) queries.push(`${logradouro}, ${localidade}, ${uf}`);
+                
+                // Tentativa 3: Apenas a cidade/estado (para CEPs gerais de cidades)
+                queries.push(`${localidade}, ${uf}`);
+            } else {
+                throw new Error('A resposta da API de CEP não contém cidade/estado.');
+            }
+
+            // Remove buscas duplicadas (caso o bairro seja vazio, por exemplo)
+            const uniqueQueries = [...new Set(queries)]; 
+
+            // ETAPA 3: Tentar cada busca até que uma funcione
+            for (const query of uniqueQueries) {
+                console.log(`Tentando geocodificar com: "${query}"`); // Log para depuração
+                
+                const nominatimResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=br`);
+                const geoData = await nominatimResponse.json();
+
+                if (geoData && geoData.length > 0) {
+                    // SUCESSO! Encontrou coordenadas.
+                    console.log("Sucesso!", geoData[0]);
+                    hiddenLatitude.value = geoData[0].lat;
+                    hiddenLongitude.value = geoData[0].lon;
+                    inicializarMapa(geoData[0].lat, geoData[0].lon);
+                    atualizarBotaoBuscar();
+                    return; // Encerra a função com sucesso
+                }
+            }
+            
+            // Se o loop terminar e nenhuma busca funcionar, exibe o alerta.
+            alert("Endereço do CEP foi encontrado, mas não foi possível localizar as coordenadas geográficas no mapa. Tente um CEP próximo.");
+
+        } catch (err) {
+            console.error("Erro no processo de busca por CEP:", err);
+            alert("Não foi possível obter a localização. Verifique sua conexão e tente novamente.");
+        }
     }
 
     function atualizarBotaoBuscar() {
