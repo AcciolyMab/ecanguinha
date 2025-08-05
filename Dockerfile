@@ -52,7 +52,7 @@ USER app
 # Expõe a porta
 EXPOSE 8000
 
-# Define o entrypoint que prepara o ambiente
+# Define o entrypoint que prepara o ambientes
 ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Define o comando padrão que o entrypoint irá executar
