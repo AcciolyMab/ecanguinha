@@ -314,7 +314,7 @@ def calcular_dias_validos_dinamicamente(gtin_exemplo, raio, lat, lon, max_dias=1
         time.sleep(0.5)
     return max_dias
 
-# --- NOVA FUNÇÃO PARA VERIFICAÇÃO DE DELAY ---
+# --- NOVA FUNÇÃO PARA VERIFICAÇÃO DE DELAY Altered ---
 def verificar_delay_sefaz(latitude, longitude, raio=5):
     """Verifica o atraso (delay) da API da SEFAZ de forma mais robusta."""
     logger.info(f"Verificando delay da API da SEFAZ para lat={latitude}, lon={longitude}")
