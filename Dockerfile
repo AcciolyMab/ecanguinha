@@ -1,5 +1,5 @@
 # ===============================
-# 🚧 Estágio 1: Build das dependências
+# 🚧 Estágio 1: Build das dependências  
 # ===============================
 FROM python:3.10-slim AS builder
 
