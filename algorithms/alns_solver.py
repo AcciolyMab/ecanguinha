@@ -3,6 +3,23 @@ import copy
 import random
 import math
 import logging
+from dataclasses import dataclass
+
+@dataclass
+class ALNSConfig:
+    """
+    Parâmetros do ALNS conforme Ropke e Pisinger (2006),
+    referenciados na Seção 4.3 da dissertação.
+    """
+    segment_length: int = 60        # L na dissertação (linha 5 do Algoritmo 4.1)
+    reaction_factor: float = 0.4    # η na dissertação (linha 6 do Algoritmo 4.1)
+    remove_fraction: float = 0.2    # fração de destruição dos operadores
+    penalty_value: float = 10.0     # penalidade por mercado com item único
+    max_infeasible: int = 50        # infMax (linha 9 do Algoritmo 4.1)
+    # Recompensas σ1, σ2, σ3 conforme Algoritmo 2.1 da dissertação
+    sigma1: float = 3.0  # nova melhor solução global
+    sigma2: float = 2.0  # melhora solução corrente, não a global
+    sigma3: float = 1.0  # aceita por simulated annealing (não melhora)
 from typing import Dict, List, Tuple, Optional, Set
 
 logger = logging.getLogger(__name__)
@@ -37,9 +54,17 @@ class Route:
         return copy.deepcopy(self)
 
 
+#def alns_solve_tpp(data: Dict, max_iterations: int, no_improve_limit: int,
+#                   session_key: Optional[str] = None,
+#                   task_id: Optional[str] = None):
 def alns_solve_tpp(data: Dict, max_iterations: int, no_improve_limit: int,
                    session_key: Optional[str] = None,
-                   task_id: Optional[str] = None):
+                   task_id: Optional[str] = None,
+                   config: Optional[ALNSConfig] = None):  # <-- único acréscimo
+
+    if config is None:
+        config = ALNSConfig()  # usa defaults — nenhuma chamada existente quebra
+
     # Extrair dados
     K = data['K']           # Conjunto de produtos
     M = data['M']           # Conjunto de mercados
@@ -78,8 +103,10 @@ def alns_solve_tpp(data: Dict, max_iterations: int, no_improve_limit: int,
     weights_repair = [1] * len(repair_operators)
     scores_destroy = [0] * len(destroy_operators)
     scores_repair = [0] * len(repair_operators)
-    segment_length = 60
-    reaction_factor = 0.4
+    #segment_length = 60
+    #reaction_factor = 0.4
+    segment_length = config.segment_length
+    reaction_factor = config.reaction_factor
 
     # Solução inicial
     current_solution = initial_solution(K, M, depot, Mk, pik)
@@ -90,45 +117,86 @@ def alns_solve_tpp(data: Dict, max_iterations: int, no_improve_limit: int,
     iteration = 0
     no_improve_best = 0
     infeasible_count = 0
-    max_infeasible_solutions = 50
+    #max_infeasible_solutions = 50
+    max_infeasible_solutions = config.max_infeasible
     start_time = time.time()
 
     while iteration < max_iterations and no_improve_best < no_improve_limit and infeasible_count < max_infeasible_solutions:
         iteration += 1
+
         if session_key and task_id and iteration % 100 == 0:
             from django.core.cache import cache
-            progresso_base = 76  # início da fase do solver
-            progresso_max = 99   # limite antes do 100 final
+            progresso_base = 76
+            progresso_max = 99
             progresso = progresso_base + int((iteration / max_iterations) * (progresso_max - progresso_base))
             progresso = min(progresso, progresso_max)
             cache_key = f"progresso_{session_key}_{task_id}"
             cache.set(cache_key, progresso, timeout=600)
             logger.info(f"📈 Progresso solver atualizado: {progresso}% (iteração {iteration})")
 
+        # --- Etapa 1: seleção com índice para rastrear qual operador foi usado ---
+        destroy_idx = random.choices(range(len(destroy_operators)), weights=weights_destroy)[0]
+        repair_idx  = random.choices(range(len(repair_operators)),  weights=weights_repair)[0]
 
-        destroy_operator = random.choices(destroy_operators, weights=weights_destroy)[0]
-        repair_operator = random.choices(repair_operators, weights=weights_repair)[0]
+        destroy_operator = destroy_operators[destroy_idx]
+        repair_operator  = repair_operators[repair_idx]
 
+        # --- Destruição (usando config em vez de hardcode) ---
         if destroy_operator == worst_removal:
-            partial_solution = worst_removal(current_solution, custos_viagem, node_index, pik, remove_fraction=0.2)
+            partial_solution = worst_removal(
+                current_solution, custos_viagem, node_index, pik,
+                remove_fraction=config.remove_fraction
+            )
         else:
-            partial_solution = destroy_operator(current_solution)
+            partial_solution = destroy_operator(
+                current_solution,
+                remove_fraction=config.remove_fraction
+            )
+
+        # --- Reparo ---
         new_solution = repair_operator(partial_solution, K, Mk, pik, custos_viagem, node_index, depot)
 
+        # --- Solução inviável ---
         if new_solution is None:
             infeasible_count += 1
             continue
         else:
             infeasible_count = 0
 
-        new_cost = calculate_cost(new_solution, custos_viagem, node_index, pik)
+        new_cost = calculate_cost(
+            new_solution, custos_viagem, node_index, pik,
+            penalty_value=config.penalty_value
+        )
 
-        if acceptance_criterion(current_cost, new_cost, iteration, max_iterations):
-            current_solution = new_solution
-            current_cost = new_cost
+        # --- Etapas 2 e 3: critério de aceitação + scores σ1, σ2, σ3 ---
+        # Conforme Algoritmo 2.1 da dissertação (Ropke e Pisinger, 2006)
+        accepted     = False
+        score_awarded = 0
+
+        if new_cost < current_cost:
+            # Melhora a solução corrente — aceita imediatamente
+            accepted = True
             if new_cost < best_cost:
-                best_solution = copy.deepcopy(new_solution)
-                best_cost = new_cost
+                score_awarded = config.sigma1   # σ1: melhorou a melhor global
+            else:
+                score_awarded = config.sigma2   # σ2: melhorou corrente, não a global
+
+        else:
+            # Critério Simulated Annealing: pode aceitar solução pior
+            temperature = max(0.01, min(1.0, 1.0 - iteration / max_iterations))
+            probability = math.exp(-(new_cost - current_cost) / temperature)
+            if random.random() < probability:
+                accepted     = True
+                score_awarded = config.sigma3   # σ3: aceito por SA, linha 21 Alg. 2.1
+
+        # --- Aplicar decisão de aceitação ---
+        if accepted:
+            current_solution = new_solution
+            current_cost     = new_cost
+
+            if new_cost < best_cost:
+                best_solution  = copy.deepcopy(new_solution)
+                best_cost      = new_cost
                 no_improve_best = 0
                 logger.info(f"Melhoria encontrada na iteração {iteration}: Custo = {best_cost}")
             else:
@@ -136,15 +204,30 @@ def alns_solve_tpp(data: Dict, max_iterations: int, no_improve_limit: int,
         else:
             no_improve_best += 1
 
-        if iteration % segment_length == 0:
-            for i in range(len(weights_destroy)):
-                weights_destroy[i] = (1 - reaction_factor) * weights_destroy[i] + reaction_factor * scores_destroy[i]
-                scores_destroy[i] = 0
-            for i in range(len(weights_repair)):
-                weights_repair[i] = (1 - reaction_factor) * weights_repair[i] + reaction_factor * scores_repair[i]
-                scores_repair[i] = 0
+        # --- Atualizar scores dos operadores usados nesta iteração ---
+        scores_destroy[destroy_idx] += score_awarded
+        scores_repair[repair_idx]   += score_awarded
 
-    end_time = time.time()
+        # --- Atualizar pesos ao fim do segmento (linha 36 Algoritmo 4.1) ---
+        if iteration % config.segment_length == 0:
+            for i in range(len(weights_destroy)):
+                weights_destroy[i] = (
+                    (1 - config.reaction_factor) * weights_destroy[i]
+                    + config.reaction_factor * scores_destroy[i]
+                )
+                weights_destroy[i] = max(weights_destroy[i], 0.01)  # evita peso zero
+                scores_destroy[i]  = 0
+
+            for i in range(len(weights_repair)):
+                weights_repair[i] = (
+                    (1 - config.reaction_factor) * weights_repair[i]
+                    + config.reaction_factor * scores_repair[i]
+                )
+                weights_repair[i] = max(weights_repair[i], 0.01)
+                scores_repair[i]  = 0
+
+    # --- Pós-loop (sem alteração) ---
+    end_time       = time.time()
     execution_time = end_time - start_time
 
     if best_solution is None:
@@ -152,6 +235,66 @@ def alns_solve_tpp(data: Dict, max_iterations: int, no_improve_limit: int,
         return None, None, None
 
     return format_result(best_solution, best_cost, execution_time, distancias_km, custos_viagem, node_index, data)
+
+    # while iteration < max_iterations and no_improve_best < no_improve_limit and infeasible_count < max_infeasible_solutions:
+    #     iteration += 1
+    #     if session_key and task_id and iteration % 100 == 0:
+    #         from django.core.cache import cache
+    #         progresso_base = 76  # início da fase do solver
+    #         progresso_max = 99   # limite antes do 100 final
+    #         progresso = progresso_base + int((iteration / max_iterations) * (progresso_max - progresso_base))
+    #         progresso = min(progresso, progresso_max)
+    #         cache_key = f"progresso_{session_key}_{task_id}"
+    #         cache.set(cache_key, progresso, timeout=600)
+    #         logger.info(f"📈 Progresso solver atualizado: {progresso}% (iteração {iteration})")
+
+
+    #     destroy_operator = random.choices(destroy_operators, weights=weights_destroy)[0]
+    #     repair_operator = random.choices(repair_operators, weights=weights_repair)[0]
+
+    #     if destroy_operator == worst_removal:
+    #         partial_solution = worst_removal(current_solution, custos_viagem, node_index, pik, remove_fraction=0.2)
+    #     else:
+    #         partial_solution = destroy_operator(current_solution)
+    #     new_solution = repair_operator(partial_solution, K, Mk, pik, custos_viagem, node_index, depot)
+
+    #     if new_solution is None:
+    #         infeasible_count += 1
+    #         continue
+    #     else:
+    #         infeasible_count = 0
+
+    #     new_cost = calculate_cost(new_solution, custos_viagem, node_index, pik)
+
+    #     if acceptance_criterion(current_cost, new_cost, iteration, max_iterations):
+    #         current_solution = new_solution
+    #         current_cost = new_cost
+    #         if new_cost < best_cost:
+    #             best_solution = copy.deepcopy(new_solution)
+    #             best_cost = new_cost
+    #             no_improve_best = 0
+    #             logger.info(f"Melhoria encontrada na iteração {iteration}: Custo = {best_cost}")
+    #         else:
+    #             no_improve_best += 1
+    #     else:
+    #         no_improve_best += 1
+
+    #     if iteration % segment_length == 0:
+    #         for i in range(len(weights_destroy)):
+    #             weights_destroy[i] = (1 - reaction_factor) * weights_destroy[i] + reaction_factor * scores_destroy[i]
+    #             scores_destroy[i] = 0
+    #         for i in range(len(weights_repair)):
+    #             weights_repair[i] = (1 - reaction_factor) * weights_repair[i] + reaction_factor * scores_repair[i]
+    #             scores_repair[i] = 0
+
+    # end_time = time.time()
+    # execution_time = end_time - start_time
+
+    # if best_solution is None:
+    #     logger.error("Não foi possível encontrar uma solução viável.")
+    #     return None, None, None
+
+    # return format_result(best_solution, best_cost, execution_time, distancias_km, custos_viagem, node_index, data)
 
 
 def format_result(solution: Dict, best_cost: float, execution_time: float,
@@ -291,8 +434,10 @@ def initial_solution(K: List[str], M: List[str], depot: str, Mk: Dict[str, Set[s
 
 #     total_cost = total_distance_cost + total_purchase_cost
 #     return total_cost
-def calculate_cost(solution: Dict, custos_viagem: List[List[float]], node_index: Dict[str, int],
-                   pik: Dict[Tuple[str, str], float]) -> float:
+#def calculate_cost(solution: Dict, custos_viagem: List[List[float]], node_index: Dict[str, int],
+#                   pik: Dict[Tuple[str, str], float]) -> float:
+def calculate_cost(solution, custos_viagem, node_index, pik,
+                   penalty_value: float = 10.0) -> float:
     if solution is None:
         return float('inf')
 
@@ -332,7 +477,8 @@ def calculate_cost(solution: Dict, custos_viagem: List[List[float]], node_index:
 
 
 
-def random_removal(solution: Dict, remove_fraction: float = 0.2) -> Dict:
+#def random_removal(solution: Dict, remove_fraction: float = 0.2) -> Dict:
+def random_removal(solution, remove_fraction: float = 0.2) -> Dict:
     new_solution = copy.deepcopy(solution)
     route_obj: Route = new_solution['route_obj']
     purchases = new_solution['purchases']
@@ -352,9 +498,11 @@ def random_removal(solution: Dict, remove_fraction: float = 0.2) -> Dict:
     return new_solution
 
 
-def worst_removal(solution: Dict, custos_viagem: List[List[float]],
-                  node_index: Dict[str, int],
-                  pik: Dict[Tuple[str, str], float],
+#def worst_removal(solution: Dict, custos_viagem: List[List[float]],
+#                  node_index: Dict[str, int],
+#                  pik: Dict[Tuple[str, str], float],
+#                  remove_fraction: float = 0.2) -> Dict:
+def worst_removal(solution, custos_viagem, node_index, pik,
                   remove_fraction: float = 0.2) -> Dict:
     new_solution = copy.deepcopy(solution)
     route_obj: Route = new_solution['route_obj']
@@ -486,14 +634,32 @@ def random_insertion(solution: Dict, K: List[str], Mk: Dict[str, Set[str]],
 
     return new_solution
 
+def acceptance_criterion(current_cost: float, new_cost: float,
+                         iteration: int, max_iterations: int) -> bool:
+    """
+    Critério de aceitação inspirado em Simulated Annealing.
+    Conforme Algoritmo 2.1 da dissertação (Ropke e Pisinger, 2006).
 
-def acceptance_criterion(current_cost: float, new_cost: float, iteration: int, max_iterations: int) -> bool:
+    ATENÇÃO: esta função NÃO é mais chamada diretamente no loop principal
+    do ALNS. A lógica de aceitação foi incorporada ao while em alns_solve_tpp
+    para permitir a atribuição correta dos scores σ1, σ2 e σ3.
+
+    Mantida aqui apenas como referência ou para uso em testes isolados.
+    """
     if new_cost < current_cost:
         return True
-    else:
-        temperature = max(0.01, min(1, 1 - iteration / max_iterations))
-        probability = math.exp(-(new_cost - current_cost) / temperature)
-        return random.random() < probability
+    temperature = max(0.01, min(1.0, 1.0 - iteration / max_iterations))
+    probability = math.exp(-(new_cost - current_cost) / temperature)
+    return random.random() < probability
+
+
+# def acceptance_criterion(current_cost: float, new_cost: float, iteration: int, max_iterations: int) -> bool:
+#     if new_cost < current_cost:
+#         return True
+#     else:
+#         temperature = max(0.01, min(1, 1 - iteration / max_iterations))
+#         probability = math.exp(-(new_cost - current_cost) / temperature)
+#         return random.random() < probability
 
 
 def run_alns_recursive(data: Dict, max_iterations: int, no_improve_limit: int,
