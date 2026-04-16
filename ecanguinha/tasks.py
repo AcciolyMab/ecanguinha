@@ -50,7 +50,7 @@ def processar_busca_produtos_task(
     Task Celery para processar a busca de produtos de forma assíncrona.
     Atualiza progresso tanto via `self.update_state` (Celery) quanto via Redis.
     """
-    from algorithms.alns_solver import alns_solve_tpp
+    from algorithms.alns_solver import ALNSConfig, alns_solve_tpp
     from algorithms.sefaz_api import obter_produtos
     try:
         task_id = self.request.id
@@ -79,12 +79,29 @@ def processar_busca_produtos_task(
 
         # Etapa 3 — Executar ALNS
         atualizar_progresso(75, "Calculando a melhor rota...")
-        resultado_solver =resultado_solver = alns_solve_tpp(
+        # resultado_solver =resultado_solver = alns_solve_tpp(
+        #     tpplib_data,
+        #     max_iterations=10000,
+        #     no_improve_limit=100,
+        #     session_key=session_key,
+        #     task_id=task_id
+        # )
+        resultado_solver = alns_solve_tpp(
             tpplib_data,
             max_iterations=10000,
-            no_improve_limit=100,
+            no_improve_limit=100,        # ← permite explorar mais antes de desistir
             session_key=session_key,
-            task_id=task_id
+            task_id=task_id,
+            config=ALNSConfig(
+                segment_length=60,       # L — conforme dissertação
+                reaction_factor=0.4,     # η — conforme dissertação
+                remove_fraction=0.2,     # fração de destruição
+                penalty_value=10.0,      # penalidade mercado com 1 item
+                max_infeasible=50,       # máximo de soluções inviáveis consecutivas
+                sigma1=3.0,              # recompensa: melhorou global
+                sigma2=2.0,              # recompensa: melhorou corrente
+                sigma3=1.0               # recompensa: aceito por SA
+            )
         )
 
 

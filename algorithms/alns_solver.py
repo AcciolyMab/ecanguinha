@@ -208,15 +208,34 @@ def alns_solve_tpp(data: Dict, max_iterations: int, no_improve_limit: int,
         scores_destroy[destroy_idx] += score_awarded
         scores_repair[repair_idx]   += score_awarded
 
+        # # --- Atualizar pesos ao fim do segmento (linha 36 Algoritmo 4.1) ---
+        # if iteration % config.segment_length == 0:
+        #     for i in range(len(weights_destroy)):
+        #         weights_destroy[i] = (
+        #             (1 - config.reaction_factor) * weights_destroy[i]
+        #             + config.reaction_factor * scores_destroy[i]
+        #         )
+        #         weights_destroy[i] = max(weights_destroy[i], 0.01)  # evita peso zero
+        #         scores_destroy[i]  = 0
+
+        #     for i in range(len(weights_repair)):
+        #         weights_repair[i] = (
+        #             (1 - config.reaction_factor) * weights_repair[i]
+        #             + config.reaction_factor * scores_repair[i]
+        #         )
+        #         weights_repair[i] = max(weights_repair[i], 0.01)
+        #         scores_repair[i]  = 0
         # --- Atualizar pesos ao fim do segmento (linha 36 Algoritmo 4.1) ---
         if iteration % config.segment_length == 0:
+            segmento_atual = iteration // config.segment_length
+
             for i in range(len(weights_destroy)):
                 weights_destroy[i] = (
                     (1 - config.reaction_factor) * weights_destroy[i]
                     + config.reaction_factor * scores_destroy[i]
                 )
-                weights_destroy[i] = max(weights_destroy[i], 0.01)  # evita peso zero
-                scores_destroy[i]  = 0
+                weights_destroy[i] = max(weights_destroy[i], 0.01)
+                scores_destroy[i] = 0
 
             for i in range(len(weights_repair)):
                 weights_repair[i] = (
@@ -224,8 +243,16 @@ def alns_solve_tpp(data: Dict, max_iterations: int, no_improve_limit: int,
                     + config.reaction_factor * scores_repair[i]
                 )
                 weights_repair[i] = max(weights_repair[i], 0.01)
-                scores_repair[i]  = 0
+                scores_repair[i] = 0
 
+            # Log para verificar se a adaptação está funcionando
+            logger.info(
+                f"[Segmento {segmento_atual}] "
+                f"weights_destroy={[round(w, 4) for w in weights_destroy]} "
+                f"[random_removal, worst_removal] | "
+                f"weights_repair={[round(w, 4) for w in weights_repair]} "
+                f"[greedy_insertion, random_insertion]"
+            )
     # --- Pós-loop (sem alteração) ---
     end_time       = time.time()
     execution_time = end_time - start_time
@@ -399,7 +426,6 @@ def initial_solution(K: List[str], M: List[str], depot: str, Mk: Dict[str, Set[s
     solution = {'route_obj': route_obj, 'purchases': purchases}
     return solution
 
-
 # def calculate_cost(solution: Dict, custos_viagem: List[List[float]], node_index: Dict[str, int],
 #                    pik: Dict[Tuple[str, str], float]) -> float:
 #     if solution is None:
@@ -436,26 +462,31 @@ def initial_solution(K: List[str], M: List[str], depot: str, Mk: Dict[str, Set[s
 #     return total_cost
 #def calculate_cost(solution: Dict, custos_viagem: List[List[float]], node_index: Dict[str, int],
 #                   pik: Dict[Tuple[str, str], float]) -> float:
+
 def calculate_cost(solution, custos_viagem, node_index, pik,
                    penalty_value: float = 10.0) -> float:
+    """
+    Calcula o custo total da solução: custo de viagem + custo de compra + penalidade.
+    O parâmetro penalty_value é controlado pelo ALNSConfig (config.penalty_value).
+    """
     if solution is None:
         return float('inf')
 
     route = solution['route_obj'].get_route()
     purchases = solution['purchases']
 
-    # Cálculo do custo de viagem sem contar o retorno duplicado ao depósito
+    # Custo de viagem
     total_distance_cost = 0.0
     for i in range(len(route) - 1):
         origem = route[i]
         destino = route[i + 1]
         total_distance_cost += custos_viagem[node_index[origem]][node_index[destino]]
-    
-    # Se a rota terminar no depósito, não somamos o custo de retorno duas vezes
+
+    # Retorno ao depósito sem duplicação
     if route[-1] != route[0]:
         total_distance_cost += custos_viagem[node_index[route[-1]]][node_index[route[0]]]
 
-    # Cálculo do custo de compra
+    # Custo de compra
     total_purchase_cost = 0.0
     for market, products in purchases.items():
         for k in products:
@@ -465,13 +496,11 @@ def calculate_cost(solution, custos_viagem, node_index, pik,
                 logger.error(f"Erro: Produto {k} não está disponível no mercado {market}.")
                 return float('inf')
 
-    # Reduzindo penalidade para mercados com poucos itens (de R$ 100 para R$ 10)
-    penalty_value = 10
+    # Penalidade — usa o parâmetro recebido, NÃO sobrescreve
     for market, products in purchases.items():
         if len(products) == 1:
-            total_purchase_cost += penalty_value
+            total_purchase_cost += penalty_value  # ← vem do config.penalty_value
 
-    # Soma dos custos de viagem e de compra
     total_cost = total_distance_cost + total_purchase_cost
     return round(total_cost, 2)
 
