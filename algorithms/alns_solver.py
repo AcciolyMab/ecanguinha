@@ -345,9 +345,6 @@ def initial_solution(K: List[str], M: List[str], depot: str, Mk: Dict[str, Set[s
     purchases: Dict[str, List[str]] = {}
     markets_to_visit: Set[str] = set()
 
-    # Pré-calcula quantos produtos de K cada mercado consegue fornecer
-    market_coverage = {m: sum(1 for k in K if (m, k) in pik) for m in M}
-
     for k in K:
         mercados_possiveis = Mk.get(k, set())
         mercados_validos = [i for i in mercados_possiveis if (i, k) in pik]
@@ -355,21 +352,31 @@ def initial_solution(K: List[str], M: List[str], depot: str, Mk: Dict[str, Set[s
             logger.warning(f"Produto {k} não tem mercados disponíveis na solução inicial.")
             continue
 
-        # Prefere mercados já selecionados para consolidar produtos
-        mercados_na_rota = [i for i in mercados_validos if i in markets_to_visit]
+        # Ordena por preço: decisão é guiada pelo custo, não pela cobertura
+        mercados_validos.sort(key=lambda m: pik[(m, k)])
+        preco_minimo = pik[(mercados_validos[0], k)]
+
+        # Dentre os mercados já na rota, encontra o mais barato para este produto
+        mercados_na_rota = [m for m in mercados_validos if m in markets_to_visit]
         if mercados_na_rota:
-            i = random.choice(mercados_na_rota)
-        else:
-            # Ordena por cobertura para preferir mercados que oferecem mais produtos
-            mercados_validos_sorted = sorted(
-                mercados_validos, key=lambda m: market_coverage.get(m, 0), reverse=True
-            )
-            if len(markets_to_visit) < max_markets:
-                i = mercados_validos_sorted[0]
+            melhor_na_rota = min(mercados_na_rota, key=lambda m: pik[(m, k)])
+            # Só prefere o mercado existente se o preço for competitivo (até 20% acima do mínimo)
+            # — evita que o primeiro mercado selecionado absorva tudo mesmo sendo mais caro
+            if pik[(melhor_na_rota, k)] <= preco_minimo * 1.2:
+                i = melhor_na_rota
+            elif len(markets_to_visit) < max_markets:
+                i = mercados_validos[0]  # abre novo mercado com preço melhor
             else:
-                # Limite atingido: adiciona mesmo assim para garantir cobertura total
-                # (penalidade em calculate_cost pressiona o otimizador a corrigir)
-                i = mercados_validos_sorted[0]
+                i = melhor_na_rota  # limite atingido, usa o existente mesmo mais caro
+        elif len(markets_to_visit) < max_markets:
+            i = mercados_validos[0]  # mercado mais barato para este produto
+        else:
+            # Limite atingido: escolhe o mais barato dentre os já selecionados
+            mercados_selecionados_validos = [m for m in mercados_validos if m in markets_to_visit]
+            if mercados_selecionados_validos:
+                i = min(mercados_selecionados_validos, key=lambda m: pik[(m, k)])
+            else:
+                i = mercados_validos[0]
                 logger.warning(f"Produto {k}: solução inicial excede o limite de {max_markets} mercados.")
 
         if i not in purchases:
@@ -523,11 +530,13 @@ def consolidate_solution(solution: Dict, pik: Dict[Tuple[str, str], float],
         can_move_all = True
 
         for k in products_to_move:
+            current_price = pik.get((thin_market, k), float('inf'))
             moved = False
             for other_market in route_obj.get_route():
                 if other_market == depot or other_market == thin_market:
                     continue
-                if (other_market, k) in pik:
+                if (other_market, k) in pik and pik[(other_market, k)] <= current_price:
+                    # Só move se o preço no destino não for pior que no mercado de origem
                     moves.append((k, other_market))
                     moved = True
                     break
