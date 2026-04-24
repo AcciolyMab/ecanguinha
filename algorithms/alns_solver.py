@@ -5,6 +5,8 @@ import math
 import logging
 from dataclasses import dataclass
 
+_DEFAULT_MIN_PRODUCTS_PER_MARKET = 3
+
 @dataclass
 class ALNSConfig:
     """
@@ -23,7 +25,7 @@ class ALNSConfig:
     # Parâmetros do esquema de resfriamento (Simulated Annealing)
     initial_temperature: float = 1.0   # T_max: temperatura inicial (sistema "quente")
     min_temperature: float = 0.01      # T_min: piso da temperatura (evita divisão por zero)
-    min_products_per_market: int = 3   # mínimo de produtos por mercado visitado
+    min_products_per_market: int = _DEFAULT_MIN_PRODUCTS_PER_MARKET
     max_markets: int = 5               # número máximo de mercados na solução
 
 from typing import Dict, List, Tuple, Optional, Set
@@ -391,7 +393,7 @@ def initial_solution(K: List[str], M: List[str], depot: str, Mk: Dict[str, Set[s
 
 def calculate_cost(solution, custos_viagem, node_index, pik,
                    penalty_value: float = 10.0,
-                   min_products_per_market: int = 2,
+                   min_products_per_market: int = _DEFAULT_MIN_PRODUCTS_PER_MARKET,
                    max_markets: int = 9999) -> float:
     """
     Calcula o custo total da solução: custo de viagem + custo de compra + penalidade.
@@ -440,7 +442,7 @@ def calculate_cost(solution, custos_viagem, node_index, pik,
 
 
 def random_removal(solution, remove_fraction: float = 0.2,
-                   min_products_per_market: int = 2) -> Dict:
+                   min_products_per_market: int = _DEFAULT_MIN_PRODUCTS_PER_MARKET) -> Dict:
     new_solution = copy.deepcopy(solution)
     route_obj: Route = new_solution['route_obj']
     purchases = new_solution['purchases']
@@ -558,7 +560,7 @@ def greedy_insertion(solution: Dict, K: List[str], Mk: Dict[str, Set[str]],
                      pik: Dict[Tuple[str, str], float], custos_viagem: List[List[float]],
                      node_index: Dict[str, int], depot: str,
                      max_markets: int = 9999,
-                     min_products_per_market: int = 2) -> Optional[Dict]:
+                     min_products_per_market: int = _DEFAULT_MIN_PRODUCTS_PER_MARKET) -> Optional[Dict]:
     new_solution = copy.deepcopy(solution)
     route_obj: Route = new_solution['route_obj']
     purchases = new_solution['purchases']
@@ -626,7 +628,7 @@ def random_insertion(solution: Dict, K: List[str], Mk: Dict[str, Set[str]],
                      pik: Dict[Tuple[str, str], float], custos_viagem: List[List[float]],
                      node_index: Dict[str, int], depot: str,
                      max_markets: int = 9999,
-                     min_products_per_market: int = 2) -> Optional[Dict]:
+                     min_products_per_market: int = _DEFAULT_MIN_PRODUCTS_PER_MARKET) -> Optional[Dict]:
     new_solution = copy.deepcopy(solution)
     route_obj: Route = new_solution['route_obj']
     purchases = new_solution['purchases']
