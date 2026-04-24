@@ -23,6 +23,8 @@ class ALNSConfig:
     # Parâmetros do esquema de resfriamento (Simulated Annealing)
     initial_temperature: float = 1.0   # T_max: temperatura inicial (sistema "quente")
     min_temperature: float = 0.01      # T_min: piso da temperatura (evita divisão por zero)
+    min_products_per_market: int = 3   # mínimo de produtos por mercado visitado
+    max_markets: int = 5               # número máximo de mercados na solução
 
 from typing import Dict, List, Tuple, Optional, Set
 
@@ -108,8 +110,10 @@ def alns_solve_tpp(data: Dict, max_iterations: int, no_improve_limit: int,
     reaction_factor = config.reaction_factor
 
     # Solução inicial
-    current_solution = initial_solution(K, M, depot, Mk, pik)
-    current_cost = calculate_cost(current_solution, custos_viagem, node_index, pik)
+    current_solution = initial_solution(K, M, depot, Mk, pik, max_markets=config.max_markets)
+    current_cost = calculate_cost(current_solution, custos_viagem, node_index, pik,
+                                  min_products_per_market=config.min_products_per_market,
+                                  max_markets=config.max_markets)
     best_solution = copy.deepcopy(current_solution)
     best_cost = current_cost
 
@@ -148,11 +152,14 @@ def alns_solve_tpp(data: Dict, max_iterations: int, no_improve_limit: int,
         else:
             partial_solution = destroy_operator(
                 current_solution,
-                remove_fraction=config.remove_fraction
+                remove_fraction=config.remove_fraction,
+                min_products_per_market=config.min_products_per_market
             )
 
         # --- Reparo ---
-        new_solution = repair_operator(partial_solution, K, Mk, pik, custos_viagem, node_index, depot)
+        new_solution = repair_operator(partial_solution, K, Mk, pik, custos_viagem, node_index, depot,
+                                       max_markets=config.max_markets,
+                                       min_products_per_market=config.min_products_per_market)
 
         # --- Solução inviável ---
         if new_solution is None:
@@ -163,7 +170,9 @@ def alns_solve_tpp(data: Dict, max_iterations: int, no_improve_limit: int,
 
         new_cost = calculate_cost(
             new_solution, custos_viagem, node_index, pik,
-            penalty_value=config.penalty_value
+            penalty_value=config.penalty_value,
+            min_products_per_market=config.min_products_per_market,
+            max_markets=config.max_markets
         )
 
         # --- Etapas 2 e 3: critério de aceitação + scores σ1, σ2, σ3 ---
@@ -332,9 +341,12 @@ def verificar_dados(K: List[str], Mk: Dict[str, Set[str]], pik: Dict[Tuple[str, 
 
 
 def initial_solution(K: List[str], M: List[str], depot: str, Mk: Dict[str, Set[str]],
-                     pik: Dict[Tuple[str, str], float]) -> Dict:
+                     pik: Dict[Tuple[str, str], float], max_markets: int = 5) -> Dict:
     purchases: Dict[str, List[str]] = {}
     markets_to_visit: Set[str] = set()
+
+    # Pré-calcula quantos produtos de K cada mercado consegue fornecer
+    market_coverage = {m: sum(1 for k in K if (m, k) in pik) for m in M}
 
     for k in K:
         mercados_possiveis = Mk.get(k, set())
@@ -342,7 +354,24 @@ def initial_solution(K: List[str], M: List[str], depot: str, Mk: Dict[str, Set[s
         if not mercados_validos:
             logger.warning(f"Produto {k} não tem mercados disponíveis na solução inicial.")
             continue
-        i = random.choice(mercados_validos)
+
+        # Prefere mercados já selecionados para consolidar produtos
+        mercados_na_rota = [i for i in mercados_validos if i in markets_to_visit]
+        if mercados_na_rota:
+            i = random.choice(mercados_na_rota)
+        else:
+            # Ordena por cobertura para preferir mercados que oferecem mais produtos
+            mercados_validos_sorted = sorted(
+                mercados_validos, key=lambda m: market_coverage.get(m, 0), reverse=True
+            )
+            if len(markets_to_visit) < max_markets:
+                i = mercados_validos_sorted[0]
+            else:
+                # Limite atingido: adiciona mesmo assim para garantir cobertura total
+                # (penalidade em calculate_cost pressiona o otimizador a corrigir)
+                i = mercados_validos_sorted[0]
+                logger.warning(f"Produto {k}: solução inicial excede o limite de {max_markets} mercados.")
+
         if i not in purchases:
             purchases[i] = []
         purchases[i].append(k)
@@ -354,7 +383,9 @@ def initial_solution(K: List[str], M: List[str], depot: str, Mk: Dict[str, Set[s
 
 
 def calculate_cost(solution, custos_viagem, node_index, pik,
-                   penalty_value: float = 10.0) -> float:
+                   penalty_value: float = 10.0,
+                   min_products_per_market: int = 2,
+                   max_markets: int = 9999) -> float:
     """
     Calcula o custo total da solução: custo de viagem + custo de compra + penalidade.
     O parâmetro penalty_value é controlado pelo ALNSConfig (config.penalty_value).
@@ -386,16 +417,23 @@ def calculate_cost(solution, custos_viagem, node_index, pik,
                 logger.error(f"Erro: Produto {k} não está disponível no mercado {market}.")
                 return float('inf')
 
-    # Penalidade — usa o parâmetro recebido, NÃO sobrescreve
+    # Penalidade progressiva para mercados com menos de min_products_per_market produtos
     for market, products in purchases.items():
-        if len(products) == 1:
-            total_purchase_cost += penalty_value  # ← vem do config.penalty_value
+        shortfall = min_products_per_market - len(products)
+        if shortfall > 0:
+            total_purchase_cost += penalty_value * shortfall
+
+    # Penalidade pesada por exceder o número máximo de mercados
+    excess = len(purchases) - max_markets
+    if excess > 0:
+        total_purchase_cost += penalty_value * 100 * excess
 
     total_cost = total_distance_cost + total_purchase_cost
     return round(total_cost, 2)
 
 
-def random_removal(solution, remove_fraction: float = 0.2) -> Dict:
+def random_removal(solution, remove_fraction: float = 0.2,
+                   min_products_per_market: int = 2) -> Dict:
     new_solution = copy.deepcopy(solution)
     route_obj: Route = new_solution['route_obj']
     purchases = new_solution['purchases']
@@ -406,7 +444,13 @@ def random_removal(solution, remove_fraction: float = 0.2) -> Dict:
 
     # Evita remover o depósito
     mercados_disponiveis = list(route_obj.route_set - {route_obj.route[0]})
-    markets_to_remove = random.sample(mercados_disponiveis, min(num_to_remove, len(mercados_disponiveis)))
+
+    # Mercados com poucos produtos têm prioridade de remoção
+    thin = [m for m in mercados_disponiveis if len(purchases.get(m, [])) < min_products_per_market]
+    normal = [m for m in mercados_disponiveis if m not in set(thin)]
+    random.shuffle(thin)
+    random.shuffle(normal)
+    markets_to_remove = (thin + normal)[:num_to_remove]
 
     for market in markets_to_remove:
         route_obj.remove_market(market)
@@ -459,9 +503,53 @@ def worst_removal(solution, custos_viagem, node_index, pik,
     return new_solution
 
 
+def consolidate_solution(solution: Dict, pik: Dict[Tuple[str, str], float],
+                         min_products_per_market: int) -> Dict:
+    """
+    Tenta mover produtos de mercados com poucos itens para outros mercados já na rota.
+    Não remove produtos nem retorna None — apenas consolida quando possível.
+    """
+    purchases = solution['purchases']
+    route_obj = solution['route_obj']
+    depot = route_obj.route[0]
+
+    thin_markets = [m for m in list(purchases.keys()) if len(purchases[m]) < min_products_per_market]
+
+    for thin_market in thin_markets:
+        if thin_market not in purchases:
+            continue
+        products_to_move = list(purchases[thin_market])
+        moves = []
+        can_move_all = True
+
+        for k in products_to_move:
+            moved = False
+            for other_market in route_obj.get_route():
+                if other_market == depot or other_market == thin_market:
+                    continue
+                if (other_market, k) in pik:
+                    moves.append((k, other_market))
+                    moved = True
+                    break
+            if not moved:
+                can_move_all = False
+                break
+
+        if can_move_all:
+            for k, target_market in moves:
+                purchases[thin_market].remove(k)
+                purchases[target_market].append(k)
+            del purchases[thin_market]
+            route_obj.remove_market(thin_market)
+
+    return solution
+
+
 def greedy_insertion(solution: Dict, K: List[str], Mk: Dict[str, Set[str]],
                      pik: Dict[Tuple[str, str], float], custos_viagem: List[List[float]],
-                     node_index: Dict[str, int], depot: str) -> Optional[Dict]:
+                     node_index: Dict[str, int], depot: str,
+                     max_markets: int = 9999,
+                     min_products_per_market: int = 2) -> Optional[Dict]:
     new_solution = copy.deepcopy(solution)
     route_obj: Route = new_solution['route_obj']
     purchases = new_solution['purchases']
@@ -478,6 +566,9 @@ def greedy_insertion(solution: Dict, K: List[str], Mk: Dict[str, Set[str]],
             possible_markets = Mk.get(k, set())
             for market in possible_markets:
                 if (market, k) not in pik:
+                    continue
+                # Hard constraint: não adiciona novo mercado se o limite foi atingido
+                if market not in route_obj and len(purchases) >= max_markets:
                     continue
                 product_cost = pik[(market, k)]
                 if market in route_obj:
@@ -496,11 +587,16 @@ def greedy_insertion(solution: Dict, K: List[str], Mk: Dict[str, Set[str]],
                     best_product = k
 
         if best_market is None:
-            logger.warning("Não foi possível encontrar um mercado para um dos produtos necessários.")
-            products_to_remove = [k for k in products_needed if not Mk.get(k, set())]
-            for k in products_to_remove:
+            # Produtos sem nenhum mercado disponível nos dados
+            products_no_market = [k for k in products_needed
+                                   if not any((m, k) in pik for m in Mk.get(k, set()))]
+            for k in products_no_market:
                 logger.warning(f"Removendo o produto {k} da lista de necessidades.")
                 products_needed.remove(k)
+            if products_needed:
+                # Produtos existem mas todos os mercados estão bloqueados pelo limite
+                logger.warning("Limite de mercados atingido: solução inviável no greedy_insertion.")
+                return None
             continue
 
         if best_market not in route_obj:
@@ -514,12 +610,14 @@ def greedy_insertion(solution: Dict, K: List[str], Mk: Dict[str, Set[str]],
         purchases[best_market].append(best_product)
         products_needed.remove(best_product)
 
-    return new_solution
+    return consolidate_solution(new_solution, pik, min_products_per_market)
 
 
 def random_insertion(solution: Dict, K: List[str], Mk: Dict[str, Set[str]],
                      pik: Dict[Tuple[str, str], float], custos_viagem: List[List[float]],
-                     node_index: Dict[str, int], depot: str) -> Optional[Dict]:
+                     node_index: Dict[str, int], depot: str,
+                     max_markets: int = 9999,
+                     min_products_per_market: int = 2) -> Optional[Dict]:
     new_solution = copy.deepcopy(solution)
     route_obj: Route = new_solution['route_obj']
     purchases = new_solution['purchases']
@@ -536,6 +634,14 @@ def random_insertion(solution: Dict, K: List[str], Mk: Dict[str, Set[str]],
             logger.warning(f"Não há mercados que vendem o produto {k}. Removendo-o da lista de necessidades.")
             products_needed.remove(k)
             continue
+
+        # Hard constraint: se o limite foi atingido, filtrar apenas mercados já na rota
+        if len(purchases) >= max_markets:
+            mercados_validos = [i for i in mercados_validos if i in route_obj]
+            if not mercados_validos:
+                logger.warning("Limite de mercados atingido: solução inviável no random_insertion.")
+                return None
+
         market = random.choice(mercados_validos)
         if market not in route_obj:
             position = random.randint(1, len(route_obj.route) - 1)
@@ -545,7 +651,7 @@ def random_insertion(solution: Dict, K: List[str], Mk: Dict[str, Set[str]],
         purchases[market].append(k)
         products_needed.remove(k)
 
-    return new_solution
+    return consolidate_solution(new_solution, pik, min_products_per_market)
 
 
 def acceptance_criterion(current_cost: float, new_cost: float,
