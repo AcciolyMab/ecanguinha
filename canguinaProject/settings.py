@@ -1,6 +1,6 @@
 """
 Django settings for canguinaProject project.
-Gerado por 'django-admin startproject' usando Django 5.1.2. 
+Gerado por 'django-admin startproject' usando Django 5.1.2.   
 """
 
 import os
