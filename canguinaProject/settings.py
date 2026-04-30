@@ -6,9 +6,10 @@ Gerado por 'django-admin startproject' usando Django 5.1.2.
 import os
 import logging
 from pathlib import Path
+from urllib.parse import urlparse
+
 from decouple import config
 import dj_database_url
-from canguinaProject.utils import testar_redis_em_debug
 
 logger = logging.getLogger(__name__)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "canguinaProject.settings")
@@ -18,8 +19,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ========================
 # 🔐 SEGURANÇA
 # ========================
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-placeholder')
 DEBUG = config('DEBUG', default=False, cast=bool)
+
+# SECRET_KEY: fallback inseguro só em dev; em produção, exige a env var
+SECRET_KEY = config(
+    'SECRET_KEY',
+    default='django-insecure-placeholder' if DEBUG else None,
+)
+if not SECRET_KEY:
+    raise ValueError("❌ SECRET_KEY é obrigatória em produção")
 
 ALLOWED_HOSTS = config(
     "ALLOWED_HOSTS",
@@ -27,11 +35,9 @@ ALLOWED_HOSTS = config(
 ).split(",")
 
 CSRF_TRUSTED_ORIGINS = [
-    f"https://{host}" for host in ALLOWED_HOSTS if not host.startswith("0.") and not host.startswith("127.")
+    f"https://{host}" for host in ALLOWED_HOSTS
+    if not host.startswith("0.") and not host.startswith("127.")
 ]
-
-if DEBUG:
-    testar_redis_em_debug()
 
 APPEND_SLASH = True
 
@@ -79,6 +85,7 @@ if DATABASE_URL:
         'default': dj_database_url.parse(DATABASE_URL)
     }
     DATABASES['default']['CONN_MAX_AGE'] = 600
+    DATABASES['default']['CONN_HEALTH_CHECKS'] = True  # evita OperationalError em conexões inválidas
 else:
     DATABASES = {
         'default': {
@@ -90,25 +97,19 @@ else:
 # ========================
 # 🚀 REDIS & CACHE
 # ========================
-from urllib.parse import urlparse
+# Uma única REDIS_URL por ambiente.
+# Em dev: definida no .env local.
+# Em produção (Railway): injetada automaticamente pelo serviço Redis.
+REDIS_URL = config('REDIS_URL', default='redis://127.0.0.1:6379').strip()
 
-FORCE_RAILWAY_REDIS = config("FORCE_RAILWAY_REDIS", default="0") == "1"
+parsed_url = urlparse(REDIS_URL)
+if not parsed_url.hostname or not parsed_url.scheme:
+    raise ValueError(f"❌ REDIS_URL inválida: {REDIS_URL}")
 
-REDIS_ENV_VAR = 'REDIS_URL' if FORCE_RAILWAY_REDIS else ('REDIS_URL_PROD' if not DEBUG else 'REDIS_URL')
-
-full_redis_url = config(REDIS_ENV_VAR, default='redis://127.0.0.1:6379').strip()
-
-parsed = urlparse(full_redis_url)
-if not parsed.hostname or not parsed.scheme:
-    raise ValueError(f"❌ {REDIS_ENV_VAR} inválida: {full_redis_url}")
-
-parsed_url = urlparse(full_redis_url)
-
-# ✅ LÓGICA CORRIGIDA (MANTÉM A AUTENTICAÇÃO):
-# O atributo `netloc` já contém "usuario:senha@hostname:porta"
+# URL completa (com auth) para uso interno
 RAW_REDIS_URL = f"{parsed_url.scheme}://{parsed_url.netloc}"
 
-# 🔒 Versão mascarada apenas para logs (não expõe a senha)
+# Versão mascarada para logs (não expõe a senha)
 _redis_userinfo = f"{parsed_url.username}:***@" if parsed_url.username else ""
 _redis_port = f":{parsed_url.port}" if parsed_url.port else ""
 REDIS_URL_MASKED = f"{parsed_url.scheme}://{_redis_userinfo}{parsed_url.hostname}{_redis_port}"
@@ -128,7 +129,9 @@ CACHES = {
                 'django_redis.serializers.pickle.PickleSerializer' if DEBUG
                 else 'django_redis.serializers.json.JSONSerializer'
             ),
-            'IGNORE_EXCEPTIONS': DEBUG,
+            # Em produção, falha de cache NÃO derruba a request — só loga.
+            # Em dev, queremos ver o erro para corrigir.
+            'IGNORE_EXCEPTIONS': not DEBUG,
             'CONNECTION_POOL_KWARGS': {
                 'max_connections': 100,
                 'socket_timeout': 120
@@ -138,8 +141,9 @@ CACHES = {
     }
 }
 
-
-SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+# Sessão híbrida: cache (Redis) + db (Postgres). Se o Redis cair,
+# usuários não são deslogados — fonte de verdade é o banco.
+SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
 SESSION_CACHE_ALIAS = 'default'
 
 # ========================
@@ -174,7 +178,16 @@ X_FRAME_OPTIONS = 'DENY'
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / "static_custom"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Django 4.2+: usar STORAGES (substitui STATICFILES_STORAGE/DEFAULT_FILE_STORAGE)
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -216,6 +229,12 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 
+# Tuning para tarefas longas (ALNS pode levar dezenas de minutos):
+CELERY_TASK_ACKS_LATE = True                       # ack só após terminar — não perde tarefa se worker morrer
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1               # crítico: 1 tarefa pesada por worker, não acumula fila
+CELERY_TASK_REJECT_ON_WORKER_LOST = True            # re-enfileira se worker for morto (OOM, deploy, etc.)
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True    # silencia warning do Celery 6+
+
 logger.info(f"🚀 Celery Broker: {REDIS_URL_MASKED}/0")
 logger.info(f"🗄️ Celery Backend: {REDIS_URL_MASKED}/0")
 logger.info(f"🔧 Cache Redis configurado com: {REDIS_URL_MASKED}/1")
@@ -231,14 +250,49 @@ LOGGING = {
     },
     'root': {
         'handlers': ['console'],
-        'level': 'DEBUG',
+        'level': 'DEBUG' if DEBUG else 'INFO',
     },
     'loggers': {
-        'django': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': True},
-        'django.request': {'handlers': ['console'], 'level': 'DEBUG', 'propagate': False},
-        'django.template': {'handlers': ['console'], 'level': 'ERROR', 'propagate': False},
-        'urllib3': {'handlers': ['console'], 'level': 'ERROR', 'propagate': False},
-        'requests': {'handlers': ['console'], 'level': 'ERROR', 'propagate': False},
-        'redis': {'handlers': ['console'], 'level': 'DEBUG' if DEBUG else 'ERROR', 'propagate': False},
+        'django': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'WARNING',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'django.template': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'urllib3': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'requests': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'redis': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'WARNING',
+            'propagate': False,
+        },
+        # Seu app — mantém DEBUG em dev, INFO em produção
+        'ecanguinha': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
     }
 }
