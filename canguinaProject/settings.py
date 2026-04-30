@@ -108,7 +108,15 @@ parsed_url = urlparse(full_redis_url)
 # O atributo `netloc` já contém "usuario:senha@hostname:porta"
 RAW_REDIS_URL = f"{parsed_url.scheme}://{parsed_url.netloc}"
 
-logger.warning(f"🛠️ Ambiente: {'PRODUÇÃO' if not DEBUG else 'DESENVOLVIMENTO'} | Redis em uso: {RAW_REDIS_URL}")
+# 🔒 Versão mascarada apenas para logs (não expõe a senha)
+_redis_userinfo = f"{parsed_url.username}:***@" if parsed_url.username else ""
+_redis_port = f":{parsed_url.port}" if parsed_url.port else ""
+REDIS_URL_MASKED = f"{parsed_url.scheme}://{_redis_userinfo}{parsed_url.hostname}{_redis_port}"
+
+logger.warning(
+    f"🛠️ Ambiente: {'PRODUÇÃO' if not DEBUG else 'DESENVOLVIMENTO'} "
+    f"| Redis em uso: {REDIS_URL_MASKED}"
+)
 
 CACHES = {
     'default': {
@@ -208,9 +216,9 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 
-logger.info(f"🚀 Celery Broker: {CELERY_BROKER_URL}")
-logger.info(f"🗄️ Celery Backend: {CELERY_RESULT_BACKEND}")
-logger.info(f"🔧 Cache Redis configurado com: {RAW_REDIS_URL}/1")
+logger.info(f"🚀 Celery Broker: {REDIS_URL_MASKED}/0")
+logger.info(f"🗄️ Celery Backend: {REDIS_URL_MASKED}/0")
+logger.info(f"🔧 Cache Redis configurado com: {REDIS_URL_MASKED}/1")
 
 # ========================
 # 🪵 LOGGING
