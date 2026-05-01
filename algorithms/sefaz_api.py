@@ -1,4 +1,4 @@
-# algorithms/sefaz_api.py
+# algorithms/sefaz_api.py - versão 2.0
 
 import requests
 import json
