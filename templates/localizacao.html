@@ -318,7 +318,12 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         if (!map) {
             map = L.map('map').setView([lat, lon], 15);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            // O servidor padrão do OSM bloqueia uso de aplicativos (403). Usa o mesmo provedor da tela de resultados.
+            L.tileLayer('{{ MAP_TILE_URL|escapejs }}', {
+                attribution: '{{ MAP_TILE_ATTRIBUTION|escapejs }}',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(map);
         } else {
             map.setView([lat, lon], 15);
         }

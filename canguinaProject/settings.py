@@ -57,6 +57,16 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'canguinaProject.urls'
 
+# Mapa (Leaflet): o servidor padrão do OSM bloqueia aplicativos (403) e o Carto exige chave de API.
+# Defina MAP_TILE_URL no .env com a URL do seu provedor, incluindo a chave. Ex.: https://.../{z}/{x}/{y}.png?api_key=SUA_CHAVE
+# O OSM exige o cabeçalho Referer; o padrão do Django (same-origin) o suprime e causa o bloqueio 403.
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+MAP_TILE_URL = config('MAP_TILE_URL', default='https://tile.openstreetmap.org/{z}/{x}/{y}.png')
+MAP_TILE_ATTRIBUTION = config(
+    'MAP_TILE_ATTRIBUTION',
+    default='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+)
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -68,6 +78,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'canguinaProject.context_processors.map_tiles',
             ],
             'debug': DEBUG,
         },

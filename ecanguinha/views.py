@@ -274,7 +274,7 @@ def listar_produtos(request):
         avg_lat = df["LAT"].mean() if "LAT" in df.columns else latitude
         avg_lon = df["LONG"].mean() if "LONG" in df.columns else longitude
 
-        tpplib_data = create_tpplib_data(df, avg_lat, avg_lon, media_preco=preco_combustivel)
+        tpplib_data = create_tpplib_data(df, latitude, longitude, media_preco=preco_combustivel)
         resultado_solver = alns_solve_tpp(
             tpplib_data,
             max_iterations=10000,
@@ -291,8 +291,8 @@ def listar_produtos(request):
                 'resultado': {'rota': [], 'purchases': {}, 'total_cost': 0.0, 'total_distance': 0.0, 'execution_time': 0.0},
                 'mercados_comprados': [],
                 'media_combustivel': preco_combustivel,
-                'user_lat': avg_lat,
-                'user_lon': avg_lon,
+                'user_lat': latitude,
+                'user_lon': longitude,
                 'dias': dias_para_consulta, # Usando a variável correta
                 'raio': raio,
                 'item_list': gtin_list
@@ -349,8 +349,8 @@ def listar_produtos(request):
             },
             'mercados_comprados': mercados_enriquecidos,
             'node_coords': [(float(m['latitude']), float(m['longitude'])) for m in mercados_enriquecidos],
-            'user_lat': avg_lat,
-            'user_lon': avg_lon,
+            'user_lat': latitude,
+            'user_lon': longitude,
             'dias': dias_para_consulta, # Usando a variável correta
             'raio': raio,
             'item_list': gtin_list,

@@ -75,7 +75,7 @@ def processar_busca_produtos_task(
         avg_lon = df["LONG"].mean()
         # IMPORTAÇÃO TARDIA APLICADA AQUI
         from algorithms.tpplib_data import create_tpplib_data
-        tpplib_data = create_tpplib_data(df, avg_lat, avg_lon, media_preco=float(preco_combustivel))
+        tpplib_data = create_tpplib_data(df, float(latitude), float(longitude), media_preco=float(preco_combustivel))
 
         # Etapa 3 — Executar ALNS
         atualizar_progresso(75, "Calculando a melhor rota...")
@@ -199,7 +199,7 @@ def buscar_ofertas_task(self, gtin_list, raio, latitude, longitude, dias, preco_
         # ... (O resto do código para o solver permanece exatamente igual) ...
         avg_lat = df["LAT"].mean()
         avg_lon = df["LONG"].mean()
-        tpplib_data = create_tpplib_data(df, avg_lat, avg_lon, media_preco=preco_combustivel)
+        tpplib_data = create_tpplib_data(df, float(latitude), float(longitude), media_preco=preco_combustivel)
         resultado_solver = alns_solve_tpp(
             tpplib_data, max_iterations=10000, no_improve_limit=100,
             session_key=session_key, task_id=task_id
