@@ -35,7 +35,9 @@ logging.basicConfig(
     force=True
 )
 logger = logging.getLogger(__name__)
-SEFAZ_URL = "http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/produto/pesquisa"
+# SEFAZ_BASE_URL é opcional (ex.: servidor local de testes). Sem a variável, usa a API real.
+SEFAZ_BASE_URL = (os.environ.get("SEFAZ_BASE_URL") or "http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public").rstrip("/")
+SEFAZ_URL = f"{SEFAZ_BASE_URL}/produto/pesquisa"
 
 # Suprimir warnings de InsecureRequest
 urllib3.disable_warnings(InsecureRequestWarning)
@@ -127,7 +129,7 @@ def _request_produto_sefaz(gtin, raio, my_lat, my_lon, dias):
     
     logger.warning(f"⚠️ GTIN Cache MISS: {cache_key}")
     
-    url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/produto/pesquisa'
+    url = f"{SEFAZ_BASE_URL}/produto/pesquisa"
     data_payload = {
         "produto": {"gtin": str(gtin)},
         "estabelecimento": {"geolocalizacao": {"latitude": lat, "longitude": lon, "raio": int(raio)}},
@@ -204,11 +206,13 @@ def obter_produtos(session_key_raw, gtin_list, raio, my_lat, my_lon, dias, progr
 
     logger.info(f"Busca finalizada. Total de {len(df)} registros encontrados.")
     return df
-def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
+def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias, municipio_ibge=None):
     logger.debug(f"🛠️ [consultar_combustivel] tipo_combustivel={tipo_combustivel}, raio={raio}, lat={my_lat}, lon={my_lon}, dias={dias}")
     lat = round(float(my_lat), 3)
     lon = round(float(my_lon), 3)
     cache_key = f"combustivel:{tipo_combustivel}:{raio}:{lat}:{lon}:{dias}"
+    if municipio_ibge:
+        cache_key = f"combustivel:{tipo_combustivel}:municipio:{int(municipio_ibge)}:{dias}"
     cached_data = cache.get(cache_key)
     if cached_data:
         logger.info(f"✅ Cache HIT: {cache_key}")
@@ -219,10 +223,15 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
     longitude = round(float(lon), 6)
     raio = int(raio)
     dias = int(dias)
-    url = 'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/combustivel/pesquisa'
+    url = f"{SEFAZ_BASE_URL}/combustivel/pesquisa"
+    # O manual da SEFAZ aceita só um critério de estabelecimento: município OU geolocalização.
+    if municipio_ibge:
+        estabelecimento = {"municipio": {"codigoIBGE": int(municipio_ibge)}}
+    else:
+        estabelecimento = {"geolocalizacao": {"latitude": latitude, "longitude": longitude, "raio": raio}}
     data = {
         "produto": {"tipoCombustivel": tipo_combustivel},
-        "estabelecimento": {"geolocalizacao": {"latitude": latitude, "longitude": longitude, "raio": raio}},
+        "estabelecimento": estabelecimento,
         "dias": dias,
         "pagina": 1,
         "registrosPorPagina": 3000
@@ -244,9 +253,9 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias):
         logger.error(f"❌ Erro consultando combustível tipo {tipo_combustivel}: {e}")
     return {"error": f"Falha na requisição para tipo {tipo_combustivel}"}
 
-def obter_combustiveis(tipo_combustivel, raio, my_lat, my_lon, dias):
+def obter_combustiveis(tipo_combustivel, raio, my_lat, my_lon, dias, municipio_ibge=None):
     logger.debug(f"🚦 [obter_combustiveis] tipo_combustivel={tipo_combustivel} | type={type(tipo_combustivel)} | raio={raio} | lat={my_lat} | lon={my_lon} | dias={dias}")
-    response = consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias)
+    response = consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias, municipio_ibge=municipio_ibge)
     if not isinstance(response, dict) or 'conteudo' not in response or 'error' in response:
         logger.warning(f"Nenhum dado válido foi retornado para '{tipo_combustivel}'. Erro: {response.get('error', 'Desconhecido')}")
         return pd.DataFrame()
@@ -300,7 +309,7 @@ def calcular_dias_validos_dinamicamente(gtin_exemplo, raio, lat, lon, max_dias=1
             }
             # CORREÇÃO: Usa a sessão global pré-configurada
             response = SEFAZ_SESSION.post(
-                'http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public/combustivel/pesquisa',
+                f"{SEFAZ_BASE_URL}/combustivel/pesquisa",
                 json=payload,
                 timeout=10
             )
