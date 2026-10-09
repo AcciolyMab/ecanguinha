@@ -39,6 +39,12 @@ logger = logging.getLogger(__name__)
 SEFAZ_BASE_URL = (os.environ.get("SEFAZ_BASE_URL") or "http://api.sefaz.al.gov.br/sfz-economiza-alagoas-api/api/public").rstrip("/")
 SEFAZ_URL = f"{SEFAZ_BASE_URL}/produto/pesquisa"
 
+# Chave de acesso (AppToken) da API Economiza Alagoas: vem só do ambiente (SEFAZ_API_KEY), nunca do código.
+SEFAZ_API_KEY = os.environ.get("SEFAZ_API_KEY", "").strip()
+if not SEFAZ_API_KEY:
+    logger.error("SEFAZ_API_KEY não está definida: as consultas à SEFAZ vão falhar (token inválido). "
+                 "Defina a variável de ambiente SEFAZ_API_KEY.")
+
 # Suprimir warnings de InsecureRequest
 urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -75,7 +81,7 @@ SEFAZ_SESSION.mount("https://", adapter)
 SEFAZ_SESSION.verify = False
 SEFAZ_SESSION.headers.update({
     "Content-Type": "application/json",
-    "AppToken": "ad909a7a6f0d6a130941ae2a9706eec58c0bb65d"
+    "AppToken": SEFAZ_API_KEY
 })
 
 def _parse_sefaz_response(response_json, gtin_original):
@@ -236,7 +242,7 @@ def consultar_combustivel(tipo_combustivel, raio, my_lat, my_lon, dias, municipi
         "pagina": 1,
         "registrosPorPagina": 3000
     }
-    headers = {"Content-Type": "application/json", "AppToken": "ad909a7a6f0d6a130941ae2a9706eec58c0bb65d"}
+    headers = {"Content-Type": "application/json", "AppToken": SEFAZ_API_KEY}
     try:
         # CORREÇÃO: Usa a sessão global pré-configurada
         response = SEFAZ_SESSION.post(url, json=data, headers=headers, timeout=120)
