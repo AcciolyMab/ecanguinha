@@ -57,3 +57,6 @@ runtime.txt
 cache/*.json
 # Mapa viário baixado por scripts/baixar_mapa.py (gerado localmente, não versionado)
 data/mapas/
+
+sefaz_local/
+dump.rdb
