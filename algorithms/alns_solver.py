@@ -4,6 +4,7 @@ import random
 import math
 import logging
 from dataclasses import dataclass
+from typing import Optional
 
 _DEFAULT_MIN_PRODUCTS_PER_MARKET = 3
 
@@ -16,7 +17,13 @@ class ALNSConfig:
     segment_length: int = 60        # L na dissertação (linha 5 do Algoritmo 4.1)
     reaction_factor: float = 0.4    # η na dissertação (linha 6 do Algoritmo 4.1)
     remove_fraction: float = 0.2    # fração de destruição dos operadores
-    penalty_value: float = 10.0     # penalidade por mercado com item único
+    # Penalidade por item que falta para o mínimo de itens de um mercado (R$). None = "big-M" calculado da
+    # instância: penalty_factor x (soma do maior preço de cada produto + maior custo de ida e volta). Como em
+    # Ropke e Pisinger (2006) para pedidos não atendidos, a penalidade é grande o bastante para que nenhuma economia
+    # compense um mercado com poucos itens: a violação só vence quando é inevitável (ex.: produto vendido em um
+    # único mercado). Soluções sem violação não pagam nada, então o custo real não é afetado.
+    penalty_value: Optional[float] = None
+    penalty_factor: float = 1.0
     max_infeasible: int = 50        # infMax (linha 9 do Algoritmo 4.1)
     # Recompensas σ1, σ2, σ3 conforme Algoritmo 2.1 da dissertação
     sigma1: float = 3.0  # nova melhor solução global
@@ -62,6 +69,50 @@ class Route:
         return copy.deepcopy(self)
 
 
+def penalidade_da_instancia(pik, custos_viagem, indice_deposito: int, fator: float) -> float:
+    """big-M: fator x (soma do maior preço de cada produto + maior custo de ida e volta depósito<->mercado).
+
+    É o custo máximo que uma compra completa poderia ter; nenhuma economia de preço ou de rota o supera.
+    """
+    maiores = {}
+    for (_, k), preco in pik.items():
+        maiores[k] = max(maiores.get(k, 0.0), preco)
+    idas_e_voltas = [custos_viagem[indice_deposito][j] + custos_viagem[j][indice_deposito]
+                     for j in range(len(custos_viagem)) if j != indice_deposito]
+    idas_e_voltas = [c for c in idas_e_voltas if math.isfinite(c)]
+    return round(fator * (sum(maiores.values()) + (max(idas_e_voltas) if idas_e_voltas else 0.0)), 2)
+
+
+def contar_violacoes(purchases, min_products_per_market: int) -> int:
+    """Itens que faltam para os mercados da solução atingirem o mínimo de itens (0 = solução sem violação)."""
+    return sum(max(0, min_products_per_market - len(itens)) for itens in purchases.values())
+
+
+def alns_solve_tpp_multistart(data: Dict, max_iterations: int, no_improve_limit: int,
+                              session_key: Optional[str] = None, task_id: Optional[str] = None,
+                              config: Optional[ALNSConfig] = None, reinicios: int = 25):
+    """Várias execuções independentes do ALNS (multi-start); devolve a melhor.
+
+    O ALNS é estocástico e barato (décimos de segundo), e uma execução isolada pode parar num ótimo local ruim
+    (ex.: um mercado com poucos itens). A melhor execução é a que tem menos violações do mínimo de itens por
+    mercado e, em empate, o menor custo REAL (produtos + deslocamento, sem penalidade), o que o usuário vê.
+    """
+    from algorithms.custos import custo_deslocamento
+    config = config or ALNSConfig()
+    melhor, chave_melhor = None, None
+    for _ in range(max(1, reinicios)):
+        resultado = alns_solve_tpp(data, max_iterations, no_improve_limit, session_key=None, task_id=None, config=config)
+        if not isinstance(resultado, dict):
+            continue
+        compras = resultado['purchases']
+        real = (sum(c['preco'] for itens in compras.values() for c in itens)
+                + custo_deslocamento(resultado['total_distance'], data.get('media_preco_combustivel', 0.0)))
+        chave = (contar_violacoes(compras, config.min_products_per_market), real)
+        if chave_melhor is None or chave < chave_melhor:
+            melhor, chave_melhor = resultado, chave
+    return melhor
+
+
 def alns_solve_tpp(data: Dict, max_iterations: int, no_improve_limit: int,
                    session_key: Optional[str] = None,
                    task_id: Optional[str] = None,
@@ -101,6 +152,13 @@ def alns_solve_tpp(data: Dict, max_iterations: int, no_improve_limit: int,
         logger.error("Os dados de entrada contêm erros. O algoritmo não pode ser executado.")
         return None, None, None
 
+    # Penalidade: valor configurado ou proporcional à escala de custos da instância
+    if config.penalty_value is not None:
+        penalty_value = config.penalty_value
+    else:
+        penalty_value = penalidade_da_instancia(pik, custos_viagem, node_index[depot], config.penalty_factor)
+    logger.info(f"Penalidade por item faltante: R$ {penalty_value:.2f}")
+
     # Parâmetros do ALNS
     destroy_operators = [random_removal, worst_removal]
     repair_operators = [greedy_insertion, random_insertion]
@@ -114,6 +172,7 @@ def alns_solve_tpp(data: Dict, max_iterations: int, no_improve_limit: int,
     # Solução inicial
     current_solution = initial_solution(K, M, depot, Mk, pik, max_markets=config.max_markets)
     current_cost = calculate_cost(current_solution, custos_viagem, node_index, pik,
+                                  penalty_value=penalty_value,
                                   min_products_per_market=config.min_products_per_market,
                                   max_markets=config.max_markets)
     best_solution = copy.deepcopy(current_solution)
@@ -172,7 +231,7 @@ def alns_solve_tpp(data: Dict, max_iterations: int, no_improve_limit: int,
 
         new_cost = calculate_cost(
             new_solution, custos_viagem, node_index, pik,
-            penalty_value=config.penalty_value,
+            penalty_value=penalty_value,
             min_products_per_market=config.min_products_per_market,
             max_markets=config.max_markets
         )

@@ -147,7 +147,7 @@ def processar_busca_produtos_task(
 @shared_task(bind=True)
 def buscar_ofertas_task(self, gtin_list, raio, latitude, longitude, dias, preco_combustivel, session_key=None):
     from algorithms.sefaz_api import obter_produtos, verificar_delay_sefaz
-    from algorithms.alns_solver import alns_solve_tpp
+    from algorithms.alns_solver import alns_solve_tpp, alns_solve_tpp_multistart
     from algorithms.tpplib_data import create_tpplib_data
     import time
     from django.core.cache import cache
@@ -200,8 +200,8 @@ def buscar_ofertas_task(self, gtin_list, raio, latitude, longitude, dias, preco_
         avg_lat = df["LAT"].mean()
         avg_lon = df["LONG"].mean()
         tpplib_data = create_tpplib_data(df, float(latitude), float(longitude), media_preco=preco_combustivel)
-        resultado_solver = alns_solve_tpp(
-            tpplib_data, max_iterations=10000, no_improve_limit=100,
+        resultado_solver = alns_solve_tpp_multistart(
+            tpplib_data, max_iterations=10000, no_improve_limit=500,
             session_key=session_key, task_id=task_id
         )
 
@@ -228,6 +228,90 @@ def buscar_ofertas_task(self, gtin_list, raio, latitude, longitude, dias, preco_
             'error': 'Ocorreu um erro inesperado no servidor.',
             'sugestao': 'Nossa equipe já foi notificada. Por favor, tente novamente mais tarde.'
         }
+
+@shared_task(bind=True)
+def buscar_lista_task(self, municipio_ibge, itens, latitude, longitude, dias, preco_combustivel, session_key=None,
+                      quantidades=None):
+    """Busca por município: consulta a SEFAZ para cada descrição da lista e só então otimiza a rota."""
+    from algorithms.sefaz_lista import montar_dataframe, grafo_viario, consultar_cacheado, escolhas_do_solver, SefazErro
+    from algorithms.geocodificacao import geocodificar_endereco
+    from algorithms.alns_solver import alns_solve_tpp, alns_solve_tpp_multistart
+    from algorithms.tpplib_data import create_tpplib_data
+    from django.core.cache import cache
+
+    task_id = self.request.id
+    progress_key = f"progress:{task_id}"
+    origem = (float(latitude), float(longitude))
+
+    def update_progress(percentage, step):
+        self.update_state(state='PROGRESS', meta={'progress': int(percentage), 'step': step})
+        cache.set(progress_key, int(percentage), timeout=600)
+        logger.info(f"Task {task_id}: {int(percentage)}% - {step}")
+
+    try:
+        update_progress(5, "Olá Canguinha! Vou buscar os preços da sua lista...")
+        df, resumo = montar_dataframe(
+            itens, municipio_ibge, int(dias), origem, consultar=consultar_cacheado, geocodificar=geocodificar_endereco,
+            progresso=lambda n, total: update_progress(10 + 50 * n / total, f"Consultando produtos ({n}/{total})...")
+        )
+        logger.info(f"Task {task_id}: resumo da seleção por descrição: {resumo}")
+        if df.empty:
+            update_progress(100, "Nenhum produto encontrado.")
+            return {
+                'error': 'Não encontramos ofertas para os produtos escolhidos.',
+                'sugestao': 'Aumente o período de análise ou escolha outras marcas. A SEFAZ só guarda vendas dos últimos 10 dias.'
+            }
+
+        sem_oferta = sorted(set(itens) - set(df['PRODUTO']))
+        update_progress(65, "Calculando a melhor rota de compras...")
+        centro, raio = grafo_viario(df, origem)
+        tpplib_data = create_tpplib_data(df, origem[0], origem[1], media_preco=float(preco_combustivel),
+                                         raio_busca=raio, centro_grafo=centro)
+        resultado_solver = alns_solve_tpp_multistart(
+            tpplib_data, max_iterations=10000, no_improve_limit=500,
+            session_key=session_key, task_id=task_id
+        )
+        if not resultado_solver:
+            update_progress(100, "Nenhuma solução viável encontrada.")
+            return {
+                'error': 'Encontramos as ofertas, mas não foi possível criar uma rota otimizada.',
+                'sugestao': 'Isso pode acontecer se os mercados estiverem em locais muito distantes do seu endereço.'
+            }
+
+        escolhas_do_solver(resultado_solver.get('purchases', {}), df)   # produto exato que o solver escolheu
+        # O solver decidiu com o preço unitário (1 unidade de cada item). A quantidade só entra aqui, na hora de
+        # exibir o resultado: cada compra recebe a quantidade pedida e a tela totaliza preço x quantidade.
+        quantidades = quantidades or {}
+        for compras in resultado_solver.get('purchases', {}).values():
+            for compra in compras:
+                compra['quantidade'] = int(quantidades.get(compra['produto'], 1))
+        resultado_solver.update({
+            "media_combustivel": preco_combustivel,
+            "user_lat": origem[0],
+            "user_lon": origem[1],
+            "municipio_ibge": int(municipio_ibge),
+            "dias": int(dias),
+            "produtos_sem_oferta": sem_oferta,
+            "quantidades": quantidades,
+            "interpretacoes": [{"de": r["descricao"], "para": r["consulta_usada"]} for r in resumo
+                               if r.get("consulta_usada") and r["consulta_usada"].lower() != r["descricao"].lower()],
+            "resumo_busca": resumo,
+            "distancias_aproximadas": bool(tpplib_data.get('distancias_aproximadas')),
+        })
+        update_progress(100, "Busca finalizada! Oxe! toma ai tua rota! 🚗")
+        return resultado_solver
+
+    except SefazErro as e:
+        logger.error(f"Erro da SEFAZ na tarefa 'buscar_lista_task': {e}")
+        return {'error': str(e), 'sugestao': 'Tente novamente em instantes.'}
+    except Exception as e:
+        logger.exception(f"Erro crítico na tarefa 'buscar_lista_task': {e}")
+        self.update_state(state='FAILURE', meta={'exc_type': type(e).__name__, 'exc_message': str(e)})
+        return {
+            'error': 'Ocorreu um erro inesperado no servidor.',
+            'sugestao': 'Por favor, tente novamente mais tarde.'
+        }
+
 
 @shared_task(bind=True)
 def task_consultar_combustivel(self, gtin, tipo_combustivel, raio, latitude, longitude, dias, posicao, session_key=None):
