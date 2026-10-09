@@ -125,6 +125,23 @@
 {% block content %}
     <div class="flex-container">
         <div class="table-container">
+            {% if interpretacoes %}
+            <div class="alert alert-info small" role="alert">
+                Interpretamos: {% for i in interpretacoes %}<strong>{{ i.de }}</strong> como <strong>{{ i.para }}</strong>{% if not forloop.last %}; {% endif %}{% endfor %}.
+            </div>
+            {% endif %}
+            {% if produtos_sem_oferta %}
+            <div class="alert alert-warning small" role="alert">
+                Sem ofertas encontradas para: <strong>{{ produtos_sem_oferta|join:", " }}</strong>.
+                Verifique a grafia, use o nome que aparece na nota (ex.: "biscoito" em vez de "bolacha") ou aumente o período de análise.
+            </div>
+            {% endif %}
+            {% if distancias_aproximadas %}
+            <div class="alert alert-warning small" role="alert">
+                O mapa viário não pôde ser carregado agora; as distâncias foram estimadas em linha reta
+                (com acréscimo para ruas). A escolha dos mercados continua baseada nos preços reais.
+            </div>
+            {% endif %}
             <h3 style="color: #084c41;">Lista de mercados</h3>
             <p>{{ mercados_comprados|length }} estabelecimentos encontrados</p>
 
@@ -154,16 +171,26 @@
                             </div>
                             <table class="table">
                                 <thead>
+                                    {% if quantidades %}
+                                    <tr><th>Produto</th><th class="text-center">Qtd</th><th>Preço unit.</th><th>Total</th></tr>
+                                    {% else %}
                                     <tr><th>Produto</th><th>Preço</th></tr>
+                                    {% endif %}
                                 </thead>
                                 <tbody>
                                     {% for produto in produtos_mercado %}
                                         <tr>
-                                            <td>{{ produto.produto }}</td>
+                                            <td>{{ produto.item|default:produto.produto }}</td>
+                                            {% if quantidades %}
+                                            <td class="text-center">{{ produto.quantidade|default:1 }}</td>
                                             <td>R$ {{ produto.preco|floatformat:2 }}</td>
+                                            <td>R$ {{ produto.preco|multiplicar:produto.quantidade|floatformat:2 }}</td>
+                                            {% else %}
+                                            <td>R$ {{ produto.preco|floatformat:2 }}</td>
+                                            {% endif %}
                                         </tr>
                                     {% empty %}
-                                        <tr><td colspan="2">Nenhum produto encontrado</td></tr>
+                                        <tr><td colspan="{% if quantidades %}4{% else %}2{% endif %}">Nenhum produto encontrado</td></tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -188,11 +215,11 @@
                         </tr>
                         <tr>
                             <td>Custo de deslocamento:</td>
-                            <td>R$ {{ resultado.total_cost|subtrair:subtotal_cesta_basica|default:0.0|floatformat:2 }}</td>
+                            <td>R$ {{ custo_deslocamento|default:0.0|floatformat:2 }} <small class="text-muted">({{ resultado.total_distance|floatformat:1 }} km)</small></td>
                         </tr>
                         <tr>
                             <td><strong>Custo total</strong></td>
-                            <td><strong>R$ {{ resultado.total_cost|floatformat:2 }}</strong></td>
+                            <td><strong>R$ {{ custo_total|default:0.0|floatformat:2 }}</strong></td>
                         </tr>
                     </tbody>
                 </table>

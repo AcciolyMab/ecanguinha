@@ -25,6 +25,7 @@ urlpatterns = [
     # URL para iniciar a busca (substitui a antiga 'listar_produtos')
     path('api/iniciar-busca/', views.iniciar_busca_produtos, name='iniciar_busca_produtos'),
     # URL para verificar o status da tarefa
+    path('api/lista/iniciar/', views.iniciar_busca_lista, name='iniciar_busca_lista'),
     path('api/task-status/', views.get_task_status, name='get_task_status'),
     # URL para mostrar o resultado final
     path('resultado/<str:task_id>/', views.mostrar_resultado, name='mostrar_resultado'),

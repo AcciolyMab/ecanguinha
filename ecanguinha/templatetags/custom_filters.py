@@ -19,8 +19,17 @@ def sum_precos(lista_produtos):
     if not lista_produtos:
         return 0.0
     return sum(
-        (item.get('preco', 0) for item in lista_produtos if isinstance(item, dict))
+        (item.get('preco', 0) * item.get('quantidade', 1) for item in lista_produtos if isinstance(item, dict))
     )
+
+@register.filter
+def multiplicar(valor1, valor2):
+    """Multiplica dois valores numéricos (preço x quantidade), retornando 0 em caso de erro de conversão."""
+    try:
+        return float(valor1) * float(valor2)
+    except (ValueError, TypeError):
+        return 0
+
 
 @register.filter
 def subtrair(valor1, valor2):

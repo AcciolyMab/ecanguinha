@@ -55,3 +55,5 @@ Procfile  # Pode ser necessário para Heroku, mas se não quiser versioná-lo, p
 # Arquivos Temporários e Build
 runtime.txt
 cache/*.json
+# Mapa viário baixado por scripts/baixar_mapa.py (gerado localmente, não versionado)
+data/mapas/

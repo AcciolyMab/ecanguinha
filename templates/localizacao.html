@@ -143,6 +143,132 @@
         {% endfor %}
     {% endif %}
 
+    <ul class="nav nav-tabs justify-content-center mb-4" id="buscaTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-lista-btn" data-bs-toggle="tab" data-bs-target="#tab-lista"
+                    type="button" role="tab" aria-controls="tab-lista" aria-selected="true">
+                <i class="bi bi-list-check"></i> Busca por lista
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-cep-btn" data-bs-toggle="tab" data-bs-target="#tab-cep"
+                    type="button" role="tab" aria-controls="tab-cep" aria-selected="false">
+                <i class="bi bi-geo-alt"></i> Busca por CEP (produtos selecionados)
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+    <!-- ===================== ABA 1: BUSCA POR LISTA (padrão) ===================== -->
+    <div class="tab-pane fade show active" id="tab-lista" role="tabpanel" aria-labelledby="tab-lista-btn">
+        <div class="row g-4 mb-4">
+            <div class="col-lg-6">
+                <div class="section-card d-flex flex-column">
+                    <h5 class="text-primary mb-3"><i class="bi bi-geo-alt-fill"></i> Onde você compra</h5>
+
+                    <div class="mb-3">
+                        <label for="lsMunicipio" class="form-label">Município de Alagoas</label>
+                        <select id="lsMunicipio" class="form-select">
+                            {% for codigo, nome in municipios %}
+                            <option value="{{ codigo }}" {% if codigo == municipio_padrao %}selected{% endif %}>{{ nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="lsEndereco" class="form-label">Seu CEP ou endereço (ponto de partida da rota)</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="lsEndereco" value="57020-040"
+                                   placeholder="57000-000 ou Rua, número, bairro" style="height: 50px; font-size: 14px;">
+                            <button type="button" class="btn btn-outline-primary" id="lsBtnLocalizar"
+                                    style="height: 50px; font-size: 14px;">Localizar</button>
+                        </div>
+                        <div id="lsEnderecoResolvido" class="form-text"></div>
+                    </div>
+
+                    <div>
+                        <label for="lsDias" class="form-label">
+                            Período de Análise: <span id="lsDiasValor" class="fw-bold">1 dia(s)</span>
+                        </label>
+                        <input type="range" class="form-range" id="lsDias" min="1" max="10" value="1">
+                        <div class="form-text">A SEFAZ guarda as vendas dos últimos 10 dias.</div>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-center flex-grow-1 pt-3">
+                        <img src="{% static 'ecanguinha/img/canguinhalogo_oficial.png' %}" alt="Logo Canguinha Alagoas"
+                             class="img-fluid" style="max-height: 200px; max-width: 100%; object-fit: contain;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6 d-flex flex-column gap-4">
+                <div class="section-card" style="height: auto;">
+                    <h5 class="text-info mb-3 text-center"><i class="bi bi-fuel-pump-fill"></i> Combustível</h5>
+                    <p class="text-center">Selecione o tipo de combustível para calcular o custo de deslocamento.</p>
+                    <div class="fuel-options">
+                        <div class="form-check text-center">
+                            <input class="form-check-input" type="radio" name="lsCombustivel" id="ls-gasolina-comum" value="1">
+                            <label class="form-check-label" for="ls-gasolina-comum">Gasolina Comum</label>
+                        </div>
+                        <div class="form-check text-center">
+                            <input class="form-check-input" type="radio" name="lsCombustivel" id="ls-gasolina-aditivada" value="2">
+                            <label class="form-check-label" for="ls-gasolina-aditivada">Gasolina Aditivada</label>
+                        </div>
+                        <div class="form-check text-center">
+                            <input class="form-check-input" type="radio" name="lsCombustivel" id="ls-alcool" value="3">
+                            <label class="form-check-label" for="ls-alcool">Álcool</label>
+                        </div>
+                        <div class="form-check text-center">
+                            <input class="form-check-input" type="radio" name="lsCombustivel" id="ls-diesel-comum" value="4">
+                            <label class="form-check-label" for="ls-diesel-comum">Diesel Comum</label>
+                        </div>
+                        <div class="form-check text-center">
+                            <input class="form-check-input" type="radio" name="lsCombustivel" id="ls-diesel-aditivado" value="5">
+                            <label class="form-check-label" for="ls-diesel-aditivado">Diesel Aditivado (S10)</label>
+                        </div>
+                        <div class="form-check text-center">
+                            <input class="form-check-input" type="radio" name="lsCombustivel" id="ls-gnv" value="6">
+                            <label class="form-check-label" for="ls-gnv">GNV</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card" style="height: auto; flex-grow: 1;">
+                    <h5 class="text-success text-center mb-3"><i class="bi bi-map-fill"></i> Mapa da Região</h5>
+                    <div id="lsMap" style="height: 300px; border-radius: 8px; background-color: #eee;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-card mb-4">
+            <h5 class="text-success mb-3"><i class="bi bi-basket-fill"></i> Sua lista de produtos</h5>
+            <form id="lsFormAdicionar" class="input-group mb-2" autocomplete="off">
+                <input type="text" class="form-control" id="lsDescricao" maxlength="50" enterkeyhint="done"
+                       placeholder="Ex.: Café 250g, Leite integral 1l, Arroz 5kg" style="height: 50px; font-size: 14px;">
+                <button type="submit" class="btn btn-success" id="lsBtnAdicionar" style="height: 50px; font-size: 14px;">
+                    <i class="bi bi-plus-lg"></i> Adicionar
+                </button>
+            </form>
+            <div class="form-text mb-3">
+                Use o nome do produto e, se quiser, o tamanho (250g, 1l). Poucas palavras funcionam melhor.
+                A SEFAZ só é consultada quando você clicar em Buscar Ofertas. A quantidade só entra na conta
+                depois que a rota é calculada (o solver escolhe os mercados pelo preço unitário).
+            </div>
+            <div id="lsLista"></div>
+            <div id="lsListaVazia" class="text-muted text-center py-3">Nenhum produto na lista ainda.</div>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-auto">
+                <button type="button" class="btn btn-success btn-lg" id="lsBtnBuscar" disabled>
+                    <i class="bi bi-search"></i> Buscar Ofertas
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== ABA 2: BUSCA POR CEP COM PRODUTOS SELECIONADOS ===================== -->
+    <div class="tab-pane fade" id="tab-cep" role="tabpanel" aria-labelledby="tab-cep-btn">
     <form id="locationForm" method="post">
         {% csrf_token %}
         
@@ -226,7 +352,7 @@
                             <label class="form-check-label" for="alcool">Álcool</label>
                         </div>
                         <div class="form-check text-center">
-                            <input class="form-check-input" type="radio" name="tipoCombustivel" id="diesel-comum" value="5">
+                            <input class="form-check-input" type="radio" name="tipoCombustivel" id="diesel-comum" value="4">
                             <label class="form-check-label" for="diesel-comum">Diesel Comum</label>
                         </div>
                         <div class="form-check text-center">
@@ -284,6 +410,8 @@
             </div>
         </div>
     </form>
+    </div><!-- /#tab-cep -->
+    </div><!-- /.tab-content -->
 </div>
 {% endblock %}
 
@@ -309,6 +437,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const selectAllCheckbox = document.getElementById("selectAllCheckbox");
     let map = null;
     let marcadorUsuario = null;
+    document.getElementById("tab-cep-btn").addEventListener("shown.bs.tab", () => { if (map) map.invalidateSize(); });
 
     // --- 2. FUNÇÕES ---
     function inicializarMapa(lat, lon) {
@@ -610,6 +739,237 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     buscarLocalPorCep(cepInput.value || "57020-040");
+});
+</script>
+<script>
+// ===================== ABA "BUSCA POR LISTA" =====================
+// Independente da busca por CEP: ids com prefixo "ls", rotas e task próprias.
+// A lista é montada só no navegador; a SEFAZ é consultada depois de "Buscar Ofertas" (dentro da task).
+document.addEventListener("DOMContentLoaded", function () {
+    const csrf = "{{ csrf_token }}";
+    const el = id => document.getElementById(id);
+    const selMunicipio = el("lsMunicipio"), inpEndereco = el("lsEndereco"), btnLocalizar = el("lsBtnLocalizar");
+    const rotuloEndereco = el("lsEnderecoResolvido"), sliderDias = el("lsDias"), rotuloDias = el("lsDiasValor");
+    const inpDescricao = el("lsDescricao"), btnAdicionar = el("lsBtnAdicionar");
+    const listaEl = el("lsLista"), listaVazia = el("lsListaVazia"), btnBuscar = el("lsBtnBuscar");
+    const MAX_ITENS = 20, QTD_MIN = 1, QTD_MAX = 99;
+
+    let origem = null;                       // {lat, lon, nome}
+    let mapa = null, marcador = null;        // mapa Leaflet com a localização do comprador (como na outra aba)
+    let itens = [];                          // {descricao, quantidade} digitados pelo usuário
+
+    const post = (url, corpo) => fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": csrf },
+        body: JSON.stringify(corpo)
+    });
+    const semAcento = t => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+
+    // --- mapa com a localização do comprador ---
+    function mostrarNoMapa(lat, lon) {
+        if (typeof L === "undefined") { console.error("Leaflet (L) não foi encontrado."); return; }
+        if (!mapa) {
+            mapa = L.map("lsMap").setView([lat, lon], 15);
+            L.tileLayer('{{ MAP_TILE_URL|escapejs }}', {
+                attribution: '{{ MAP_TILE_ATTRIBUTION|escapejs }}',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(mapa);
+        } else {
+            mapa.setView([lat, lon], 15);
+        }
+        if (marcador) mapa.removeLayer(marcador);
+        marcador = L.marker([lat, lon]).addTo(mapa).bindPopup("Sua localização!").openPopup();
+    }
+
+    // --- localização: CEP (ViaCEP) ou endereço livre -> coordenadas (Nominatim via backend) ---
+    async function geocodificar(consulta) {
+        const r = await fetch(`{% url 'get_lat_long' %}?endereco=${encodeURIComponent(consulta)}`);
+        if (!r.ok) return null;
+        const d = await r.json();
+        return d && d.lat ? { lat: parseFloat(d.lat), lon: parseFloat(d.lon), nome: d.display_name } : null;
+    }
+
+    async function localizar() {
+        const texto = inpEndereco.value.trim();
+        if (!texto) { alert("Informe o CEP ou o endereço."); return; }
+        btnLocalizar.disabled = true;
+        rotuloEndereco.textContent = "Localizando...";
+        origem = null;
+        atualizar();
+        try {
+            const consultas = [];
+            const cep = texto.replace(/\D/g, "");
+            if (cep.length === 8) {
+                const via = await fetch(`https://viacep.com.br/ws/${cep}/json/`).then(r => r.ok ? r.json() : {}).catch(() => ({}));
+                if (via && !via.erro && via.localidade) {
+                    consultas.push(`${via.logradouro}, ${via.bairro}, ${via.localidade}, ${via.uf}, Brasil`,
+                                   `${via.bairro}, ${via.localidade}, ${via.uf}, Brasil`,
+                                   `${via.localidade}, ${via.uf}, Brasil`);
+                    if (via.uf === "AL" && via.ibge && selMunicipio.querySelector(`option[value="${via.ibge}"]`)) {
+                        selMunicipio.value = via.ibge;           // CEP de outra cidade: acompanha o município
+                    }
+                }
+            } else {
+                consultas.push(`${texto}, ${selMunicipio.selectedOptions[0].text}, Alagoas, Brasil`, `${texto}, Alagoas, Brasil`);
+            }
+            for (const c of consultas) {
+                const ponto = await geocodificar(c);
+                if (ponto) { origem = ponto; break; }
+            }
+            rotuloEndereco.textContent = origem ? "Ponto de partida: " + origem.nome : "Não foi possível localizar. Tente outro CEP ou endereço.";
+            if (origem) mostrarNoMapa(origem.lat, origem.lon);
+        } catch (e) {
+            console.error(e);
+            rotuloEndereco.textContent = "Erro ao localizar o endereço.";
+        } finally {
+            btnLocalizar.disabled = false;
+            atualizar();
+        }
+    }
+
+    // --- lista de produtos (sem consultar a SEFAZ) ---
+    function adicionar() {
+        const descricao = inpDescricao.value.replace(/\s+/g, " ").trim();
+        if (descricao.length < 3 || descricao.length > 50) { alert("A descrição deve ter de 3 a 50 caracteres."); return; }
+        if (!/[A-Za-zÀ-ÿ]{2,}/.test(descricao)) { alert("Informe o nome do produto, por exemplo: Café 250g."); return; }
+        if (itens.length >= MAX_ITENS) { alert(`A lista aceita até ${MAX_ITENS} produtos.`); return; }
+        if (itens.some(i => semAcento(i.descricao) === semAcento(descricao))) { alert("Esse produto já está na lista."); return; }
+        itens.push({ descricao, quantidade: 1 });
+        inpDescricao.value = "";
+        inpDescricao.focus();
+        desenhar();
+    }
+
+    // seletor de quantidade: só guarda o número; a totalização é feita depois que o solver resolve (tela de resultado)
+    function seletorQuantidade(item) {
+        const grupo = document.createElement("div");
+        grupo.className = "input-group input-group-sm flex-nowrap";
+        grupo.style.width = "122px";
+        const menos = document.createElement("button");
+        menos.type = "button"; menos.className = "btn btn-outline-secondary";
+        menos.innerHTML = '<i class="bi bi-dash-lg"></i>'; menos.title = "Diminuir quantidade";
+        menos.setAttribute("aria-label", `Diminuir a quantidade de ${item.descricao}`);
+        const campo = document.createElement("input");
+        campo.type = "number"; campo.className = "form-control text-center"; campo.min = QTD_MIN; campo.max = QTD_MAX;
+        campo.value = item.quantidade; campo.inputMode = "numeric";
+        campo.setAttribute("aria-label", `Quantidade de ${item.descricao}`);
+        const mais = document.createElement("button");
+        mais.type = "button"; mais.className = "btn btn-outline-secondary";
+        mais.innerHTML = '<i class="bi bi-plus-lg"></i>'; mais.title = "Aumentar quantidade";
+        mais.setAttribute("aria-label", `Aumentar a quantidade de ${item.descricao}`);
+        const definir = v => {
+            const n = Math.max(QTD_MIN, Math.min(QTD_MAX, parseInt(v, 10) || QTD_MIN));
+            item.quantidade = n; campo.value = n;
+            menos.disabled = n <= QTD_MIN; mais.disabled = n >= QTD_MAX;
+        };
+        menos.addEventListener("click", () => definir(item.quantidade - 1));
+        mais.addEventListener("click", () => definir(item.quantidade + 1));
+        campo.addEventListener("change", () => definir(campo.value));
+        definir(item.quantidade);
+        grupo.append(menos, campo, mais);
+        return grupo;
+    }
+
+    function desenhar() {
+        listaEl.replaceChildren(...itens.map(item => {
+            const linha = document.createElement("div");
+            linha.className = "d-flex justify-content-between align-items-center gap-2 border rounded px-3 py-2 mb-2";
+            const nome = document.createElement("span");
+            nome.className = "flex-grow-1";
+            nome.textContent = item.descricao;
+            const remover = document.createElement("button");
+            remover.type = "button";
+            remover.className = "btn btn-sm btn-outline-danger";
+            remover.innerHTML = '<i class="bi bi-trash"></i>';
+            remover.title = "Remover da lista";
+            remover.addEventListener("click", () => { itens = itens.filter(i => i !== item); desenhar(); });
+            linha.append(nome, seletorQuantidade(item), remover);
+            return linha;
+        }));
+        listaVazia.style.display = itens.length ? "none" : "block";
+        atualizar();
+    }
+
+    const combustivelEscolhido = () => document.querySelector('input[name="lsCombustivel"]:checked');
+
+    function atualizar() {
+        btnBuscar.disabled = !(origem && combustivelEscolhido() && itens.length);
+    }
+
+    // --- envio e acompanhamento ---
+    function mostrarFormulario(msg) {
+        if (msg) alert(msg);
+        el("containerGeral").style.display = "block";
+        el("progressContainer").style.display = "none";
+        atualizar();
+    }
+
+    async function buscar() {
+        btnBuscar.disabled = true;
+        el("containerGeral").style.display = "none";
+        el("progressContainer").style.display = "flex";
+        el("textoProgresso").textContent = "0% - Buscando o preço do combustível...";
+        const municipio = parseInt(selMunicipio.value);
+        try {
+            const rc = await post("{% url 'processar_combustivel' %}", {
+                tipoCombustivel: parseInt(combustivelEscolhido().value), municipio_ibge: municipio,
+                latitude: origem.lat, longitude: origem.lon
+            });
+            const dc = await rc.json();
+            if (!rc.ok) throw new Error(dc.erro || "Falha ao obter o preço do combustível.");
+
+            const rb = await post("{% url 'iniciar_busca_lista' %}", {
+                municipio_ibge: municipio, dias: parseInt(sliderDias.value),
+                latitude: origem.lat, longitude: origem.lon, preco_combustivel: dc.media_preco,
+                itens: itens.map(i => ({ descricao: i.descricao, quantidade: i.quantidade }))
+            });
+            const db = await rb.json();
+            if (!rb.ok) throw new Error(db.error || "O servidor retornou um erro.");
+            acompanhar(db.task_id);
+        } catch (e) {
+            mostrarFormulario("Falha ao iniciar a busca: " + e.message);
+        }
+    }
+
+    function acompanhar(taskId) {
+        const texto = el("textoProgresso"), icone = el("caipiraIcon"), caminho = el("caminho");
+        const timer = setInterval(async () => {
+            try {
+                const d = await fetch(`{% url 'get_task_status' %}?task_id=${taskId}`).then(r => r.json());
+                const pct = Math.round(d.progress || 0);
+                texto.textContent = `${pct}% - ${d.step || "Processando..."}`;
+                icone.style.left = `${(caminho.offsetWidth - icone.offsetWidth) * (pct / 100)}px`;
+                if (d.status === "SUCCESS" || d.status === "FAILURE") {
+                    clearInterval(timer);
+                    if (d.status === "SUCCESS" && d.result && !d.result.error) {
+                        texto.textContent = "100% - Busca finalizada! Redirecionando...";
+                        window.location.href = `/resultado/${d.task_id}/`;
+                    } else {
+                        mostrarFormulario(`${d.result?.error || "Ocorreu um erro."}\n\n${d.result?.sugestao || "Tente novamente."}`);
+                    }
+                }
+            } catch (e) {
+                clearInterval(timer);
+                mostrarFormulario("Erro de comunicação com o servidor.");
+            }
+        }, 2500);
+    }
+
+    // --- eventos ---
+    btnLocalizar.addEventListener("click", localizar);
+    inpEndereco.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); localizar(); } });
+    // Formulário: Enter (teclado, teclado numérico e "Ir" do celular) e o botão Adicionar passam pelo mesmo caminho.
+    el("lsFormAdicionar").addEventListener("submit", e => { e.preventDefault(); adicionar(); });
+    btnBuscar.addEventListener("click", buscar);
+    document.querySelectorAll('input[name="lsCombustivel"]').forEach(r => r.addEventListener("change", atualizar));
+    sliderDias.addEventListener("input", () => { rotuloDias.textContent = `${sliderDias.value} dia(s)`; });
+
+    // o mapa precisa recalcular o tamanho quando a aba volta a ser exibida
+    el("tab-lista-btn").addEventListener("shown.bs.tab", () => { if (mapa) mapa.invalidateSize(); });
+
+    desenhar();
+    localizar();
 });
 </script>
 {% endblock %}

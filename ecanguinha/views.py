@@ -11,7 +11,7 @@ import requests
 from typing import List, Dict
 from django.core.cache import cache
 from django.http import JsonResponse
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 from django.shortcuts import render, redirect
 
 from celery.result import AsyncResult
@@ -90,9 +90,13 @@ def get_lat_long(request):
 
 def localizacao(request):
     import time
+    from algorithms.municipios_al import MUNICIPIO_PADRAO, municipios_para_select
     inicio = time.time()
     logger.debug("🌐 View localizacao() acessada via GET")
-    response = render(request, 'localizacao.html')
+    response = render(request, 'localizacao.html', {
+        'municipios': municipios_para_select(),
+        'municipio_padrao': MUNICIPIO_PADRAO,
+    })
     logger.debug(f"⏱️ View localizacao renderizada em {time.time() - inicio:.2f}s")
     return response
 
@@ -426,7 +430,8 @@ def processar_combustivel(request):
 
         latitude = float(data.get("latitude"))
         longitude = float(data.get("longitude"))
-        raio = int(data.get("raio"))
+        raio = int(data.get("raio", 15))
+        municipio_ibge = int(data["municipio_ibge"]) if data.get("municipio_ibge") else None  # busca por lista
         # Não precisamos mais dos 'dias' do usuário aqui, usamos um valor fixo.
         tipo_combustivel = int(data.get("tipoCombustivel"))
 
@@ -436,7 +441,7 @@ def processar_combustivel(request):
         logger.info(f"Buscando preços de combustível nos últimos {dias_para_media} dias.")
         # --- FIM DA LÓGICA SIMPLIFICADA ---
 
-        df = obter_combustiveis(tipo_combustivel, raio, latitude, longitude, dias_para_media)
+        df = obter_combustiveis(tipo_combustivel, raio, latitude, longitude, dias_para_media, municipio_ibge=municipio_ibge)
 
         if df.empty:
             logger.warning("⚠️ Nenhum dado de combustível retornado pela API.")
@@ -515,6 +520,49 @@ def iniciar_busca_produtos(request):
         logger.exception("❌ Erro interno ao iniciar a busca de produtos.")
         return JsonResponse({'error': f'Erro interno: {str(e)}'}, status=500)
 
+# --- BUSCA POR LISTA (município + lista de descrições; algorithms/sefaz_lista.py) ---
+# A lista é montada na tela sem chamar a SEFAZ; a consulta acontece só depois de "Buscar Ofertas".
+
+
+@require_POST
+def iniciar_busca_lista(request):
+    """Valida a lista de descrições e dispara a task Celery. A SEFAZ só é consultada dentro da task."""
+    from ecanguinha.tasks import buscar_lista_task
+    from algorithms import sefaz_lista
+    try:
+        dados = json.loads(request.body.decode("utf-8"))
+        municipio = int(dados.get("municipio_ibge"))
+        dias = int(dados.get("dias", 7))
+        sefaz_lista.validar_parametros(municipio, dias)
+        latitude, longitude = float(dados.get("latitude")), float(dados.get("longitude"))
+        preco_combustivel = float(dados.get("preco_combustivel", 0.0))
+        if not sefaz_lista.coordenada_valida(latitude, longitude):
+            raise ValueError("O endereço informado precisa ficar em Alagoas.")
+        itens, quantidades = [], {}
+        for bruto in dados.get("itens") or []:
+            # item = "descrição" ou {"descricao": ..., "quantidade": n}; a quantidade só vale na totalização do resultado
+            descricao, quantidade = (bruto.get("descricao"), bruto.get("quantidade", 1)) if isinstance(bruto, dict) else (bruto, 1)
+            descricao = sefaz_lista.validar_descricao(descricao)
+            sefaz_lista.interpretar_consulta(descricao)
+            quantidade = sefaz_lista.validar_quantidade(quantidade)
+            if descricao.lower() not in (i.lower() for i in itens):
+                itens.append(descricao)
+                quantidades[descricao] = quantidade
+        if not 1 <= len(itens) <= 20:
+            raise ValueError("A lista deve ter de 1 a 20 produtos.")
+    except (ValueError, TypeError, json.JSONDecodeError) as e:
+        return JsonResponse({"error": str(e) or "Requisição inválida."}, status=400)
+
+    if not request.session.session_key:
+        request.session.save()
+    session_key = request.session.session_key
+    task = buscar_lista_task.delay(municipio, itens, latitude, longitude, dias, preco_combustivel,
+                                   session_key=session_key, quantidades=quantidades)
+    cache.set(f"progresso_{session_key}_{task.id}", 0, timeout=600)
+    logger.info(f"🚀 Busca por lista iniciada | task={task.id} | município={municipio} | itens={len(itens)}")
+    return JsonResponse({"task_id": task.id, "status": "PROCESSING"})
+
+
 # ecanguinha/views.py
 
 def get_task_status(request):
@@ -555,7 +603,8 @@ def get_task_status(request):
     return JsonResponse(response_data)
 
 def sum_precos(produtos):
-    return sum(item['preco'] for item in produtos if 'preco' in item)
+    """Soma preço x quantidade (a quantidade só existe na busca por lista; padrão 1)."""
+    return sum(item['preco'] * item.get('quantidade', 1) for item in produtos if 'preco' in item)
 
 def mostrar_resultado(request, task_id):
     task_result = AsyncResult(task_id)
@@ -594,6 +643,12 @@ def mostrar_resultado(request, task_id):
         for produtos in purchases.values():
             total += sum_precos(produtos)
         context['subtotal_cesta_basica'] = total
+
+        # Custo real de deslocamento (km x combustível). O total_cost do solver inclui penalidades
+        # internas (mercados com poucos itens) e não deve ser exibido como custo de viagem.
+        from algorithms.custos import custo_deslocamento
+        context['custo_deslocamento'] = custo_deslocamento(context.get('total_distance'), context.get('media_combustivel'))
+        context['custo_total'] = round(total + context['custo_deslocamento'], 2)
 
         # ✅ Garante que media_combustivel esteja presente
         context.setdefault('media_combustivel', 0.0)
